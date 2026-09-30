@@ -1,3 +1,4 @@
+```tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -107,6 +108,10 @@ const translations = {
       "Nababi Ristorante — un incontro tra sapori, cultura e ospitalità.",
     menu: "Menu",
     follow: "Seguici",
+    special: "Specialità Nababi",
+    years: "Anni di passione",
+    bookingSuccess: "Richiesta inviata con successo.",
+    bookingError: "Impossibile salvare la prenotazione. Chiamaci.",
   },
 
   en: {
@@ -158,6 +163,10 @@ const translations = {
       "Nababi Ristorante — where flavours, culture and hospitality meet.",
     menu: "Menu",
     follow: "Follow us",
+    special: "Nababi Special",
+    years: "Years of passion",
+    bookingSuccess: "Booking request sent successfully.",
+    bookingError: "Unable to save reservation. Please call us.",
   },
 
   bn: {
@@ -209,6 +218,10 @@ const translations = {
       "Nababi Ristorante — স্বাদ, সংস্কৃতি ও আতিথেয়তার এক মিলনস্থল।",
     menu: "মেনু",
     follow: "আমাদের অনুসরণ করুন",
+    special: "Nababi Special",
+    years: "বছরের ভালোবাসা",
+    bookingSuccess: "বুকিং অনুরোধ সফলভাবে পাঠানো হয়েছে।",
+    bookingError: "বুকিং সংরক্ষণ করা যায়নি। আমাদের কল করুন।",
   },
 };
 
@@ -217,6 +230,7 @@ function readStorage<T>(key: string, fallback: T): T {
 
   try {
     const value = localStorage.getItem(key);
+
     if (!value) return fallback;
 
     const parsed = JSON.parse(value);
@@ -231,13 +245,14 @@ function readStorage<T>(key: string, fallback: T): T {
   }
 }
 
-function imageFromItem(item: any, fallback = FALLBACK_FOOD) {
+function imageFromItem(
+  item: MenuItem | GalleryItem | Promotion | undefined,
+  fallback = FALLBACK_FOOD
+) {
   return (
     item?.image ||
     item?.imageUrl ||
-    item?.url ||
-    item?.photo ||
-    item?.src ||
+    ("url" in (item || {}) ? item?.url : undefined) ||
     fallback
   );
 }
@@ -248,33 +263,59 @@ export default function HomePage() {
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [settings, setSettings] = useState<any>({});
+  const [settings, setSettings] = useState<Record<string, any>>({});
   const [reservationMessage, setReservationMessage] = useState("");
 
   const t = translations[lang];
 
   useEffect(() => {
-    const load = () => {
+    const loadWebsiteData = () => {
       setMenu(readStorage<MenuItem[]>("nababi-menu", []));
       setGallery(readStorage<GalleryItem[]>("nababi-gallery", []));
-      setSettings(readStorage<any>("nababi-settings", {}));
+      setSettings(readStorage<Record<string, any>>("nababi-settings", {}));
 
-      const possiblePromotions =
-        readStorage<any>("nababi-promotions", []) ||
-        readStorage<any>("nababi-promotion", []);
+      const promotionsPrimary = readStorage<any>(
+        "nababi-promotions",
+        null
+      );
 
-      setPromotions(Array.isArray(possiblePromotions) ? possiblePromotions : []);
+      const promotionsLegacy = readStorage<any>(
+        "nababi-promotion",
+        []
+      );
 
-      const possibleReviews =
-        readStorage<any>("nababi-reviews", []) ||
-        readStorage<any>("nababi-review", []);
+      const promotionsData =
+        Array.isArray(promotionsPrimary)
+          ? promotionsPrimary
+          : Array.isArray(promotionsLegacy)
+          ? promotionsLegacy
+          : [];
 
-      setReviews(Array.isArray(possibleReviews) ? possibleReviews : []);
+      setPromotions(promotionsData);
+
+      const reviewsPrimary = readStorage<any>(
+        "nababi-reviews",
+        null
+      );
+
+      const reviewsLegacy = readStorage<any>(
+        "nababi-review",
+        []
+      );
+
+      const reviewsData =
+        Array.isArray(reviewsPrimary)
+          ? reviewsPrimary
+          : Array.isArray(reviewsLegacy)
+          ? reviewsLegacy
+          : [];
+
+      setReviews(reviewsData);
     };
 
-    load();
+    loadWebsiteData();
 
-    const handleStorage = () => load();
+    const handleStorage = () => loadWebsiteData();
 
     window.addEventListener("storage", handleStorage);
     window.addEventListener("focus", handleStorage);
@@ -290,30 +331,40 @@ export default function HomePage() {
       (item) => item.available !== false
     );
 
-    return active.length
-      ? active.slice(0, 8)
-      : [
-          {
-            name: "Chicken Tikka",
-            description: "Tender chicken with aromatic spices",
-            price: "14",
-          },
-          {
-            name: "Biryani Nababi",
-            description: "Fragrant rice, herbs and traditional spices",
-            price: "16",
-          },
-          {
-            name: "Butter Chicken",
-            description: "Creamy tomato sauce and Indian spices",
-            price: "15",
-          },
-          {
-            name: "Lamb Curry",
-            description: "Slow cooked lamb with rich spices",
-            price: "18",
-          },
-        ];
+    if (active.length > 0) {
+      return active.slice(0, 8);
+    }
+
+    return [
+      {
+        id: "fallback-1",
+        name: "Chicken Tikka",
+        description: "Tender chicken with aromatic spices",
+        price: "14",
+        image: FALLBACK_FOOD,
+      },
+      {
+        id: "fallback-2",
+        name: "Biryani Nababi",
+        description: "Fragrant rice, herbs and traditional spices",
+        price: "16",
+        image: FALLBACK_FOOD,
+      },
+      {
+        id: "fallback-3",
+        name: "Butter Chicken",
+        description: "Creamy tomato sauce and Indian spices",
+        price: "15",
+        image: FALLBACK_FOOD,
+      },
+      {
+        id: "fallback-4",
+        name: "Lamb Curry",
+        description: "Slow cooked lamb with rich spices",
+        price: "18",
+        image: FALLBACK_FOOD,
+      },
+    ];
   }, [menu]);
 
   const visibleGallery =
@@ -357,55 +408,62 @@ export default function HomePage() {
     settings?.hours ||
     null;
 
-  const submitReservation = (e: React.FormEvent<HTMLFormElement>) => {
+  const whatsappNumber = whatsapp.replace(/[^\d]/g, "");
+
+  const phoneNumber = phone.replace(/[^\d+]/g, "");
+
+  const submitReservation = (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
 
     const form = new FormData(e.currentTarget);
 
     const reservation = {
       id: Date.now().toString(),
-      name: form.get("name"),
-      phone: form.get("phone"),
-      date: form.get("date"),
-      time: form.get("time"),
-      guests: form.get("guests"),
+      name: String(form.get("name") || ""),
+      phone: String(form.get("phone") || ""),
+      date: String(form.get("date") || ""),
+      time: String(form.get("time") || ""),
+      guests: String(form.get("guests") || "2"),
       createdAt: new Date().toISOString(),
       status: "pending",
     };
 
     try {
-      const existing = readStorage<any[]>("nababi-reservations", []);
-      const updated = [reservation, ...existing];
+      const existing = readStorage<any[]>(
+        "nababi-reservations",
+        []
+      );
+
+      const updated = [
+        reservation,
+        ...(Array.isArray(existing) ? existing : []),
+      ];
 
       localStorage.setItem(
         "nababi-reservations",
         JSON.stringify(updated)
       );
 
-      setReservationMessage(
-        lang === "it"
-          ? "Richiesta inviata con successo."
-          : lang === "en"
-          ? "Booking request sent successfully."
-          : "বুকিং অনুরোধ সফলভাবে পাঠানো হয়েছে।"
-      );
+      setReservationMessage(t.bookingSuccess);
 
       e.currentTarget.reset();
+
+      window.setTimeout(() => {
+        setReservationMessage("");
+      }, 5000);
     } catch {
-      setReservationMessage(
-        "Unable to save reservation. Please call us."
-      );
+      setReservationMessage(t.bookingError);
     }
   };
 
-  const whatsappNumber = whatsapp.replace(/[^\d]/g, "");
-
   return (
     <main className="nababi-site">
-      {/* HEADER */}
       <header className="site-header">
-        <a href="#home" className="brand">
+        <a href="#home" className="brand" aria-label={restaurantName}>
           <span className="brand-mark">N</span>
+
           <span>
             <strong>NABABI</strong>
             <small>RISTORANTE</small>
@@ -425,8 +483,10 @@ export default function HomePage() {
           {(["it", "en", "bn"] as Lang[]).map((item) => (
             <button
               key={item}
+              type="button"
               className={lang === item ? "active" : ""}
               onClick={() => setLang(item)}
+              aria-label={`Switch language to ${item}`}
             >
               {item.toUpperCase()}
             </button>
@@ -434,11 +494,12 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* HERO */}
       <section
         id="home"
         className="hero"
-        style={{ backgroundImage: `url("${heroImage}")` }}
+        style={{
+          backgroundImage: `url("${heroImage}")`,
+        }}
       >
         <div className="hero-overlay" />
 
@@ -452,7 +513,9 @@ export default function HomePage() {
 
           <span className="gold-line" />
 
-          <p className="hero-description">{t.heroText}</p>
+          <p className="hero-description">
+            {t.heroText}
+          </p>
 
           <div className="hero-buttons">
             <a href="#menu" className="btn btn-gold">
@@ -472,24 +535,35 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* BREAKING NEWS */}
       <section className="news-bar">
-        <span className="news-label">{t.breaking}</span>
-        <span className="news-text">{breakingNews}</span>
+        <span className="news-label">
+          {t.breaking}
+        </span>
+
+        <span className="news-text">
+          {breakingNews}
+        </span>
       </section>
 
-      {/* ABOUT */}
       <section id="about" className="section about-section">
         <div className="section-image about-image">
-          <img src={FALLBACK_FOOD} alt="Nababi food" />
+          <img
+            src={FALLBACK_FOOD}
+            alt={`${restaurantName} food`}
+          />
+
           <div className="image-badge">
             <strong>10+</strong>
-            <span>Years of<br />Passion</span>
+            <span>
+              {t.years}
+            </span>
           </div>
         </div>
 
         <div className="section-copy">
-          <p className="eyebrow">{t.aboutSmall}</p>
+          <p className="eyebrow">
+            {t.aboutSmall}
+          </p>
 
           <h2>
             {t.aboutTitle}
@@ -511,47 +585,66 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* PROMOTIONS */}
       {promotions.length > 0 && (
         <section className="section promotions-section">
           <div className="center-heading">
-            <p className="eyebrow">NABABI SPECIAL</p>
-            <h2>Special <em>Offers</em></h2>
+            <p className="eyebrow">
+              NABABI SPECIAL
+            </p>
+
+            <h2>
+              Special <em>Offers</em>
+            </h2>
+
             <span className="gold-line" />
           </div>
 
           <div className="promotion-grid">
-            {promotions.slice(0, 3).map((promotion, index) => (
-              <article className="promotion-card" key={promotion.id ?? index}>
-                <img
-                  src={imageFromItem(promotion)}
-                  alt={promotion.title || "Promotion"}
-                />
+            {promotions.slice(0, 3).map(
+              (promotion, index) => (
+                <article
+                  className="promotion-card"
+                  key={promotion.id ?? index}
+                >
+                  <img
+                    src={imageFromItem(promotion)}
+                    alt={
+                      promotion.title ||
+                      "Promotion"
+                    }
+                  />
 
-                <div className="promotion-content">
-                  {promotion.discount && (
-                    <span className="discount">
-                      {promotion.discount}
-                    </span>
-                  )}
+                  <div className="promotion-content">
+                    {promotion.discount && (
+                      <span className="discount">
+                        {promotion.discount}
+                      </span>
+                    )}
 
-                  <h3>{promotion.title || "Nababi Special"}</h3>
+                    <h3>
+                      {promotion.title ||
+                        t.special}
+                    </h3>
 
-                  <p>{promotion.description || ""}</p>
-                </div>
-              </article>
-            ))}
+                    <p>
+                      {promotion.description || ""}
+                    </p>
+                  </div>
+                </article>
+              )
+            )}
           </div>
         </section>
       )}
 
-      {/* MENU */}
       <section id="menu" className="menu-section">
         <div className="menu-background" />
 
         <div className="menu-inner">
           <div className="center-heading light">
-            <p className="eyebrow">{t.specials}</p>
+            <p className="eyebrow">
+              {t.specials}
+            </p>
 
             <h2>
               {t.specialsTitle}
@@ -563,66 +656,106 @@ export default function HomePage() {
 
           <div className="menu-grid">
             {visibleMenu.map((item, index) => (
-              <article className="menu-card" key={item.id ?? index}>
+              <article
+                className="menu-card"
+                key={item.id ?? index}
+              >
                 <div className="menu-image">
                   <img
                     src={imageFromItem(item)}
-                    alt={item.name || item.title || "Menu item"}
+                    alt={
+                      item.name ||
+                      item.title ||
+                      "Menu item"
+                    }
                   />
                 </div>
 
                 <div className="menu-info">
                   <div className="menu-title-row">
-                    <h3>{item.name || item.title || "Nababi Special"}</h3>
+                    <h3>
+                      {item.name ||
+                        item.title ||
+                        t.special}
+                    </h3>
+
                     <span className="price">
-                      {item.price ? `€${item.price}` : "€"}
+                      {item.price
+                        ? `€${item.price}`
+                        : "€"}
                     </span>
                   </div>
 
-                  <p>{item.description || ""}</p>
+                  <p>
+                    {item.description || ""}
+                  </p>
                 </div>
               </article>
             ))}
           </div>
 
           <div className="menu-action">
-            <a href="#booking" className="btn btn-gold">
+            <a
+              href="#booking"
+              className="btn btn-gold"
+            >
               {t.bookTable}
             </a>
           </div>
         </div>
       </section>
 
-      {/* GALLERY */}
-      <section id="gallery" className="section gallery-section">
+      <section
+        id="gallery"
+        className="section gallery-section"
+      >
         <div className="center-heading">
-          <p className="eyebrow">{t.gallerySmall}</p>
+          <p className="eyebrow">
+            {t.gallerySmall}
+          </p>
+
           <h2>{t.galleryTitle}</h2>
+
           <span className="gold-line" />
         </div>
 
         <div className="gallery-grid">
-          {visibleGallery.map((item, index) => (
-            <div className={`gallery-item gallery-${index + 1}`} key={item.id ?? index}>
-              <img
-                src={imageFromItem(item)}
-                alt={item.title || "Nababi Ristorante"}
-              />
-              <div className="gallery-overlay">
-                <span>+</span>
+          {visibleGallery.map(
+            (item, index) => (
+              <div
+                className={`gallery-item gallery-${
+                  index + 1
+                }`}
+                key={item.id ?? index}
+              >
+                <img
+                  src={imageFromItem(item)}
+                  alt={
+                    item.title ||
+                    "Nababi Ristorante"
+                  }
+                />
+
+                <div className="gallery-overlay">
+                  <span>+</span>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          )}
         </div>
       </section>
 
-      {/* BOOKING */}
-      <section id="booking" className="booking-section">
+      <section
+        id="booking"
+        className="booking-section"
+      >
         <div className="booking-overlay" />
 
         <div className="booking-inner">
           <div className="center-heading light">
-            <p className="eyebrow">{t.bookingSmall}</p>
+            <p className="eyebrow">
+              {t.bookingSmall}
+            </p>
 
             <h2>
               {t.bookingTitle}
@@ -632,10 +765,17 @@ export default function HomePage() {
             <span className="gold-line" />
           </div>
 
-          <form className="booking-form" onSubmit={submitReservation}>
+          <form
+            className="booking-form"
+            onSubmit={submitReservation}
+          >
             <label>
               <span>{t.name}</span>
-              <input name="name" required placeholder={t.name} />
+              <input
+                name="name"
+                required
+                placeholder={t.name}
+              />
             </label>
 
             <label>
@@ -650,17 +790,29 @@ export default function HomePage() {
 
             <label>
               <span>{t.date}</span>
-              <input name="date" required type="date" />
+              <input
+                name="date"
+                required
+                type="date"
+              />
             </label>
 
             <label>
               <span>{t.time}</span>
-              <input name="time" required type="time" />
+              <input
+                name="time"
+                required
+                type="time"
+              />
             </label>
 
             <label>
               <span>{t.guests}</span>
-              <select name="guests" defaultValue="2">
+
+              <select
+                name="guests"
+                defaultValue="2"
+              >
                 <option value="1">1</option>
                 <option value="2">2</option>
                 <option value="3">3</option>
@@ -672,7 +824,10 @@ export default function HomePage() {
               </select>
             </label>
 
-            <button type="submit" className="btn btn-gold submit-btn">
+            <button
+              type="submit"
+              className="btn btn-gold submit-btn"
+            >
               {t.sendBooking}
             </button>
           </form>
@@ -685,10 +840,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* REVIEWS */}
       <section className="section reviews-section">
         <div className="center-heading">
-          <p className="eyebrow">{t.reviewsSmall}</p>
+          <p className="eyebrow">
+            {t.reviewsSmall}
+          </p>
 
           <h2>
             {t.reviewsTitle}
@@ -703,18 +859,21 @@ export default function HomePage() {
             ? reviews.slice(0, 3)
             : [
                 {
+                  id: "review-1",
                   name: "Our Guest",
                   comment:
                     "A beautiful evening, wonderful food and excellent hospitality.",
                   rating: 5,
                 },
                 {
+                  id: "review-2",
                   name: "Our Guest",
                   comment:
                     "Amazing flavours and a warm atmosphere in the heart of Rome.",
                   rating: 5,
                 },
                 {
+                  id: "review-3",
                   name: "Our Guest",
                   comment:
                     "A restaurant we will definitely visit again.",
@@ -722,92 +881,151 @@ export default function HomePage() {
                 },
               ]
           ).map((review, index) => (
-            <article className="review-card" key={review.id ?? index}>
+            <article
+              className="review-card"
+              key={review.id ?? index}
+            >
               <div className="stars">
-                {"★★★★★".slice(0, review.rating || 5)}
+                {"★★★★★".slice(
+                  0,
+                  Math.max(
+                    0,
+                    Math.min(
+                      5,
+                      Number(review.rating) || 5
+                    )
+                  )
+                )}
               </div>
 
               <p>
-                “{review.comment || review.text || "Wonderful experience."}”
+                “
+                {review.comment ||
+                  review.text ||
+                  "Wonderful experience."}
+                ”
               </p>
 
               <div className="review-author">
                 <span>
-                  {(review.name || review.author || "Guest")
+                  {(
+                    review.name ||
+                    review.author ||
+                    "Guest"
+                  )
                     .charAt(0)
                     .toUpperCase()}
                 </span>
 
-                <strong>{review.name || review.author || "Guest"}</strong>
+                <strong>
+                  {review.name ||
+                    review.author ||
+                    "Guest"}
+                </strong>
               </div>
             </article>
           ))}
         </div>
       </section>
 
-      {/* HOURS */}
       <section className="hours-section">
         <div>
-          <p className="eyebrow">{t.hoursSmall}</p>
+          <p className="eyebrow">
+            {t.hoursSmall}
+          </p>
+
           <h2>{t.hoursTitle}</h2>
         </div>
 
         <div className="hours-list">
-          {openingHours && typeof openingHours === "object" ? (
+          {openingHours &&
+          typeof openingHours === "object" ? (
             Object.entries(openingHours)
               .slice(0, 7)
               .map(([day, value]) => (
-                <div className="hours-row" key={day}>
+                <div
+                  className="hours-row"
+                  key={day}
+                >
                   <span>{day}</span>
-                  <strong>{String(value)}</strong>
+                  <strong>
+                    {String(value)}
+                  </strong>
                 </div>
               ))
           ) : (
             <>
               <div className="hours-row">
                 <span>Monday</span>
-                <strong>12:00 — 23:00</strong>
+                <strong>
+                  12:00 — 23:00
+                </strong>
               </div>
+
               <div className="hours-row">
                 <span>Tuesday</span>
-                <strong>12:00 — 23:00</strong>
+                <strong>
+                  12:00 — 23:00
+                </strong>
               </div>
+
               <div className="hours-row">
                 <span>Wednesday</span>
-                <strong>12:00 — 23:00</strong>
+                <strong>
+                  12:00 — 23:00
+                </strong>
               </div>
+
               <div className="hours-row">
                 <span>Thursday</span>
-                <strong>12:00 — 23:00</strong>
+                <strong>
+                  12:00 — 23:00
+                </strong>
               </div>
+
               <div className="hours-row">
                 <span>Friday</span>
-                <strong>12:00 — 23:30</strong>
+                <strong>
+                  12:00 — 23:30
+                </strong>
               </div>
+
               <div className="hours-row">
                 <span>Saturday</span>
-                <strong>12:00 — 23:30</strong>
+                <strong>
+                  12:00 — 23:30
+                </strong>
               </div>
+
               <div className="hours-row">
                 <span>Sunday</span>
-                <strong>12:00 — 23:00</strong>
+                <strong>
+                  12:00 — 23:00
+                </strong>
               </div>
             </>
           )}
         </div>
       </section>
 
-      {/* CONTACT */}
-      <section id="contact" className="contact-section">
+      <section
+        id="contact"
+        className="contact-section"
+      >
         <div className="contact-info">
-          <p className="eyebrow">{t.contactSmall}</p>
+          <p className="eyebrow">
+            {t.contactSmall}
+          </p>
 
           <h2>{t.contactTitle}</h2>
 
           <span className="gold-line left" />
 
           <div className="contact-item">
-            <span className="contact-icon">⌖</span>
+            <span className="contact-icon">
+              ⌖
+            </span>
+
             <div>
               <small>{t.address}</small>
               <p>{address}</p>
@@ -815,10 +1033,16 @@ export default function HomePage() {
           </div>
 
           <div className="contact-item">
-            <span className="contact-icon">☎</span>
+            <span className="contact-icon">
+              ☎
+            </span>
+
             <div>
               <small>{t.call}</small>
-              <a href={`tel:${phone.replace(/\s/g, "")}`}>
+
+              <a
+                href={`tel:${phoneNumber}`}
+              >
                 {phone}
               </a>
             </div>
@@ -835,7 +1059,7 @@ export default function HomePage() {
             </a>
 
             <a
-              href={`tel:${phone.replace(/\s/g, "")}`}
+              href={`tel:${phoneNumber}`}
               className="btn btn-dark"
             >
               {t.call}
@@ -854,11 +1078,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* FOOTER */}
       <footer className="site-footer">
         <div className="footer-brand">
           <div className="brand footer-logo">
-            <span className="brand-mark">N</span>
+            <span className="brand-mark">
+              N
+            </span>
+
             <span>
               <strong>NABABI</strong>
               <small>RISTORANTE</small>
@@ -870,6 +1096,7 @@ export default function HomePage() {
 
         <div className="footer-column">
           <h3>{t.menu}</h3>
+
           <a href="#home">{t.navHome}</a>
           <a href="#about">{t.navAbout}</a>
           <a href="#menu">{t.navMenu}</a>
@@ -880,26 +1107,45 @@ export default function HomePage() {
         <div className="footer-column">
           <h3>{t.follow}</h3>
 
-          <a href={settings?.instagram || "#"} target="_blank" rel="noreferrer">
-            Instagram
-          </a>
+          {settings?.instagram && (
+            <a
+              href={settings.instagram}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Instagram
+            </a>
+          )}
 
-          <a href={settings?.facebook || "#"} target="_blank" rel="noreferrer">
-            Facebook
-          </a>
+          {settings?.facebook && (
+            <a
+              href={settings.facebook}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Facebook
+            </a>
+          )}
 
-          <a href={`https://wa.me/${whatsappNumber}`} target="_blank" rel="noreferrer">
+          <a
+            href={`https://wa.me/${whatsappNumber}`}
+            target="_blank"
+            rel="noreferrer"
+          >
             WhatsApp
           </a>
         </div>
 
         <div className="footer-bottom">
-          <span>© {new Date().getFullYear()} Nababi Ristorante</span>
+          <span>
+            © {new Date().getFullYear()}{" "}
+            {restaurantName}
+          </span>
+
           <span>{address}</span>
         </div>
       </footer>
 
-      {/* FLOATING WHATSAPP */}
       <a
         className="floating-whatsapp"
         href={`https://wa.me/${whatsappNumber}`}
@@ -912,3 +1158,4 @@ export default function HomePage() {
     </main>
   );
 }
+```
