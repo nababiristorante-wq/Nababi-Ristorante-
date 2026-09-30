@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type AnyData = Record<string, any>;
 
@@ -13,6 +13,34 @@ const readStorage = <T,>(key: string, fallback: T): T => {
   }
 };
 
+const safeArray = (value: any): AnyData[] =>
+  Array.isArray(value) ? value : [];
+
+const getCurrencySymbol = (currency?: string) => {
+  if (!currency || currency === "EUR") return "€";
+  if (currency === "USD") return "$";
+  if (currency === "GBP") return "£";
+  return currency;
+};
+
+const isActiveDate = (item: AnyData) => {
+  const now = new Date();
+
+  if (item.visible === false) return false;
+
+  if (item.startDate) {
+    const start = new Date(item.startDate);
+    if (!Number.isNaN(start.getTime()) && now < start) return false;
+  }
+
+  if (item.endDate) {
+    const end = new Date(item.endDate);
+    if (!Number.isNaN(end.getTime()) && now > end) return false;
+  }
+
+  return true;
+};
+
 export default function HomePage() {
   const [home, setHome] = useState<AnyData>({});
   const [about, setAbout] = useState<AnyData>({});
@@ -21,90 +49,130 @@ export default function HomePage() {
   const [hours, setHours] = useState<AnyData>({});
   const [social, setSocial] = useState<AnyData>({});
   const [languages, setLanguages] = useState<AnyData>({});
+  const [websiteStatus, setWebsiteStatus] = useState<AnyData>({});
+
   const [news, setNews] = useState<AnyData[]>([]);
   const [promotions, setPromotions] = useState<AnyData[]>([]);
   const [menu, setMenu] = useState<AnyData[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [gallery, setGallery] = useState<AnyData[]>([]);
   const [reviews, setReviews] = useState<AnyData[]>([]);
+
   const [mobileOpen, setMobileOpen] = useState(false);
   const [bookingSent, setBookingSent] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState("All");
 
   const loadAllData = () => {
-    const now = new Date();
-
-    setHome(readStorage("nababi-home-settings", {}));
-    setAbout(readStorage("nababi-about", {}));
-    setContact(readStorage("nababi-contact", {}));
-    setSettings(readStorage("nababi-settings", {}));
-    setHours(readStorage("nababi-opening-hours", {}));
-    setSocial(readStorage("nababi-social-media", {}));
-    setLanguages(readStorage("nababi-languages", {}));
-
-    const savedNews = readStorage<AnyData[]>("nababi-breaking-news", []);
-    setNews(
-      savedNews.filter((item) => {
-        if (!item.visible || !item.text?.trim()) return false;
-        if (item.startDate && now < new Date(item.startDate)) return false;
-        if (item.endDate && now > new Date(item.endDate)) return false;
-        return true;
-      })
+    const savedHome = readStorage<AnyData>("nababi-home-settings", {});
+    const savedAbout = readStorage<AnyData>("nababi-about", {});
+    const savedContact = readStorage<AnyData>("nababi-contact", {});
+    const savedSettings = readStorage<AnyData>("nababi-settings", {});
+    const savedHours = readStorage<AnyData>("nababi-opening-hours", {});
+    const savedSocial = readStorage<AnyData>("nababi-social-media", {});
+    const savedLanguages = readStorage<AnyData>("nababi-languages", {});
+    const savedWebsiteStatus = readStorage<AnyData>(
+      "nababi-website-status",
+      {}
     );
 
-    const savedPromotions = readStorage<AnyData[]>(
-      "nababi-promotions",
-      []
+    setHome(savedHome);
+    setAbout(savedAbout);
+    setContact(savedContact);
+    setSettings(savedSettings);
+    setHours(savedHours);
+    setSocial(savedSocial);
+    setLanguages(savedLanguages);
+    setWebsiteStatus(savedWebsiteStatus);
+
+    const savedNews = safeArray(
+      readStorage("nababi-breaking-news", [])
     );
 
-    setPromotions(
-      savedPromotions.filter((item) => {
-        if (item.visible === false) return false;
-        if (item.startDate && now < new Date(item.startDate)) return false;
-        if (item.endDate && now > new Date(item.endDate)) return false;
-        return true;
-      })
+    setNews(savedNews.filter(isActiveDate));
+
+    const savedPromotions = safeArray(
+      readStorage("nababi-promotions", [])
     );
 
-    const savedMenu = readStorage<AnyData[]>("nababi-menu", []);
+    setPromotions(savedPromotions.filter(isActiveDate));
+
+    const savedMenu = safeArray(
+      readStorage("nababi-menu", [])
+    );
 
     setMenu(
       savedMenu.filter(
         (item) =>
           item.visible !== false &&
-          item.availability !== false
+          item.availability !== false &&
+          item.available !== false
       )
     );
 
-    const savedGallery = readStorage<AnyData[]>(
-      "nababi-gallery",
-      []
+    const savedCategories = safeArray(
+      readStorage("nababi-categories", [])
+    );
+
+    const categoryNames = savedCategories
+      .map((item: any) =>
+        typeof item === "string"
+          ? item
+          : item?.name || item?.title || ""
+      )
+      .filter(Boolean);
+
+    const menuCategories = savedMenu
+      .map((item: AnyData) => item.category)
+      .filter(Boolean);
+
+    setCategories(
+      Array.from(
+        new Set([
+          ...categoryNames,
+          ...menuCategories,
+        ])
+      )
+    );
+
+    const savedGallery = safeArray(
+      readStorage("nababi-gallery", [])
     );
 
     setGallery(
-      savedGallery.filter((item) => item.visible !== false)
+      savedGallery
+        .filter((item) => item.visible !== false)
+        .sort(
+          (a, b) =>
+            Number(a.displayOrder || 0) -
+            Number(b.displayOrder || 0)
+        )
     );
 
-    const savedReviews = readStorage<AnyData[]>(
-      "nababi-reviews",
-      []
+    const savedReviews = safeArray(
+      readStorage("nababi-reviews", [])
     );
 
     setReviews(
-      savedReviews.filter((item) => item.visible !== false)
+      savedReviews.filter(
+        (item) => item.visible !== false
+      )
     );
   };
 
   useEffect(() => {
     loadAllData();
 
-    const timer = setInterval(loadAllData, 800);
+    const timer = window.setInterval(loadAllData, 800);
 
     window.addEventListener("storage", loadAllData);
 
     return () => {
-      clearInterval(timer);
+      window.clearInterval(timer);
       window.removeEventListener("storage", loadAllData);
     };
   }, []);
+
+  /* ================= BASIC DATA ================= */
 
   const restaurantName =
     settings.restaurantName ||
@@ -123,6 +191,18 @@ export default function HomePage() {
     home.welcomeText ||
     "Welcome to Nababi Ristorante";
 
+  const heroImage =
+    home.heroImage ||
+    "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=2200&q=90";
+
+  const bookingTitle =
+    home.bookingTitle ||
+    "Reserve Your Table";
+
+  const bookingText =
+    home.bookingText ||
+    "Choose your preferred date and time and enjoy a beautiful dining experience.";
+
   const aboutText =
     about.content ||
     about.text ||
@@ -131,17 +211,6 @@ export default function HomePage() {
   const aboutImage =
     about.image ||
     "https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=1200&q=90";
-
-  const heroImage =
-    home.heroImage ||
-    "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=2200&q=90";
-
-  const bookingTitle =
-    home.bookingTitle || "Reserve Your Table";
-
-  const bookingText =
-    home.bookingText ||
-    "Choose your preferred date and time and enjoy a beautiful dining experience.";
 
   const address =
     contact.address || "Rome, Italy";
@@ -156,23 +225,55 @@ export default function HomePage() {
     contact.whatsapp || "";
 
   const mapsUrl =
-    contact.googleMapsUrl || "#";
+    contact.googleMapsUrl || "";
 
-  const visibleSocial = social.visible !== false;
-
-  const categories = Array.from(
-    new Set(
-      menu
-        .map((item) => item.category)
-        .filter(Boolean)
-    )
+  const currencySymbol = getCurrencySymbol(
+    settings.currency
   );
+
+  const socialVisible =
+    social.visible !== false;
+
+  /* ================= VISIBILITY ================= */
+
+  const homeVisible =
+    home.visible !== false &&
+    home.showHome !== false;
+
+  const aboutVisible =
+    about.visible !== false;
+
+  const menuVisible =
+    home.showMenu !== false &&
+    home.menuVisible !== false;
+
+  const galleryVisible =
+    home.showGallery !== false &&
+    home.galleryVisible !== false;
+
+  const reviewsVisible =
+    home.showReviews !== false &&
+    home.reviewsVisible !== false;
+
+  const promotionsVisible =
+    home.showPromotions !== false &&
+    home.promotionsVisible !== false;
+
+  const reservationVisible =
+    home.showBooking !== false &&
+    home.bookingVisible !== false;
+
+  const contactVisible =
+    contact.visible !== false;
+
+  /* ================= MENU ================= */
 
   const fallbackMenu = [
     {
       id: "fallback-1",
       name: "Signature Biryani",
-      description: "Fragrant basmati rice with aromatic spices.",
+      description:
+        "Fragrant basmati rice with aromatic spices.",
       price: "16",
       category: "Biryani",
       image:
@@ -181,7 +282,8 @@ export default function HomePage() {
     {
       id: "fallback-2",
       name: "Tandoori Chicken",
-      description: "Tender chicken prepared with authentic spices.",
+      description:
+        "Tender chicken prepared with authentic spices.",
       price: "15",
       category: "Chicken",
       image:
@@ -190,7 +292,8 @@ export default function HomePage() {
     {
       id: "fallback-3",
       name: "Royal Mutton Curry",
-      description: "Slow-cooked mutton in a rich house gravy.",
+      description:
+        "Slow-cooked mutton in a rich house gravy.",
       price: "18",
       category: "Mutton",
       image:
@@ -199,7 +302,8 @@ export default function HomePage() {
     {
       id: "fallback-4",
       name: "Fresh Garden Salad",
-      description: "Fresh seasonal vegetables with house dressing.",
+      description:
+        "Fresh seasonal vegetables with house dressing.",
       price: "9",
       category: "Starters",
       image:
@@ -210,19 +314,117 @@ export default function HomePage() {
   const displayedMenu =
     menu.length > 0 ? menu : fallbackMenu;
 
+  const filteredMenu =
+    selectedCategory === "All"
+      ? displayedMenu
+      : displayedMenu.filter(
+          (item) =>
+            item.category === selectedCategory
+        );
+
+  /* ================= MENU BACKGROUND ================= */
+
+  const menuBackground =
+    readStorage<AnyData>(
+      "nababi-menu-background",
+      {}
+    );
+
+  const menuBackgroundImage =
+    typeof menuBackground === "string"
+      ? menuBackground
+      : menuBackground?.image ||
+        menuBackground?.url ||
+        "";
+
+  /* ================= GALLERY ================= */
+
   const galleryImages =
     gallery.length > 0
-      ? gallery.map((item) => item.image).filter(Boolean)
-      : [
-          "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=90",
-          "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=1200&q=90",
-          "https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=1200&q=90",
-          "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1200&q=90",
-          "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1200&q=90",
-          "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=90",
-        ];
+      ? gallery
+      : [];
 
-  const handleReservation = (e: FormEvent<HTMLFormElement>) => {
+  /* ================= OPENING HOURS ================= */
+
+  const days = [
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+  ];
+
+  const dayLabels: Record<string, string> = {
+    monday: "Monday",
+    tuesday: "Tuesday",
+    wednesday: "Wednesday",
+    thursday: "Thursday",
+    friday: "Friday",
+    saturday: "Saturday",
+    sunday: "Sunday",
+  };
+
+  const getDayData = (day: string) => {
+    const value = hours?.[day];
+
+    if (!value) {
+      return {
+        open: true,
+        opening: "",
+        closing: "",
+        breakStart: "",
+        breakEnd: "",
+      };
+    }
+
+    return {
+      open:
+        value.open !== false &&
+        value.closed !== true,
+      opening:
+        value.opening ||
+        value.openTime ||
+        "",
+      closing:
+        value.closing ||
+        value.closeTime ||
+        "",
+      breakStart:
+        value.breakStart ||
+        value.breakFrom ||
+        "",
+      breakEnd:
+        value.breakEnd ||
+        value.breakTo ||
+        "",
+    };
+  };
+
+  /* ================= LANGUAGES ================= */
+
+  const languageSwitcherVisible =
+    languages.switcherVisible !== false &&
+    languages.showSwitcher !== false;
+
+  const enabledLanguages = [
+    languages.italian !== false
+      ? "IT"
+      : "",
+    languages.english !== false
+      ? "EN"
+      : "",
+    languages.bengali !== false
+      ? "BN"
+      : "",
+  ].filter(Boolean);
+
+  /* ================= RESERVATION ================= */
+
+  const handleReservation = (
+    e: FormEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
 
     const form = new FormData(e.currentTarget);
@@ -240,9 +442,11 @@ export default function HomePage() {
       createdAt: new Date().toISOString(),
     };
 
-    const oldReservations = readStorage<AnyData[]>(
-      "nababi-reservations",
-      []
+    const oldReservations = safeArray(
+      readStorage(
+        "nababi-reservations",
+        []
+      )
     );
 
     localStorage.setItem(
@@ -257,22 +461,64 @@ export default function HomePage() {
 
     e.currentTarget.reset();
 
-    setTimeout(() => {
+    window.setTimeout(() => {
       setBookingSent(false);
     }, 5000);
   };
 
   const scrollTo = (id: string) => {
     setMobileOpen(false);
+
     document
       .getElementById(id)
-      ?.scrollIntoView({ behavior: "smooth" });
+      ?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
   };
+
+  /* ================= WEBSITE STATUS ================= */
+
+  const websiteDisabled =
+    websiteStatus.enabled === false ||
+    websiteStatus.active === false ||
+    websiteStatus.status === "offline";
+
+  if (websiteDisabled) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#21130f] px-6 text-white">
+        <div className="w-full max-w-xl rounded-[2rem] border border-[#d6a25d]/30 bg-white/5 p-10 text-center shadow-2xl backdrop-blur-xl">
+          <div className="text-sm font-black uppercase tracking-[0.3em] text-[#d9a45f]">
+            {restaurantName}
+          </div>
+
+          <h1 className="mt-5 font-serif text-4xl font-black sm:text-5xl">
+            Website Temporarily Unavailable
+          </h1>
+
+          <p className="mt-5 leading-7 text-white/65">
+            We are currently updating our website.
+            Please check again soon.
+          </p>
+
+          {phone && (
+            <a
+              href={`tel:${phone}`}
+              className="mt-8 inline-block rounded-full bg-[#a6402d] px-7 py-4 text-sm font-black"
+            >
+              Contact Restaurant
+            </a>
+          )}
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#f7f0e7] text-[#33251f]">
 
       {/* ================= BREAKING NEWS ================= */}
+
       {news.length > 0 && (
         <div className="sticky top-0 z-[100] overflow-hidden bg-[#a6402d] text-white shadow-lg">
           <div className="flex h-10 items-center">
@@ -289,7 +535,7 @@ export default function HomePage() {
                 {[...news, ...news].map(
                   (item, index) => (
                     <span
-                      key={`${item.id}-${index}`}
+                      key={`${item.id || "news"}-${index}`}
                       className="text-xs font-semibold sm:text-sm"
                     >
                       {item.text}
@@ -303,8 +549,12 @@ export default function HomePage() {
       )}
 
       {/* ================= HEADER ================= */}
-      <header className="sticky top-10 z-50 border-b border-[#d8c5b2]/70 bg-[#f7f0e7]/90 backdrop-blur-xl">
 
+      <header
+        className={`sticky ${
+          news.length > 0 ? "top-10" : "top-0"
+        } z-50 border-b border-[#d8c5b2]/70 bg-[#f7f0e7]/90 backdrop-blur-xl`}
+      >
         <div className="mx-auto flex h-[78px] max-w-7xl items-center justify-between px-5 sm:px-8">
 
           <button
@@ -321,42 +571,92 @@ export default function HomePage() {
           </button>
 
           <nav className="hidden items-center gap-7 lg:flex">
-            <button onClick={() => scrollTo("home")} className="text-sm font-semibold">
+            <button
+              onClick={() => scrollTo("home")}
+              className="text-sm font-semibold transition hover:text-[#a6402d]"
+            >
               Home
             </button>
 
-            <button onClick={() => scrollTo("about")} className="text-sm font-semibold">
-              About
-            </button>
+            {aboutVisible && (
+              <button
+                onClick={() => scrollTo("about")}
+                className="text-sm font-semibold transition hover:text-[#a6402d]"
+              >
+                About
+              </button>
+            )}
 
-            <button onClick={() => scrollTo("menu")} className="text-sm font-semibold">
-              Menu
-            </button>
+            {menuVisible && (
+              <button
+                onClick={() => scrollTo("menu")}
+                className="text-sm font-semibold transition hover:text-[#a6402d]"
+              >
+                Menu
+              </button>
+            )}
 
-            <button onClick={() => scrollTo("gallery")} className="text-sm font-semibold">
-              Gallery
-            </button>
+            {galleryVisible && gallery.length > 0 && (
+              <button
+                onClick={() => scrollTo("gallery")}
+                className="text-sm font-semibold transition hover:text-[#a6402d]"
+              >
+                Gallery
+              </button>
+            )}
 
-            <button onClick={() => scrollTo("reviews")} className="text-sm font-semibold">
-              Reviews
-            </button>
+            {reviewsVisible && reviews.length > 0 && (
+              <button
+                onClick={() => scrollTo("reviews")}
+                className="text-sm font-semibold transition hover:text-[#a6402d]"
+              >
+                Reviews
+              </button>
+            )}
 
-            <button onClick={() => scrollTo("contact")} className="text-sm font-semibold">
-              Contact
-            </button>
+            {contactVisible && (
+              <button
+                onClick={() => scrollTo("contact")}
+                className="text-sm font-semibold transition hover:text-[#a6402d]"
+              >
+                Contact
+              </button>
+            )}
           </nav>
 
           <div className="flex items-center gap-2">
 
-            <button
-              onClick={() => scrollTo("reservation")}
-              className="hidden rounded-full bg-[#a6402d] px-6 py-3 text-xs font-black uppercase tracking-wider text-white shadow-md transition hover:bg-[#833324] sm:block"
-            >
-              Reserve Table
-            </button>
+            {languageSwitcherVisible &&
+              enabledLanguages.length > 0 && (
+                <div className="hidden items-center gap-1 rounded-full border border-[#d4c0ad] bg-white/50 p-1 sm:flex">
+                  {enabledLanguages.map(
+                    (lang) => (
+                      <span
+                        key={lang}
+                        className="rounded-full px-2 py-1 text-[9px] font-black text-[#7d5c49]"
+                      >
+                        {lang}
+                      </span>
+                    )
+                  )}
+                </div>
+              )}
+
+            {reservationVisible && (
+              <button
+                onClick={() =>
+                  scrollTo("reservation")
+                }
+                className="hidden rounded-full bg-[#a6402d] px-6 py-3 text-xs font-black uppercase tracking-wider text-white shadow-md transition hover:bg-[#833324] sm:block"
+              >
+                Reserve Table
+              </button>
+            )}
 
             <button
-              onClick={() => setMobileOpen(!mobileOpen)}
+              onClick={() =>
+                setMobileOpen(!mobileOpen)
+              }
               className="flex h-11 w-11 items-center justify-center rounded-full border border-[#ccb8a5] bg-white/60 lg:hidden"
             >
               {mobileOpen ? "×" : "☰"}
@@ -370,12 +670,26 @@ export default function HomePage() {
 
               {[
                 ["Home", "home"],
-                ["About", "about"],
-                ["Menu", "menu"],
-                ["Gallery", "gallery"],
-                ["Reviews", "reviews"],
-                ["Contact", "contact"],
-                ["Reserve Table", "reservation"],
+                ...(aboutVisible
+                  ? [["About", "about"]]
+                  : []),
+                ...(menuVisible
+                  ? [["Menu", "menu"]]
+                  : []),
+                ...(galleryVisible &&
+                gallery.length > 0
+                  ? [["Gallery", "gallery"]]
+                  : []),
+                ...(reviewsVisible &&
+                reviews.length > 0
+                  ? [["Reviews", "reviews"]]
+                  : []),
+                ...(contactVisible
+                  ? [["Contact", "contact"]]
+                  : []),
+                ...(reservationVisible
+                  ? [["Reserve Table", "reservation"]]
+                  : []),
               ].map(([label, id]) => (
                 <button
                   key={id}
@@ -391,64 +705,77 @@ export default function HomePage() {
       </header>
 
       {/* ================= HERO ================= */}
-      <section
-        id="home"
-        className="relative min-h-[calc(100vh-118px)] overflow-hidden"
-      >
 
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage: `url("${heroImage}")`,
-          }}
-        />
+      {homeVisible && (
+        <section
+          id="home"
+          className="relative min-h-[calc(100vh-118px)] overflow-hidden"
+        >
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{
+              backgroundImage: `url("${heroImage}")`,
+            }}
+          />
 
-        <div className="absolute inset-0 bg-gradient-to-r from-[#241712]/85 via-[#241712]/55 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#241712]/90 via-[#241712]/60 to-transparent" />
 
-        <div className="relative mx-auto flex min-h-[calc(100vh-118px)] max-w-7xl items-center px-6 py-20 sm:px-10 lg:px-12">
+          <div className="relative mx-auto flex min-h-[calc(100vh-118px)] max-w-7xl items-center px-6 py-20 sm:px-10 lg:px-12">
 
-          <div className="max-w-3xl text-white">
+            <div className="max-w-3xl text-white">
 
-            <div className="mb-5 flex items-center gap-3">
-              <span className="h-px w-10 bg-[#e0ad67]" />
+              <div className="mb-5 flex items-center gap-3">
+                <span className="h-px w-10 bg-[#e0ad67]" />
 
-              <span className="text-xs font-bold uppercase tracking-[0.28em] text-[#e7bb7b]">
-                {welcomeText}
-              </span>
-            </div>
+                <span className="text-xs font-bold uppercase tracking-[0.28em] text-[#e7bb7b]">
+                  {welcomeText}
+                </span>
+              </div>
 
-            <h1 className="font-serif text-5xl font-black leading-[0.95] sm:text-7xl lg:text-8xl">
-              {heroTitle}
-            </h1>
+              <h1 className="font-serif text-5xl font-black leading-[0.95] sm:text-7xl lg:text-8xl">
+                {heroTitle}
+              </h1>
 
-            <p className="mt-7 max-w-xl text-base leading-7 text-white/85 sm:text-lg">
-              {heroSubtitle}
-            </p>
+              <p className="mt-7 max-w-xl text-base leading-7 text-white/85 sm:text-lg">
+                {heroSubtitle}
+              </p>
 
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+              <div className="mt-9 flex flex-col gap-3 sm:flex-row">
 
-              <button
-                onClick={() => scrollTo("reservation")}
-                className="rounded-full bg-[#b34b34] px-8 py-4 text-sm font-bold text-white shadow-xl transition hover:bg-[#913826]"
-              >
-                Reserve Your Table
-              </button>
+                {reservationVisible && (
+                  <button
+                    onClick={() =>
+                      scrollTo("reservation")
+                    }
+                    className="rounded-full bg-[#b34b34] px-8 py-4 text-sm font-bold text-white shadow-xl transition hover:bg-[#913826]"
+                  >
+                    Reserve Your Table
+                  </button>
+                )}
 
-              <button
-                onClick={() => scrollTo("menu")}
-                className="rounded-full border border-white/50 bg-white/10 px-8 py-4 text-sm font-bold backdrop-blur-md transition hover:bg-white/20"
-              >
-                Explore Menu
-              </button>
+                {menuVisible && (
+                  <button
+                    onClick={() =>
+                      scrollTo("menu")
+                    }
+                    className="rounded-full border border-white/50 bg-white/10 px-8 py-4 text-sm font-bold backdrop-blur-md transition hover:bg-white/20"
+                  >
+                    Explore Menu
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ================= ABOUT ================= */}
-      {about.visible !== false && (
-        <section id="about" className="px-6 py-20 sm:py-28">
 
+      {aboutVisible && (
+        <section
+          id="about"
+          className="px-6 py-20 sm:py-28"
+        >
           <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2">
 
             <div className="overflow-hidden rounded-[2rem] shadow-2xl">
@@ -460,365 +787,480 @@ export default function HomePage() {
             </div>
 
             <div>
-
               <span className="text-xs font-black uppercase tracking-[0.3em] text-[#a6402d]">
                 About Us
               </span>
 
               <h2 className="mt-4 font-serif text-4xl font-black leading-tight sm:text-5xl">
-                {about.title || "Where every plate tells a story."}
+                {about.title ||
+                  "Where every plate tells a story."}
               </h2>
 
               <div className="mt-6 whitespace-pre-line text-base leading-8 text-[#715f51]">
                 {aboutText}
               </div>
-
             </div>
           </div>
         </section>
       )}
 
       {/* ================= MENU ================= */}
-      <section id="menu" className="bg-[#2d1d18] px-6 py-20 text-[#f8eee4] sm:py-28">
 
-        <div className="mx-auto max-w-7xl">
-
-          <div className="text-center">
-            <span className="text-xs font-black uppercase tracking-[0.3em] text-[#d7a463]">
-              From Our Kitchen
-            </span>
-
-            <h2 className="mt-3 font-serif text-4xl font-black sm:text-6xl">
-              Our Menu
-            </h2>
-          </div>
-
-          {categories.length > 0 && (
-            <div className="mt-8 flex flex-wrap justify-center gap-2">
-              {categories.map((category) => (
-                <span
-                  key={category}
-                  className="rounded-full border border-[#d7a463]/30 px-4 py-2 text-xs font-bold text-[#e0b678]"
-                >
-                  {category}
-                </span>
-              ))}
-            </div>
+      {menuVisible && (
+        <section
+          id="menu"
+          className="relative overflow-hidden bg-[#2d1d18] px-6 py-20 text-[#f8eee4] sm:py-28"
+        >
+          {menuBackgroundImage && (
+            <>
+              <div
+                className="absolute inset-0 bg-cover bg-center opacity-20"
+                style={{
+                  backgroundImage: `url("${menuBackgroundImage}")`,
+                }}
+              />
+              <div className="absolute inset-0 bg-[#2d1d18]/80" />
+            </>
           )}
 
-          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-
-            {displayedMenu.slice(0, 8).map((item, index) => (
-              <div
-                key={item.id || index}
-                className="group overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#3a2821] shadow-xl"
-              >
-
-                <div className="relative h-64 overflow-hidden">
-
-                  <img
-                    src={
-                      item.image ||
-                      fallbackMenu[index % fallbackMenu.length].image
-                    }
-                    alt={item.name || "Menu item"}
-                    className="h-full w-full object-cover transition duration-700 group-hover:scale-110"
-                  />
-
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-5 pt-20">
-
-                    <span className="rounded-full bg-[#d39a55] px-3 py-1 text-[9px] font-black uppercase tracking-wider text-[#2d1d18]">
-                      {item.category || "Chef Choice"}
-                    </span>
-
-                  </div>
-                </div>
-
-                <div className="p-5">
-
-                  <div className="flex items-start justify-between gap-3">
-
-                    <h3 className="font-serif text-xl font-black">
-                      {item.name || "Special Dish"}
-                    </h3>
-
-                    <span className="shrink-0 text-base font-black text-[#e2ad69]">
-                      {settings.currency === "EUR" || !settings.currency
-                        ? "€"
-                        : settings.currency}
-                      {item.price}
-                    </span>
-                  </div>
-
-                  <p className="mt-3 text-sm leading-6 text-[#cdb9a9]">
-                    {item.description || ""}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ================= PROMOTIONS ================= */}
-      {promotions.length > 0 && (
-        <section className="bg-[#ead9c8] px-6 py-16">
-
-          <div className="mx-auto max-w-6xl">
+          <div className="relative mx-auto max-w-7xl">
 
             <div className="text-center">
-              <span className="text-xs font-black uppercase tracking-[0.3em] text-[#a6402d]">
-                Special Offers
-              </span>
-
-              <h2 className="mt-3 font-serif text-4xl font-black">
-                Our Latest Promotions
-              </h2>
-            </div>
-
-            <div className="mt-10 grid gap-6 md:grid-cols-3">
-
-              {promotions.slice(0, 3).map((item) => (
-                <div
-                  key={item.id}
-                  className="overflow-hidden rounded-3xl bg-white shadow-xl"
-                >
-                  {item.image && (
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      className="h-52 w-full object-cover"
-                    />
-                  )}
-
-                  <div className="p-6">
-
-                    <h3 className="font-serif text-2xl font-black">
-                      {item.title}
-                    </h3>
-
-                    {item.offer && (
-                      <div className="mt-3 font-black text-[#a6402d]">
-                        {item.offer}
-                      </div>
-                    )}
-
-                    <p className="mt-3 text-sm leading-6 text-[#725f50]">
-                      {item.description}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ================= GALLERY ================= */}
-      {gallery.length > 0 && (
-        <section id="gallery" className="px-6 py-20 sm:py-28">
-
-          <div className="mx-auto max-w-7xl">
-
-            <div className="text-center">
-              <span className="text-xs font-black uppercase tracking-[0.3em] text-[#a6402d]">
-                Gallery
+              <span className="text-xs font-black uppercase tracking-[0.3em] text-[#d7a463]">
+                From Our Kitchen
               </span>
 
               <h2 className="mt-3 font-serif text-4xl font-black sm:text-6xl">
-                Inside {restaurantName}
+                Our Menu
               </h2>
             </div>
 
-            <div className="mt-12 grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3">
+            {categories.length > 0 && (
+              <div className="mt-8 flex flex-wrap justify-center gap-2">
 
-              {galleryImages.slice(0, 6).map((image, index) => (
-                <div
-                  key={`${image}-${index}`}
-                  className="group overflow-hidden rounded-2xl"
+                <button
+                  onClick={() =>
+                    setSelectedCategory("All")
+                  }
+                  className={`rounded-full border px-4 py-2 text-xs font-bold transition ${
+                    selectedCategory === "All"
+                      ? "border-[#d7a463] bg-[#d7a463] text-[#2d1d18]"
+                      : "border-[#d7a463]/30 text-[#e0b678] hover:bg-[#d7a463]/10"
+                  }`}
                 >
-                  <img
-                    src={image}
-                    alt={`${restaurantName} gallery`}
-                    className="h-64 w-full object-cover transition duration-700 group-hover:scale-105 sm:h-80"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+                  All
+                </button>
 
-      {/* ================= RESERVATION ================= */}
-      <section
-        id="reservation"
-        className="bg-[#ead9c8] px-6 py-20 sm:py-28"
-      >
-
-        <div className="mx-auto grid max-w-6xl overflow-hidden rounded-[2rem] bg-[#f8f0e7] shadow-2xl lg:grid-cols-2">
-
-          <div
-            className="min-h-[430px] bg-cover bg-center"
-            style={{
-              backgroundImage:
-                "url('https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1200&q=90')",
-            }}
-          />
-
-          <div className="p-7 sm:p-10 lg:p-14">
-
-            <span className="text-xs font-black uppercase tracking-[0.3em] text-[#a6402d]">
-              Reservations
-            </span>
-
-            <h2 className="mt-3 font-serif text-4xl font-black sm:text-5xl">
-              {bookingTitle}
-            </h2>
-
-            <p className="mt-4 text-sm leading-6 text-[#725f50]">
-              {bookingText}
-            </p>
-
-            {bookingSent && (
-              <div className="mt-5 rounded-xl border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-700">
-                ✓ Reservation request sent successfully.
+                {categories.map(
+                  (category) => (
+                    <button
+                      key={category}
+                      onClick={() =>
+                        setSelectedCategory(
+                          category
+                        )
+                      }
+                      className={`rounded-full border px-4 py-2 text-xs font-bold transition ${
+                        selectedCategory ===
+                        category
+                          ? "border-[#d7a463] bg-[#d7a463] text-[#2d1d18]"
+                          : "border-[#d7a463]/30 text-[#e0b678] hover:bg-[#d7a463]/10"
+                      }`}
+                    >
+                      {category}
+                    </button>
+                  )
+                )}
               </div>
             )}
 
-            <form
-              onSubmit={handleReservation}
-              className="mt-7 space-y-4"
-            >
+            <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
 
-              <input
-                name="name"
-                required
-                placeholder="Your Name"
-                className="w-full rounded-xl border border-[#d7c5b3] bg-white px-4 py-3.5 text-sm outline-none focus:border-[#a6402d]"
-              />
+              {filteredMenu
+                .slice(0, 12)
+                .map((item, index) => (
+                  <div
+                    key={
+                      item.id ||
+                      `${item.name}-${index}`
+                    }
+                    className="group overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#3a2821]/90 shadow-xl backdrop-blur-sm"
+                  >
+                    <div className="relative h-64 overflow-hidden">
 
-              <div className="grid gap-4 sm:grid-cols-2">
+                      <img
+                        src={
+                          item.image ||
+                          fallbackMenu[
+                            index %
+                              fallbackMenu.length
+                          ].image
+                        }
+                        alt={
+                          item.name ||
+                          "Menu item"
+                        }
+                        className="h-full w-full object-cover transition duration-700 group-hover:scale-110"
+                      />
 
-                <input
-                  name="phone"
-                  required
-                  placeholder="Phone"
-                  className="w-full rounded-xl border border-[#d7c5b3] bg-white px-4 py-3.5 text-sm outline-none focus:border-[#a6402d]"
-                />
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-5 pt-20">
 
-                <input
-                  name="email"
-                  type="email"
-                  placeholder="Email"
-                  className="w-full rounded-xl border border-[#d7c5b3] bg-white px-4 py-3.5 text-sm outline-none focus:border-[#a6402d]"
-                />
+                        <span className="rounded-full bg-[#d39a55] px-3 py-1 text-[9px] font-black uppercase tracking-wider text-[#2d1d18]">
+                          {item.category ||
+                            "Chef Choice"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-5">
+
+                      <div className="flex items-start justify-between gap-3">
+                        <h3 className="font-serif text-xl font-black">
+                          {item.name ||
+                            "Special Dish"}
+                        </h3>
+
+                        <span className="shrink-0 text-base font-black text-[#e2ad69]">
+                          {currencySymbol}
+                          {item.price}
+                        </span>
+                      </div>
+
+                      <p className="mt-3 text-sm leading-6 text-[#cdb9a9]">
+                        {item.description ||
+                          ""}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+            </div>
+
+            {filteredMenu.length === 0 && (
+              <div className="mt-12 rounded-3xl border border-white/10 bg-white/5 p-10 text-center">
+                <p className="text-white/60">
+                  No dishes available in this
+                  category.
+                </p>
               </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-
-                <input
-                  name="date"
-                  type="date"
-                  required
-                  className="w-full rounded-xl border border-[#d7c5b3] bg-white px-4 py-3.5 text-sm outline-none focus:border-[#a6402d]"
-                />
-
-                <input
-                  name="time"
-                  type="time"
-                  required
-                  className="w-full rounded-xl border border-[#d7c5b3] bg-white px-4 py-3.5 text-sm outline-none focus:border-[#a6402d]"
-                />
-              </div>
-
-              <select
-                name="guests"
-                required
-                defaultValue=""
-                className="w-full rounded-xl border border-[#d7c5b3] bg-white px-4 py-3.5 text-sm outline-none focus:border-[#a6402d]"
-              >
-                <option value="" disabled>
-                  Number of Guests
-                </option>
-                <option>1 Guest</option>
-                <option>2 Guests</option>
-                <option>3 Guests</option>
-                <option>4 Guests</option>
-                <option>5 Guests</option>
-                <option>6 Guests</option>
-                <option>7+ Guests</option>
-              </select>
-
-              <textarea
-                name="message"
-                rows={3}
-                placeholder="Special request"
-                className="w-full resize-none rounded-xl border border-[#d7c5b3] bg-white px-4 py-3.5 text-sm outline-none focus:border-[#a6402d]"
-              />
-
-              <button
-                type="submit"
-                className="w-full rounded-xl bg-[#a6402d] px-5 py-4 text-sm font-black uppercase tracking-wider text-white shadow-lg transition hover:bg-[#873324]"
-              >
-                Confirm Reservation
-              </button>
-            </form>
+            )}
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-      {/* ================= REVIEWS ================= */}
-      {reviews.length > 0 && (
-        <section id="reviews" className="px-6 py-20 sm:py-28">
+      {/* ================= PROMOTIONS ================= */}
 
-          <div className="mx-auto max-w-6xl text-center">
+      {promotionsVisible &&
+        promotions.length > 0 && (
+          <section className="bg-[#ead9c8] px-6 py-16">
 
-            <span className="text-xs font-black uppercase tracking-[0.3em] text-[#a6402d]">
-              Guest Reviews
-            </span>
+            <div className="mx-auto max-w-6xl">
 
-            <h2 className="mt-3 font-serif text-4xl font-black sm:text-6xl">
-              Loved by Our Guests
-            </h2>
+              <div className="text-center">
+                <span className="text-xs font-black uppercase tracking-[0.3em] text-[#a6402d]">
+                  Special Offers
+                </span>
 
-            <div className="mt-12 grid gap-5 md:grid-cols-3">
+                <h2 className="mt-3 font-serif text-4xl font-black">
+                  Our Latest Promotions
+                </h2>
+              </div>
 
-              {reviews.slice(0, 3).map((review) => (
-                <div
-                  key={review.id}
-                  className="rounded-3xl border border-[#dfd0c1] bg-[#f9f3ec] p-7 text-left shadow-sm"
-                >
+              <div className="mt-10 grid gap-6 md:grid-cols-3">
 
-                  <div className="text-lg tracking-widest text-[#c98d45]">
-                    {"★".repeat(
-                      Math.min(Number(review.rating) || 5, 5)
-                    )}
-                  </div>
+                {promotions
+                  .slice(0, 6)
+                  .map((item) => (
+                    <div
+                      key={item.id}
+                      className="overflow-hidden rounded-3xl bg-white shadow-xl"
+                    >
+                      {item.image && (
+                        <img
+                          src={item.image}
+                          alt={
+                            item.title ||
+                            "Promotion"
+                          }
+                          className="h-52 w-full object-cover"
+                        />
+                      )}
 
-                  <p className="mt-5 text-sm leading-7 text-[#665449]">
-                    “{review.review}”
-                  </p>
+                      <div className="p-6">
 
-                  <div className="mt-6 border-t border-[#dfd0c1] pt-4 font-serif font-black">
-                    {review.customerName}
-                  </div>
+                        <h3 className="font-serif text-2xl font-black">
+                          {item.title ||
+                            "Special Offer"}
+                        </h3>
+
+                        {item.offer && (
+                          <div className="mt-3 font-black text-[#a6402d]">
+                            {item.offer}
+                          </div>
+                        )}
+
+                        {item.description && (
+                          <p className="mt-3 text-sm leading-6 text-[#725f50]">
+                            {item.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+      {/* ================= GALLERY ================= */}
+
+      {galleryVisible &&
+        galleryImages.length > 0 && (
+          <section
+            id="gallery"
+            className="px-6 py-20 sm:py-28"
+          >
+            <div className="mx-auto max-w-7xl">
+
+              <div className="text-center">
+                <span className="text-xs font-black uppercase tracking-[0.3em] text-[#a6402d]">
+                  Gallery
+                </span>
+
+                <h2 className="mt-3 font-serif text-4xl font-black sm:text-6xl">
+                  Inside {restaurantName}
+                </h2>
+              </div>
+
+              <div className="mt-12 grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3">
+
+                {galleryImages
+                  .slice(0, 9)
+                  .map((item, index) => (
+                    <div
+                      key={
+                        item.id ||
+                        `${item.image}-${index}`
+                      }
+                      className="group overflow-hidden rounded-2xl"
+                    >
+                      <img
+                        src={item.image}
+                        alt={
+                          item.title ||
+                          item.category ||
+                          `${restaurantName} gallery`
+                        }
+                        className="h-64 w-full object-cover transition duration-700 group-hover:scale-105 sm:h-80"
+                      />
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+      {/* ================= RESERVATION ================= */}
+
+      {reservationVisible && (
+        <section
+          id="reservation"
+          className="bg-[#ead9c8] px-6 py-20 sm:py-28"
+        >
+          <div className="mx-auto grid max-w-6xl overflow-hidden rounded-[2rem] bg-[#f8f0e7] shadow-2xl lg:grid-cols-2">
+
+            <div
+              className="min-h-[430px] bg-cover bg-center"
+              style={{
+                backgroundImage:
+                  `url("${heroImage}")`,
+              }}
+            />
+
+            <div className="p-7 sm:p-10 lg:p-14">
+
+              <span className="text-xs font-black uppercase tracking-[0.3em] text-[#a6402d]">
+                Reservations
+              </span>
+
+              <h2 className="mt-3 font-serif text-4xl font-black sm:text-5xl">
+                {bookingTitle}
+              </h2>
+
+              <p className="mt-4 text-sm leading-6 text-[#725f50]">
+                {bookingText}
+              </p>
+
+              {bookingSent && (
+                <div className="mt-5 rounded-xl border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-700">
+                  ✓ Reservation request sent
+                  successfully.
                 </div>
-              ))}
+              )}
+
+              <form
+                onSubmit={handleReservation}
+                className="mt-7 space-y-4"
+              >
+                <input
+                  name="name"
+                  required
+                  placeholder="Your Name"
+                  className="w-full rounded-xl border border-[#d7c5b3] bg-white px-4 py-3.5 text-sm outline-none focus:border-[#a6402d]"
+                />
+
+                <div className="grid gap-4 sm:grid-cols-2">
+
+                  <input
+                    name="phone"
+                    required
+                    placeholder="Phone"
+                    className="w-full rounded-xl border border-[#d7c5b3] bg-white px-4 py-3.5 text-sm outline-none focus:border-[#a6402d]"
+                  />
+
+                  <input
+                    name="email"
+                    type="email"
+                    placeholder="Email"
+                    className="w-full rounded-xl border border-[#d7c5b3] bg-white px-4 py-3.5 text-sm outline-none focus:border-[#a6402d]"
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+
+                  <input
+                    name="date"
+                    type="date"
+                    required
+                    className="w-full rounded-xl border border-[#d7c5b3] bg-white px-4 py-3.5 text-sm outline-none focus:border-[#a6402d]"
+                  />
+
+                  <input
+                    name="time"
+                    type="time"
+                    required
+                    className="w-full rounded-xl border border-[#d7c5b3] bg-white px-4 py-3.5 text-sm outline-none focus:border-[#a6402d]"
+                  />
+                </div>
+
+                <select
+                  name="guests"
+                  required
+                  defaultValue=""
+                  className="w-full rounded-xl border border-[#d7c5b3] bg-white px-4 py-3.5 text-sm outline-none focus:border-[#a6402d]"
+                >
+                  <option value="" disabled>
+                    Number of Guests
+                  </option>
+                  <option>1 Guest</option>
+                  <option>2 Guests</option>
+                  <option>3 Guests</option>
+                  <option>4 Guests</option>
+                  <option>5 Guests</option>
+                  <option>6 Guests</option>
+                  <option>7+ Guests</option>
+                </select>
+
+                <textarea
+                  name="message"
+                  rows={3}
+                  placeholder="Special request"
+                  className="w-full resize-none rounded-xl border border-[#d7c5b3] bg-white px-4 py-3.5 text-sm outline-none focus:border-[#a6402d]"
+                />
+
+                <button
+                  type="submit"
+                  className="w-full rounded-xl bg-[#a6402d] px-5 py-4 text-sm font-black uppercase tracking-wider text-white shadow-lg transition hover:bg-[#873324]"
+                >
+                  Confirm Reservation
+                </button>
+              </form>
             </div>
           </div>
         </section>
       )}
 
+      {/* ================= REVIEWS ================= */}
+
+      {reviewsVisible &&
+        reviews.length > 0 && (
+          <section
+            id="reviews"
+            className="px-6 py-20 sm:py-28"
+          >
+            <div className="mx-auto max-w-6xl text-center">
+
+              <span className="text-xs font-black uppercase tracking-[0.3em] text-[#a6402d]">
+                Guest Reviews
+              </span>
+
+              <h2 className="mt-3 font-serif text-4xl font-black sm:text-6xl">
+                Loved by Our Guests
+              </h2>
+
+              <div className="mt-12 grid gap-5 md:grid-cols-3">
+
+                {reviews
+                  .slice(0, 6)
+                  .map((review) => (
+                    <div
+                      key={review.id}
+                      className="rounded-3xl border border-[#dfd0c1] bg-[#f9f3ec] p-7 text-left shadow-sm"
+                    >
+                      {review.image && (
+                        <img
+                          src={review.image}
+                          alt={
+                            review.customerName ||
+                            "Guest"
+                          }
+                          className="mb-5 h-14 w-14 rounded-full object-cover"
+                        />
+                      )}
+
+                      <div className="text-lg tracking-widest text-[#c98d45]">
+                        {"★".repeat(
+                          Math.min(
+                            Number(
+                              review.rating
+                            ) || 5,
+                            5
+                          )
+                        )}
+                      </div>
+
+                      <p className="mt-5 text-sm leading-7 text-[#665449]">
+                        “{review.review}”
+                      </p>
+
+                      <div className="mt-6 border-t border-[#dfd0c1] pt-4 font-serif font-black">
+                        {review.customerName ||
+                          "Guest"}
+                      </div>
+
+                      {review.date && (
+                        <div className="mt-1 text-xs text-[#9b8777]">
+                          {review.date}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </section>
+        )}
+
       {/* ================= CONTACT ================= */}
-      {contact.visible !== false && (
+
+      {contactVisible && (
         <section
           id="contact"
           className="bg-[#2d1d18] px-6 py-20 text-white sm:py-24"
         >
-
           <div className="mx-auto max-w-6xl">
 
             <div className="grid gap-12 md:grid-cols-3">
+
+              {/* RESTAURANT */}
 
               <div>
                 <div className="font-serif text-3xl font-black text-[#e2ad69]">
@@ -831,9 +1273,12 @@ export default function HomePage() {
                 </p>
               </div>
 
+              {/* CONTACT */}
+
               <div>
                 <h3 className="font-bold">
-                  Contact
+                  {contact.contactTitle ||
+                    "Contact"}
                 </h3>
 
                 <div className="mt-4 space-y-3 text-sm text-[#cdb9a9]">
@@ -863,7 +1308,7 @@ export default function HomePage() {
                   )}
                 </div>
 
-                {mapsUrl !== "#" && (
+                {mapsUrl && (
                   <a
                     href={mapsUrl}
                     target="_blank"
@@ -875,29 +1320,42 @@ export default function HomePage() {
                 )}
               </div>
 
+              {/* HOURS + SOCIAL */}
+
               <div>
                 <h3 className="font-bold">
                   Opening Hours
                 </h3>
 
-                <div className="mt-4 text-sm leading-7 text-[#cdb9a9]">
-                  {hours?.monday ? (
-                    <>
-                      Monday:{" "}
-                      {hours.monday.open
-                        ? `${hours.monday.opening || ""} - ${hours.monday.closing || ""}`
-                        : "Closed"}
-                    </>
-                  ) : (
-                    <>
-                      Monday – Sunday
-                      <br />
-                      Please contact us for current hours.
-                    </>
-                  )}
+                <div className="mt-4 space-y-2 text-sm text-[#cdb9a9]">
+
+                  {days.map((day) => {
+                    const data =
+                      getDayData(day);
+
+                    return (
+                      <div
+                        key={day}
+                        className="flex justify-between gap-4 border-b border-white/5 pb-2"
+                      >
+                        <span>
+                          {dayLabels[day]}
+                        </span>
+
+                        <span className="text-right">
+                          {!data.open
+                            ? "Closed"
+                            : data.opening &&
+                              data.closing
+                            ? `${data.opening} - ${data.closing}`
+                            : "Open"}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
 
-                {visibleSocial && (
+                {socialVisible && (
                   <div className="mt-6 flex flex-wrap gap-2">
 
                     {social.facebook && (
@@ -905,7 +1363,7 @@ export default function HomePage() {
                         href={social.facebook}
                         target="_blank"
                         rel="noreferrer"
-                        className="rounded-full bg-white/10 px-4 py-2 text-xs"
+                        className="rounded-full bg-white/10 px-4 py-2 text-xs transition hover:bg-white/20"
                       >
                         Facebook
                       </a>
@@ -916,7 +1374,7 @@ export default function HomePage() {
                         href={social.instagram}
                         target="_blank"
                         rel="noreferrer"
-                        className="rounded-full bg-white/10 px-4 py-2 text-xs"
+                        className="rounded-full bg-white/10 px-4 py-2 text-xs transition hover:bg-white/20"
                       >
                         Instagram
                       </a>
@@ -927,7 +1385,7 @@ export default function HomePage() {
                         href={social.tiktok}
                         target="_blank"
                         rel="noreferrer"
-                        className="rounded-full bg-white/10 px-4 py-2 text-xs"
+                        className="rounded-full bg-white/10 px-4 py-2 text-xs transition hover:bg-white/20"
                       >
                         TikTok
                       </a>
@@ -938,7 +1396,7 @@ export default function HomePage() {
                         href={social.youtube}
                         target="_blank"
                         rel="noreferrer"
-                        className="rounded-full bg-white/10 px-4 py-2 text-xs"
+                        className="rounded-full bg-white/10 px-4 py-2 text-xs transition hover:bg-white/20"
                       >
                         YouTube
                       </a>
@@ -949,9 +1407,14 @@ export default function HomePage() {
                 {whatsapp && (
                   <a
                     href={
-                      whatsapp.startsWith("http")
+                      whatsapp.startsWith(
+                        "http"
+                      )
                         ? whatsapp
-                        : `https://wa.me/${whatsapp.replace(/\D/g, "")}`
+                        : `https://wa.me/${whatsapp.replace(
+                            /\D/g,
+                            ""
+                          )}`
                     }
                     target="_blank"
                     rel="noreferrer"
@@ -964,21 +1427,27 @@ export default function HomePage() {
             </div>
 
             <div className="mt-14 border-t border-white/10 pt-7 text-center text-xs text-[#9f8c7f]">
-              © {new Date().getFullYear()} {restaurantName}. All rights reserved.
+              © {new Date().getFullYear()}{" "}
+              {restaurantName}. All rights
+              reserved.
             </div>
           </div>
         </section>
       )}
 
       {/* ================= MOBILE BOOK BUTTON ================= */}
-      <button
-        onClick={() => scrollTo("reservation")}
-        className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#a6402d] px-7 py-4 text-xs font-black uppercase tracking-wider text-white shadow-2xl sm:hidden"
-      >
-        Reserve Table
-      </button>
+
+      {reservationVisible && (
+        <button
+          onClick={() => scrollTo("reservation")}
+          className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#a6402d] px-7 py-4 text-xs font-black uppercase tracking-wider text-white shadow-2xl sm:hidden"
+        >
+          Reserve Table
+        </button>
+      )}
 
       {/* ================= GLOBAL STYLE ================= */}
+
       <style jsx global>{`
         html {
           scroll-behavior: smooth;
@@ -987,6 +1456,15 @@ export default function HomePage() {
         body {
           margin: 0;
           background: #f7f0e7;
+        }
+
+        * {
+          box-sizing: border-box;
+        }
+
+        button,
+        a {
+          -webkit-tap-highlight-color: transparent;
         }
 
         @keyframes nababiMarquee {
