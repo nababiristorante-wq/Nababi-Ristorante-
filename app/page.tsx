@@ -2,206 +2,72 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
-type Language = "it" | "en" | "bn";
+type Lang = "en" | "it" | "bn";
 
-type BookingForm = {
+type MenuItem = {
+  id?: string;
+  name?: string;
+  description?: string;
+  price?: string | number;
+  category?: string;
+  image?: string;
+  available?: boolean;
+};
+
+type GalleryItem = {
+  id?: string;
+  image?: string;
+  category?: string;
+  visible?: boolean;
+  order?: number;
+};
+
+type Review = {
+  id: string;
+  customerName: string;
+  phone?: string;
+  email?: string;
+  rating: number;
+  review: string;
+  date: string;
+  visible: boolean;
+  replies?: {
+    id: string;
+    text: string;
+    date: string;
+  }[];
+};
+
+type Reservation = {
+  id: string;
+  code: string;
   name: string;
   phone: string;
   email: string;
   date: string;
   time: string;
-  guests: string;
-  menu: string;
+  persons: string;
+  category: string;
+  item: string;
   note: string;
+  status: string;
 };
 
-type Reservation = {
-  id: string;
-  code?: string;
-  name: string;
-  phone: string;
-  email?: string;
-  date: string;
-  time: string;
-  guests: number;
-  menu: string;
-  category?: string;
-  note: string;
-  status: "Pending" | "Confirmed" | "Cancelled" | "Completed";
-  createdAt: string;
-};
+const GOLD = "#d9a441";
+const GOLD_LIGHT = "#f6cf70";
 
-type MenuItem = {
-  id?: string | number;
-  name?: string;
-  title?: string;
-  description?: string;
-  price?: string | number;
-  category?: string;
-  categoryName?: string;
-  image?: string;
-  imageUrl?: string;
-  available?: boolean;
-  availability?: boolean;
-};
-
-type HomeSettings = {
-  heroTitle?: string;
-  heroSubtitle?: string;
-  welcomeText?: string;
-  heroImage?: string;
-  bookingTitle?: string;
-  bookingText?: string;
-  visible?: boolean;
-  heroVisible?: boolean;
-  bookingVisible?: boolean;
-};
-
-type AboutSettings = {
-  content?: string;
-  text?: string;
-  description?: string;
-  image?: string;
-  video?: string;
-  visible?: boolean;
-};
-
-type GalleryItem = {
-  id?: string | number;
-  image?: string;
-  imageUrl?: string;
-  title?: string;
-  category?: string;
-  visible?: boolean;
-  show?: boolean;
-  displayOrder?: number;
-};
-
-type BreakingNewsItem = {
-  id?: string | number;
-  text?: string;
-  title?: string;
-  visible?: boolean;
-  startDate?: string;
-  endDate?: string;
-};
-
-type ContactSettings = {
-  restaurantName?: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-  whatsapp?: string;
-  googleMapsUrl?: string;
-  contactTitle?: string;
-  contactText?: string;
-  visible?: boolean;
-  contactFormVisible?: boolean;
-};
-
-type SocialSettings = {
-  facebook?: string;
-  instagram?: string;
-  tiktok?: string;
-  youtube?: string;
-  whatsapp?: string;
-  visible?: boolean;
-};
-
-type OpeningDay = {
-  day?: string;
-  name?: string;
-  open?: boolean;
-  isOpen?: boolean;
-  opening?: string;
-  openingTime?: string;
-  closing?: string;
-  closingTime?: string;
-  breakEnabled?: boolean;
-  breakStart?: string;
-  breakEnd?: string;
-};
-
-type ReviewItem = {
-  id?: string | number;
-  customerName?: string;
-  name?: string;
-  rating?: number;
-  stars?: number;
-  review?: string;
-  text?: string;
-  image?: string;
-  date?: string;
-  visible?: boolean;
-  replies?: {
-    text?: string;
-    reply?: string;
-    date?: string;
-  }[];
-};
+const defaultCategories = [
+  "Biryani",
+  "Pizza",
+  "Burger",
+  "Naan",
+  "Chicken",
+  "Mutton",
+  "Drinks",
+  "Dessert",
+];
 
 const translations = {
-  it: {
-    home: "Home",
-    about: "About",
-    menu: "Menu",
-    gallery: "Gallery",
-    reviews: "Reviews",
-    contact: "Contact",
-    order: "Prenota",
-    admin: "Admin Login",
-    heroSmall: "BENVENUTI DA NABABI RISTORANTE",
-    heroTitle: "Autentico Gusto Reale",
-    heroText:
-      "Scopri i veri sapori dell'India e del Bangladesh nel cuore di Roma.",
-    viewMenu: "Vedi Menu",
-    book: "Prenota un Tavolo",
-    address: "Via Vespasiano 73/75/77, Roma",
-    phone: "Telefono",
-    whatsapp: "WhatsApp",
-    watch: "Guarda Video",
-    specialTitle: "Le Nostre Specialità",
-    specialText:
-      "Scopri i nostri sapori autentici dell'India e del Bangladesh.",
-    aboutTitle: "La Nostra Storia",
-    aboutText:
-      "Nababi Ristorante porta nel cuore di Roma le ricche tradizioni culinarie dell'India e del Bangladesh.",
-    galleryTitle: "La Nostra Gallery",
-    galleryText:
-      "Un viaggio attraverso i nostri piatti, il nostro ambiente e i momenti speciali.",
-    bookingTitle: "Prenota un Tavolo",
-    bookingText:
-      "Prenota il tuo tavolo e vivi un'esperienza autentica da Nababi Ristorante.",
-    name: "Nome",
-    bookingPhone: "Telefono",
-    email: "Email",
-    date: "Data",
-    time: "Orario",
-    guests: "Numero di persone",
-    food: "Menu / Piatti desiderati",
-    note: "Richiesta speciale",
-    confirm: "Conferma Prenotazione",
-    bookingSuccess:
-      "Prenotazione ricevuta! Ti contatteremo per confermare.",
-    manageBooking: "Gestisci Prenotazione",
-    bookingCode: "Codice Prenotazione",
-    findBooking: "Cerca Prenotazione",
-    editBooking: "Modifica",
-    cancelBooking: "Cancella",
-    close: "Chiudi",
-    reviewsTitle: "Cosa Dicono i Nostri Clienti",
-    reviewButton: "Tutte le Recensioni",
-    contactTitle: "Contatti",
-    contactText:
-      "Siamo a tua disposizione. Contattaci per informazioni, prenotazioni e richieste.",
-    follow: "Seguici sui Social",
-    openingHours: "Orari di Apertura",
-    footer:
-      "© 2026 Nababi Ristorante. Tutti i diritti riservati.",
-    noMenu: "Nessun piatto disponibile in questa categoria.",
-    all: "Tutti",
-  },
-
   en: {
     home: "Home",
     about: "About",
@@ -209,60 +75,155 @@ const translations = {
     gallery: "Gallery",
     reviews: "Reviews",
     contact: "Contact",
-    order: "Book Now",
-    admin: "Admin Login",
-    heroSmall: "WELCOME TO NABABI RISTORANTE",
-    heroTitle: "Authentic Royal Taste",
+    login: "Login / Register",
+    admin: "Admin",
+    welcome: "WELCOME TO",
+    subtitle: "Authentic Flavors of India & Bangladesh",
     heroText:
-      "Discover the true flavors of India and Bangladesh in the heart of Rome.",
-    viewMenu: "View Menu",
-    book: "Book a Table",
-    address: "Via Vespasiano 73/75/77, Rome",
-    phone: "Phone",
-    whatsapp: "WhatsApp",
-    watch: "Watch Video",
-    specialTitle: "Our Specialities",
-    specialText:
-      "Discover our authentic flavors of India and Bangladesh.",
-    aboutTitle: "Our Story",
-    aboutText:
-      "Nababi Ristorante brings the rich culinary traditions of India and Bangladesh to the heart of Rome.",
-    galleryTitle: "Our Gallery",
-    galleryText:
-      "A journey through our dishes, our restaurant and special moments.",
-    bookingTitle: "Book a Table",
-    bookingText:
-      "Book your table and enjoy an authentic experience at Nababi Ristorante.",
-    name: "Name",
-    bookingPhone: "Phone",
+      "Experience royal taste with traditional spices, fresh ingredients and warm hospitality.",
+    explore: "Explore Menu",
+    fresh: "Fresh Ingredients",
+    freshSub: "Only the best for you",
+    chefs: "Skilled Chefs",
+    chefsSub: "Crafted with love",
+    ambience: "Cozy Ambience",
+    ambienceSub: "Feel at home",
+    service: "Fast Service",
+    serviceSub: "Your time matters",
+    aboutUs: "ABOUT US",
+    ourStory: "Our Story",
+    learnMore: "Learn More",
+    watchVideo: "Watch Our Restaurant Video",
+    playVideo: "Play Video",
+    smallReviews: "Reviews",
+    viewReviews: "View Reviews",
+    ourMenu: "Our Menu",
+    chooseCategory: "Choose Your Favourite Category",
+    fullMenu: "View Full Menu",
+    tableBooking: "Table Booking",
+    reserve: "Reserve Your Table",
+    phone: "Phone Number",
     email: "Email",
     date: "Date",
     time: "Time",
-    guests: "Number of guests",
-    food: "Menu / Desired dishes",
-    note: "Special request",
+    persons: "No. of Persons",
+    category: "Category",
+    item: "Item",
+    special: "Special Request",
     confirm: "Confirm Booking",
-    bookingSuccess:
-      "Booking received! We will contact you to confirm.",
-    manageBooking: "Manage Booking",
+    cancel: "Cancel",
+    track: "Track Your Booking",
+    trackSub: "Login with your phone or email",
+    phoneLogin: "Phone Login",
+    emailLogin: "Email Login",
+    getOtp: "Get OTP",
+    bookingDetails: "Booking Details",
+    viewEditCancel: "View, Edit or Cancel",
     bookingCode: "Booking Code",
-    findBooking: "Find Booking",
-    editBooking: "Edit",
-    cancelBooking: "Cancel",
-    close: "Close",
-    reviewsTitle: "What Our Customers Say",
-    reviewButton: "All Reviews",
-    contactTitle: "Contact",
-    contactText:
-      "We are here for you. Contact us for information, reservations and requests.",
+    viewDetails: "View Details",
+    edit: "Edit",
+    galleryTitle: "Gallery",
+    gallerySub: "Our Photo Gallery",
+    viewGallery: "View Gallery",
+    report: "Send Us a Report",
+    reportSub: "We'd love to hear from you",
+    sendReport: "Send Report",
+    map: "Find Us on Map",
+    openMap: "Open Map",
+    contactUs: "Contact Us",
     follow: "Follow Us",
-    openingHours: "Opening Hours",
-    footer:
-      "© 2026 Nababi Ristorante. All rights reserved.",
-    noMenu: "No dishes available in this category.",
-    all: "All",
+    quick: "Quick Links",
+    writeReview: "Write a Review",
+    allReviews: "All Reviews",
+    reviewDetails: "Review Details",
+    submitReview: "Submit Review",
+    reportReview: "Report a Review",
+    reportDetails: "Report Details",
+    submitReport: "Submit Report",
+    rating: "Rating",
+    name: "Name",
+    close: "Close",
+    noReviews: "No reviews yet.",
+    noGallery: "Gallery images will appear here.",
   },
-
+  it: {
+    home: "Home",
+    about: "Chi siamo",
+    menu: "Menu",
+    gallery: "Galleria",
+    reviews: "Recensioni",
+    contact: "Contatti",
+    login: "Login / Registrati",
+    admin: "Admin",
+    welcome: "BENVENUTI A",
+    subtitle: "Autentici sapori dell'India e del Bangladesh",
+    heroText:
+      "Scopri il gusto reale con spezie tradizionali, ingredienti freschi e calorosa ospitalità.",
+    explore: "Esplora Menu",
+    fresh: "Ingredienti Freschi",
+    freshSub: "Solo il meglio per te",
+    chefs: "Chef Esperti",
+    chefsSub: "Preparato con amore",
+    ambience: "Atmosfera Accogliente",
+    ambienceSub: "Sentiti a casa",
+    service: "Servizio Veloce",
+    serviceSub: "Il tuo tempo conta",
+    aboutUs: "CHI SIAMO",
+    ourStory: "La Nostra Storia",
+    learnMore: "Scopri di più",
+    watchVideo: "Guarda il Video del Ristorante",
+    playVideo: "Guarda Video",
+    smallReviews: "Recensioni",
+    viewReviews: "Vedi Recensioni",
+    ourMenu: "Il Nostro Menu",
+    chooseCategory: "Scegli la tua categoria preferita",
+    fullMenu: "Vedi Menu Completo",
+    tableBooking: "Prenotazione Tavolo",
+    reserve: "Prenota il tuo tavolo",
+    phone: "Numero di telefono",
+    email: "Email",
+    date: "Data",
+    time: "Ora",
+    persons: "Numero persone",
+    category: "Categoria",
+    item: "Prodotto",
+    special: "Richiesta speciale",
+    confirm: "Conferma Prenotazione",
+    cancel: "Annulla",
+    track: "Segui la Prenotazione",
+    trackSub: "Accedi con telefono o email",
+    phoneLogin: "Login Telefono",
+    emailLogin: "Login Email",
+    getOtp: "Ottieni OTP",
+    bookingDetails: "Dettagli Prenotazione",
+    viewEditCancel: "Visualizza, modifica o annulla",
+    bookingCode: "Codice Prenotazione",
+    viewDetails: "Vedi Dettagli",
+    edit: "Modifica",
+    galleryTitle: "Galleria",
+    gallerySub: "La Nostra Galleria",
+    viewGallery: "Vedi Galleria",
+    report: "Inviaci una Segnalazione",
+    reportSub: "La tua opinione è importante",
+    sendReport: "Invia Segnalazione",
+    map: "Trova sulla Mappa",
+    openMap: "Apri Mappa",
+    contactUs: "Contatti",
+    follow: "Seguici",
+    quick: "Link Rapidi",
+    writeReview: "Scrivi una Recensione",
+    allReviews: "Tutte le Recensioni",
+    reviewDetails: "Dettagli Recensione",
+    submitReview: "Invia Recensione",
+    reportReview: "Segnala una Recensione",
+    reportDetails: "Dettagli Segnalazione",
+    submitReport: "Invia Segnalazione",
+    rating: "Valutazione",
+    name: "Nome",
+    close: "Chiudi",
+    noReviews: "Nessuna recensione.",
+    noGallery: "Le immagini della galleria appariranno qui.",
+  },
   bn: {
     home: "হোম",
     about: "আমাদের সম্পর্কে",
@@ -270,2473 +231,479 @@ const translations = {
     gallery: "গ্যালারি",
     reviews: "রিভিউ",
     contact: "যোগাযোগ",
-    order: "বুক করুন",
-    admin: "অ্যাডমিন লগইন",
-    heroSmall: "নাবাবি রিস্টোরান্তেতে স্বাগতম",
-    heroTitle: "আসল রাজকীয় স্বাদ",
+    login: "লগইন / রেজিস্টার",
+    admin: "অ্যাডমিন",
+    welcome: "স্বাগতম",
+    subtitle: "ভারত ও বাংলাদেশের আসল স্বাদ",
     heroText:
-      "রোমের হৃদয়ে ভারত ও বাংলাদেশের আসল স্বাদ উপভোগ করুন।",
-    viewMenu: "মেনু দেখুন",
-    book: "টেবিল বুক করুন",
-    address: "Via Vespasiano 73/75/77, Roma",
-    phone: "ফোন",
-    whatsapp: "হোয়াটসঅ্যাপ",
-    watch: "ভিডিও দেখুন",
-    specialTitle: "আমাদের বিশেষ খাবার",
-    specialText:
-      "ভারত ও বাংলাদেশের আসল স্বাদের খাবারগুলো আবিষ্কার করুন।",
-    aboutTitle: "আমাদের গল্প",
-    aboutText:
-      "Nababi Ristorante রোমের হৃদয়ে ভারত ও বাংলাদেশের সমৃদ্ধ খাবারের ঐতিহ্য নিয়ে এসেছে।",
-    galleryTitle: "আমাদের গ্যালারি",
-    galleryText:
-      "আমাদের খাবার, রেস্টুরেন্ট এবং বিশেষ মুহূর্তগুলোর একটি সুন্দর ভ্রমণ।",
-    bookingTitle: "টেবিল বুক করুন",
-    bookingText:
-      "আপনার টেবিল বুক করুন এবং Nababi Ristorante-এ একটি বিশেষ অভিজ্ঞতা উপভোগ করুন।",
-    name: "নাম",
-    bookingPhone: "ফোন",
+      "ঐতিহ্যবাহী মসলা, তাজা উপকরণ এবং আন্তরিক আতিথেয়তার সঙ্গে রাজকীয় স্বাদ উপভোগ করুন।",
+    explore: "মেনু দেখুন",
+    fresh: "তাজা উপকরণ",
+    freshSub: "আপনার জন্য সেরাটাই",
+    chefs: "দক্ষ শেফ",
+    chefsSub: "ভালোবাসা দিয়ে তৈরি",
+    ambience: "আরামদায়ক পরিবেশ",
+    ambienceSub: "ঘরের মতো অনুভূতি",
+    service: "দ্রুত সার্ভিস",
+    serviceSub: "আপনার সময় গুরুত্বপূর্ণ",
+    aboutUs: "আমাদের সম্পর্কে",
+    ourStory: "আমাদের গল্প",
+    learnMore: "আরও জানুন",
+    watchVideo: "রেস্টুরেন্ট ভিডিও দেখুন",
+    playVideo: "ভিডিও দেখুন",
+    smallReviews: "রিভিউ",
+    viewReviews: "রিভিউ দেখুন",
+    ourMenu: "আমাদের মেনু",
+    chooseCategory: "আপনার পছন্দের ক্যাটাগরি নির্বাচন করুন",
+    fullMenu: "সম্পূর্ণ মেনু",
+    tableBooking: "টেবিল বুকিং",
+    reserve: "টেবিল রিজার্ভ করুন",
+    phone: "ফোন নম্বর",
     email: "ইমেইল",
     date: "তারিখ",
     time: "সময়",
-    guests: "কতজন",
-    food: "মেনু / পছন্দের খাবার",
-    note: "বিশেষ অনুরোধ",
+    persons: "কতজন",
+    category: "ক্যাটাগরি",
+    item: "আইটেম",
+    special: "বিশেষ অনুরোধ",
     confirm: "বুকিং নিশ্চিত করুন",
-    bookingSuccess:
-      "বুকিং গ্রহণ করা হয়েছে! নিশ্চিত করার জন্য আমরা আপনার সাথে যোগাযোগ করব।",
-    manageBooking: "বুকিং দেখুন / পরিচালনা করুন",
+    cancel: "বাতিল",
+    track: "বুকিং ট্র্যাক করুন",
+    trackSub: "ফোন অথবা ইমেইল দিয়ে লগইন",
+    phoneLogin: "ফোন লগইন",
+    emailLogin: "ইমেইল লগইন",
+    getOtp: "OTP নিন",
+    bookingDetails: "বুকিং ডিটেইলস",
+    viewEditCancel: "দেখুন, পরিবর্তন বা বাতিল করুন",
     bookingCode: "বুকিং কোড",
-    findBooking: "বুকিং খুঁজুন",
-    editBooking: "পরিবর্তন",
-    cancelBooking: "বাতিল",
+    viewDetails: "ডিটেইলস দেখুন",
+    edit: "এডিট",
+    galleryTitle: "গ্যালারি",
+    gallerySub: "আমাদের ছবি",
+    viewGallery: "গ্যালারি দেখুন",
+    report: "রিপোর্ট পাঠান",
+    reportSub: "আপনার মতামত আমাদের জন্য গুরুত্বপূর্ণ",
+    sendReport: "রিপোর্ট পাঠান",
+    map: "ম্যাপে খুঁজুন",
+    openMap: "ম্যাপ খুলুন",
+    contactUs: "যোগাযোগ",
+    follow: "ফলো করুন",
+    quick: "কুইক লিংক",
+    writeReview: "রিভিউ লিখুন",
+    allReviews: "সব রিভিউ",
+    reviewDetails: "রিভিউ ডিটেইলস",
+    submitReview: "রিভিউ পাঠান",
+    reportReview: "রিভিউ রিপোর্ট করুন",
+    reportDetails: "রিপোর্টের বিস্তারিত",
+    submitReport: "রিপোর্ট পাঠান",
+    rating: "রেটিং",
+    name: "নাম",
     close: "বন্ধ করুন",
-    reviewsTitle: "আমাদের কাস্টমাররা কী বলেন",
-    reviewButton: "সব রিভিউ",
-    contactTitle: "যোগাযোগ",
-    contactText:
-      "তথ্য, বুকিং ও অন্যান্য বিষয়ে আমাদের সাথে যোগাযোগ করুন।",
-    follow: "সোশ্যাল মিডিয়ায় আমাদের অনুসরণ করুন",
-    openingHours: "খোলার সময়",
-    footer:
-      "© 2026 Nababi Ristorante. সর্বস্বত্ব সংরক্ষিত।",
-    noMenu: "এই ক্যাটাগরিতে কোনো খাবার পাওয়া যায়নি।",
-    all: "সব",
+    noReviews: "এখনও কোনো রিভিউ নেই।",
+    noGallery: "গ্যালারির ছবি এখানে দেখা যাবে।",
   },
 };
 
-const defaultCategories = [
-  {
-    icon: "🍛",
-    it: "Biryani",
-    en: "Biryani",
-    bn: "বিরিয়ানি",
-    text: "Authentic royal biryani",
-  },
-  {
-    icon: "🍕",
-    it: "Pizza",
-    en: "Pizza",
-    bn: "পিজ্জা",
-    text: "Restaurant special pizza",
-  },
-  {
-    icon: "🍔",
-    it: "Burger",
-    en: "Burger",
-    bn: "বার্গার",
-    text: "Fresh special burgers",
-  },
-  {
-    icon: "🫓",
-    it: "Naan",
-    en: "Naan",
-    bn: "নান",
-    text: "Traditional fresh naan",
-  },
-  {
-    icon: "🍗",
-    it: "Chicken",
-    en: "Chicken",
-    bn: "চিকেন",
-    text: "Chicken specialities",
-  },
-  {
-    icon: "🥩",
-    it: "Mutton",
-    en: "Mutton",
-    bn: "মাটন",
-    text: "Traditional meat dishes",
-  },
-  {
-    icon: "🥗",
-    it: "Vegetarian",
-    en: "Vegetarian",
-    bn: "ভেজিটেরিয়ান",
-    text: "Fresh vegetarian dishes",
-  },
-  {
-    icon: "🍚",
-    it: "Rice",
-    en: "Rice",
-    bn: "রাইস",
-    text: "Traditional rice dishes",
-  },
-  {
-    icon: "🥤",
-    it: "Drinks",
-    en: "Drinks",
-    bn: "পানীয়",
-    text: "Drinks and house specialities",
-  },
-  {
-    icon: "🍮",
-    it: "Desserts",
-    en: "Desserts",
-    bn: "ডেজার্ট",
-    text: "Sweet specialities",
-  },
-];
-
-const emptyBookingForm: BookingForm = {
-  name: "",
-  phone: "",
-  email: "",
-  date: "",
-  time: "",
-  guests: "2",
-  menu: "",
-  note: "",
-};
-
-function safeArray<T>(value: unknown): T[] {
-  return Array.isArray(value) ? (value as T[]) : [];
+function getText(lang: Lang, key: keyof typeof translations.en) {
+  return translations[lang][key];
 }
 
-function safeObject<T extends object>(
-  value: unknown,
-  fallback: T
-): T {
-  if (value && typeof value === "object") {
-    return value as T;
-  }
-
-  return fallback;
-}
-
-function getString(
-  object: unknown,
-  keys: string[],
-  fallback = ""
-): string {
-  if (!object || typeof object !== "object") {
-    return fallback;
-  }
-
-  const source = object as Record<string, unknown>;
-
-  for (const key of keys) {
-    const value = source[key];
-
-    if (
-      typeof value === "string" ||
-      typeof value === "number"
-    ) {
-      return String(value);
-    }
-  }
-
-  return fallback;
-}
-
-function getBoolean(
-  object: unknown,
-  keys: string[],
-  fallback = true
-): boolean {
-  if (!object || typeof object !== "object") {
-    return fallback;
-  }
-
-  const source = object as Record<string, unknown>;
-
-  for (const key of keys) {
-    if (typeof source[key] === "boolean") {
-      return source[key] as boolean;
-    }
-  }
-
-  return fallback;
-}
-
-function readLocalStorage<T>(
-  key: string,
-  fallback: T
-): T {
-  if (typeof window === "undefined") {
-    return fallback;
-  }
-
+function readStorage<T>(key: string, fallback: T): T {
   try {
-    const raw = localStorage.getItem(key);
-
-    if (!raw) {
-      return fallback;
-    }
-
-    return JSON.parse(raw) as T;
+    const value = localStorage.getItem(key);
+    if (!value) return fallback;
+    return JSON.parse(value) as T;
   } catch {
     return fallback;
   }
 }
 
-function getMenuCategory(item: MenuItem): string {
-  return getString(
-    item,
-    ["category", "categoryName"],
-    ""
-  );
+function safeImage(value?: string) {
+  if (!value) return "";
+  return value;
 }
 
-function getMenuName(item: MenuItem): string {
-  return getString(
-    item,
-    ["name", "title"],
-    "Menu Item"
-  );
-}
+export default function HomePage() {
+  const [lang, setLang] = useState<Lang>("en");
 
-function getMenuDescription(item: MenuItem): string {
-  return getString(
-    item,
-    ["description"],
-    ""
-  );
-}
+  const [home, setHome] = useState<any>({});
+  const [contact, setContact] = useState<any>({});
+  const [social, setSocial] = useState<any>({});
+  const [openingHours, setOpeningHours] = useState<any[]>([]);
+  const [settings, setSettings] = useState<any>({});
 
-function getMenuPrice(item: MenuItem): string {
-  return getString(
-    item,
-    ["price"],
-    ""
-  );
-}
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [categories, setCategories] = useState<string[]>(defaultCategories);
+  const [gallery, setGallery] = useState<GalleryItem[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
 
-function getMenuImage(item: MenuItem): string {
-  return getString(
-    item,
-    ["image", "imageUrl"],
-    ""
-  );
-}
+  const [selectedCategory, setSelectedCategory] = useState("Biryani");
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [reviewsOpen, setReviewsOpen] = useState(false);
 
-function getReviewName(review: ReviewItem): string {
-  return getString(
-    review,
-    ["customerName", "name"],
-    "Customer"
-  );
-}
-
-function getReviewText(review: ReviewItem): string {
-  return getString(
-    review,
-    ["review", "text"],
-    ""
-  );
-}
-
-function getReviewRating(review: ReviewItem): number {
-  const value =
-    typeof review.rating === "number"
-      ? review.rating
-      : typeof review.stars === "number"
-      ? review.stars
-      : 5;
-
-  return Math.max(
-    1,
-    Math.min(5, value)
-  );
-}
-
-function getGalleryImage(item: GalleryItem): string {
-  return getString(
-    item,
-    ["image", "imageUrl"],
-    ""
-  );
-}
-
-export default function Home() {
-  const [language, setLanguage] =
-    useState<Language>("it");
-
-  const [homeSettings, setHomeSettings] =
-    useState<HomeSettings>({});
-
-  const [aboutSettings, setAboutSettings] =
-    useState<AboutSettings>({});
-
-  const [menuItems, setMenuItems] =
-    useState<MenuItem[]>([]);
-
-  const [galleryItems, setGalleryItems] =
-    useState<GalleryItem[]>([]);
-
-  const [breakingNews, setBreakingNews] =
-    useState<BreakingNewsItem[]>([]);
-
-  const [contactSettings, setContactSettings] =
-    useState<ContactSettings>({});
-
-  const [socialSettings, setSocialSettings] =
-    useState<SocialSettings>({});
-
-  const [openingHours, setOpeningHours] =
-    useState<OpeningDay[]>([]);
-
-  const [reviews, setReviews] =
-    useState<ReviewItem[]>([]);
-
-  const [selectedCategory, setSelectedCategory] =
-    useState<string | null>(null);
-
-  const [bookingForm, setBookingForm] =
-    useState<BookingForm>(emptyBookingForm);
-
-  const [bookingSuccess, setBookingSuccess] =
-    useState(false);
-
-  const [showBookingManager, setShowBookingManager] =
-    useState(false);
-
-  const [bookingSearch, setBookingSearch] =
-    useState("");
-
-  const [foundBooking, setFoundBooking] =
+  const [trackValue, setTrackValue] = useState("");
+  const [trackedBooking, setTrackedBooking] =
     useState<Reservation | null>(null);
 
-  const [bookingSearchMessage, setBookingSearchMessage] =
-    useState("");
+  const [reviewForm, setReviewForm] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    rating: 5,
+    review: "",
+  });
 
-  const [showAllReviews, setShowAllReviews] =
-    useState(false);
+  const [reportForm, setReportForm] = useState({
+    contact: "",
+    details: "",
+  });
 
-  const [showAllGallery, setShowAllGallery] =
-    useState(false);
+  const [bookingForm, setBookingForm] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    date: "",
+    time: "",
+    persons: "2",
+    category: "Biryani",
+    item: "",
+    note: "",
+  });
 
-  const [newsClosed, setNewsClosed] =
-    useState(false);
+  const [bookingMessage, setBookingMessage] = useState("");
+  const [reviewMessage, setReviewMessage] = useState("");
+  const [reportMessage, setReportMessage] = useState("");
+  const [trackMessage, setTrackMessage] = useState("");
 
-  const t = translations[language];
+  const [breakingNews, setBreakingNews] = useState<any[]>([]);
+  const [newsClosed, setNewsClosed] = useState(false);
+
+  const t = (key: keyof typeof translations.en) => getText(lang, key);
 
   useEffect(() => {
-    const loadData = () => {
-      setHomeSettings(
-        safeObject(
-          readLocalStorage<HomeSettings>(
-            "nababi-home-settings",
-            {}
-          ),
-          {}
-        )
-      );
-
-      setAboutSettings(
-        safeObject(
-          readLocalStorage<AboutSettings>(
-            "nababi-about",
-            {}
-          ),
-          {}
-        )
-      );
-
-      setMenuItems(
-        safeArray<MenuItem>(
-          readLocalStorage<unknown>(
-            "nababi-menu",
-            []
-          )
-        )
-      );
-
-      setGalleryItems(
-        safeArray<GalleryItem>(
-          readLocalStorage<unknown>(
-            "nababi-gallery",
-            []
-          )
-        )
-      );
-
-      setBreakingNews(
-        safeArray<BreakingNewsItem>(
-          readLocalStorage<unknown>(
-            "nababi-breaking-news",
-            []
-          )
-        )
-      );
-
-      setContactSettings(
-        safeObject(
-          readLocalStorage<ContactSettings>(
-            "nababi-contact",
-            {}
-          ),
-          {}
-        )
-      );
-
-      setSocialSettings(
-        safeObject(
-          readLocalStorage<SocialSettings>(
-            "nababi-social-media",
-            {}
-          ),
-          {}
-        )
-      );
-
-      setOpeningHours(
-        safeArray<OpeningDay>(
-          readLocalStorage<unknown>(
-            "nababi-opening-hours",
-            []
-          )
-        )
-      );
-
-      setReviews(
-        safeArray<ReviewItem>(
-          readLocalStorage<unknown>(
-            "nababi-reviews",
-            []
-          )
-        )
-      );
-    };
-
-    loadData();
-
-    const handleStorage = () => {
-      loadData();
-    };
-
-    window.addEventListener(
-      "storage",
-      handleStorage
-    );
-
-    const interval = window.setInterval(
-      loadData,
-      1500
-    );
-
-    return () => {
-      window.removeEventListener(
-        "storage",
-        handleStorage
-      );
-
-      window.clearInterval(interval);
-    };
-  }, []);
-
-  const heroTitle =
-    homeSettings.heroTitle ||
-    t.heroTitle;
-
-  const heroSubtitle =
-    homeSettings.heroSubtitle ||
-    homeSettings.welcomeText ||
-    t.heroText;
-
-  const bookingTitle =
-    homeSettings.bookingTitle ||
-    t.bookingTitle;
-
-  const bookingText =
-    homeSettings.bookingText ||
-    t.bookingText;
-
-  const heroImage =
-    homeSettings.heroImage || "";
-
-  const aboutText =
-    aboutSettings.content ||
-    aboutSettings.text ||
-    aboutSettings.description ||
-    t.aboutText;
-
-  const aboutImage =
-    aboutSettings.image || "";
-
-  const address =
-    contactSettings.address ||
-    t.address;
-
-  const phone =
-    contactSettings.phone ||
-    "+39 393 3805350";
-
-  const email =
-    contactSettings.email ||
-    "";
-
-  const whatsapp =
-    contactSettings.whatsapp ||
-    "+39 333 7687319";
-
-  const mapsUrl =
-    contactSettings.googleMapsUrl ||
-    "https://www.google.com/maps/search/?api=1&query=Via+Vespasiano+73%2F75%2F77+Roma";
-
-  const isNewsActive = (
-    item: BreakingNewsItem
-  ) => {
-    if (!getBoolean(item, ["visible"], true)) {
-      return false;
+    const savedLang = localStorage.getItem("nababi-language") as Lang | null;
+    if (savedLang === "en" || savedLang === "it" || savedLang === "bn") {
+      setLang(savedLang);
     }
 
+    setHome(readStorage("nababi-home-settings", {}));
+    setContact(readStorage("nababi-contact", {}));
+    setSocial(readStorage("nababi-social-media", {}));
+    setOpeningHours(readStorage("nababi-opening-hours", []));
+    setSettings(readStorage("nababi-settings", {}));
+
+    const rawMenu = readStorage<any[]>("nababi-menu", []);
+    const rawCategories = readStorage<any[]>(
+      "nababi-categories",
+      defaultCategories
+    );
+
+    const normalizedCategories = Array.from(
+      new Set(
+        rawCategories
+          .map((c: any) =>
+            typeof c === "string" ? c : c?.name ?? c?.title ?? ""
+          )
+          .filter(Boolean)
+          .map(String)
+      )
+    );
+
+    setCategories(
+      normalizedCategories.length ? normalizedCategories : defaultCategories
+    );
+    setMenuItems(Array.isArray(rawMenu) ? rawMenu : []);
+
+    const rawGallery = readStorage<GalleryItem[]>("nababi-gallery", []);
+    setGallery(
+      Array.isArray(rawGallery)
+        ? rawGallery.filter((item) => item.visible !== false)
+        : []
+    );
+
+    const rawReviews = readStorage<Review[]>("nababi-reviews", []);
+    setReviews(
+      Array.isArray(rawReviews)
+        ? rawReviews.filter((review) => review.visible !== false)
+        : []
+    );
+
+    setReservations(readStorage<Reservation[]>("nababi-reservations", []));
+
+    const news = readStorage<any[]>("nababi-breaking-news", []);
     const now = new Date();
 
-    if (item.startDate) {
-      const start = new Date(item.startDate);
+    const activeNews = Array.isArray(news)
+      ? news.filter((item) => {
+          if (item.visible === false) return false;
 
-      if (
-        !Number.isNaN(start.getTime()) &&
-        now < start
-      ) {
-        return false;
-      }
-    }
-
-    if (item.endDate) {
-      const end = new Date(item.endDate);
-
-      if (
-        !Number.isNaN(end.getTime()) &&
-        now > end
-      ) {
-        return false;
-      }
-    }
-
-    return true;
-  };
-
-  const activeNews = useMemo(() => {
-    return breakingNews.filter(isNewsActive);
-  }, [breakingNews]);
-
-  const categories = useMemo(() => {
-    const categoryMap = new Map<
-      string,
-      {
-        name: string;
-        icon: string;
-        text: string;
-      }
-    >();
-
-    defaultCategories.forEach(
-      (category) => {
-        categoryMap.set(
-          category.en.toLowerCase(),
-          {
-            name:
-              language === "it"
-                ? category.it
-                : language === "bn"
-                ? category.bn
-                : category.en,
-            icon: category.icon,
-            text: category.text,
+          if (item.startDate) {
+            const start = new Date(item.startDate);
+            if (now < start) return false;
           }
-        );
-      }
-    );
 
-    menuItems.forEach((item) => {
-      const category =
-        getMenuCategory(item).trim();
+          if (item.endDate) {
+            const end = new Date(item.endDate);
+            if (now > end) return false;
+          }
 
-      if (!category) {
-        return;
-      }
+          return true;
+        })
+      : [];
 
-      const key = category.toLowerCase();
+    setBreakingNews(activeNews);
+  }, []);
 
-      if (!categoryMap.has(key)) {
-        categoryMap.set(key, {
-          name: category,
-          icon: "🍽️",
-          text: "Restaurant specialities",
-        });
-      }
-    });
+  const heroImage =
+    home?.heroImage ||
+    "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=1400&q=85";
 
-    return Array.from(categoryMap.values());
-  }, [language, menuItems]);
+  const aboutImage =
+    home?.aboutImage ||
+    "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1000&q=85";
 
-  const visibleMenuItems = useMemo(() => {
-    const available = menuItems.filter(
-      (item) =>
-        getBoolean(
-          item,
-          ["available", "availability"],
-          true
-        )
-    );
+  const restaurantName =
+    settings?.restaurantName ||
+    contact?.restaurantName ||
+    "Nababi Ristorante";
 
-    if (!selectedCategory) {
-      return available;
-    }
+  const address =
+    contact?.address || "Via Vespasiano 73/75/77, Roma";
 
-    const selected = selectedCategory
-      .toLowerCase();
+  const phone = contact?.phone || "+39 393 3805350";
+  const email = contact?.email || "info@nababi.it";
+  const whatsapp = contact?.whatsapp || phone;
 
-    return available.filter((item) => {
-      return (
-        getMenuCategory(item)
-          .trim()
-          .toLowerCase() === selected
-      );
+  const mapUrl =
+    contact?.googleMapsUrl ||
+    "https://www.google.com/maps/search/?api=1&query=Via+Vespasiano+73+Roma";
+
+  const facebook = social?.facebook || "";
+  const instagram = social?.instagram || "";
+  const tiktok = social?.tiktok || "";
+  const youtube = social?.youtube || "";
+
+  const currentItems = useMemo(() => {
+    return menuItems.filter((item) => {
+      const category = String(item.category || "").trim().toLowerCase();
+      return category === selectedCategory.toLowerCase();
     });
   }, [menuItems, selectedCategory]);
 
-  const visibleGallery = useMemo(() => {
-    return galleryItems
-      .filter((item) =>
-        getBoolean(
-          item,
-          ["visible", "show"],
-          true
-        )
-      )
-      .filter(
-        (item) => Boolean(getGalleryImage(item))
-      )
-      .sort(
-        (a, b) =>
-          Number(a.displayOrder || 0) -
-          Number(b.displayOrder || 0)
-      );
-  }, [galleryItems]);
+  const displayItems = currentItems.slice(0, 8);
 
-  const visibleReviews = useMemo(() => {
-    return reviews
-      .filter((review) =>
-        getBoolean(
-          review,
-          ["visible"],
-          true
-        )
-      )
-      .filter((review) =>
-        Boolean(getReviewText(review))
-      )
-      .sort((a, b) => {
-        const aDate = new Date(
-          a.date || ""
-        ).getTime();
+  const totalReviews = reviews.length;
 
-        const bDate = new Date(
-          b.date || ""
-        ).getTime();
+  const averageRating =
+    totalReviews > 0
+      ? (
+          reviews.reduce((sum, item) => sum + Number(item.rating || 0), 0) /
+          totalReviews
+        ).toFixed(1)
+      : "0.0";
 
-        return bDate - aDate;
-      });
-  }, [reviews]);
+  function saveReservation(e: FormEvent) {
+    e.preventDefault();
+    setBookingMessage("");
 
-  const displayedReviews = showAllReviews
-    ? visibleReviews
-    : visibleReviews.slice(0, 6);
-
-  const displayedGallery = showAllGallery
-    ? visibleGallery
-    : visibleGallery.slice(0, 6);
-
-  const handleBookingSubmit = (
-    event: FormEvent<HTMLFormElement>
-  ) => {
-    event.preventDefault();
-
-    try {
-      const existing =
-        readLocalStorage<unknown>(
-          "nababi-reservations",
-          []
-        );
-
-      const reservations =
-        safeArray<Reservation>(existing);
-
-      const id =
-        Date.now().toString();
-
-      const code =
-        `NAB-${Date.now()
-          .toString()
-          .slice(-6)}`;
-
-      const reservation: Reservation = {
-        id,
-        code,
-        name:
-          bookingForm.name.trim(),
-        phone:
-          bookingForm.phone.trim(),
-        email:
-          bookingForm.email.trim(),
-        date: bookingForm.date,
-        time: bookingForm.time,
-        guests:
-          Number(bookingForm.guests) || 2,
-        menu:
-          bookingForm.menu.trim(),
-        category:
-          selectedCategory || "",
-        note:
-          bookingForm.note.trim(),
-        status: "Pending",
-        createdAt:
-          new Date().toISOString(),
-      };
-
-      localStorage.setItem(
-        "nababi-reservations",
-        JSON.stringify([
-          ...reservations,
-          reservation,
-        ])
-      );
-
-      setBookingForm(
-        emptyBookingForm
-      );
-
-      setBookingSuccess(true);
-
-      setTimeout(() => {
-        setBookingSuccess(false);
-      }, 7000);
-    } catch (error) {
-      console.error(
-        "Booking save error:",
-        error
-      );
-
-      alert(
-        "Unable to save the booking. Please try again."
-      );
-    }
-  };
-
-  const findBooking = () => {
-    setBookingSearchMessage("");
-    setFoundBooking(null);
-
-    const search =
-      bookingSearch.trim().toLowerCase();
-
-    if (!search) {
-      setBookingSearchMessage(
-        "Please enter your phone, email or booking code."
-      );
-
+    if (
+      !bookingForm.name ||
+      !bookingForm.phone ||
+      !bookingForm.email ||
+      !bookingForm.date ||
+      !bookingForm.time
+    ) {
+      setBookingMessage("Please complete the required booking fields.");
       return;
     }
 
-    const reservations =
-      safeArray<Reservation>(
-        readLocalStorage<unknown>(
-          "nababi-reservations",
-          []
-        )
-      );
+    const code =
+      "NAB-" +
+      Math.random().toString(36).substring(2, 8).toUpperCase();
 
-    const result =
-      reservations.find((booking) => {
-        return (
-          String(
-            booking.phone || ""
-          )
-            .trim()
-            .toLowerCase() === search ||
-          String(
-            booking.email || ""
-          )
-            .trim()
-            .toLowerCase() === search ||
-          String(
-            booking.code ||
-              booking.id ||
-              ""
-          )
-            .trim()
-            .toLowerCase() === search
-        );
-      });
+    const reservation: Reservation = {
+      id: Date.now().toString(),
+      code,
+      name: bookingForm.name,
+      phone: bookingForm.phone,
+      email: bookingForm.email,
+      date: bookingForm.date,
+      time: bookingForm.time,
+      persons: bookingForm.persons,
+      category: bookingForm.category,
+      item: bookingForm.item,
+      note: bookingForm.note,
+      status: "Confirmed",
+    };
 
-    if (!result) {
-      setBookingSearchMessage(
-        "No booking found with those details."
-      );
+    const next = [...reservations, reservation];
 
-      return;
-    }
+    setReservations(next);
+    localStorage.setItem("nababi-reservations", JSON.stringify(next));
 
-    setFoundBooking(result);
-  };
-
-  const cancelBooking = () => {
-    if (!foundBooking) {
-      return;
-    }
-
-    const reservations =
-      safeArray<Reservation>(
-        readLocalStorage<unknown>(
-          "nababi-reservations",
-          []
-        )
-      );
-
-    const updated =
-      reservations.map((booking) =>
-        String(booking.id) ===
-        String(foundBooking.id)
-          ? {
-              ...booking,
-              status: "Cancelled" as const,
-            }
-          : booking
-      );
-
-    localStorage.setItem(
-      "nababi-reservations",
-      JSON.stringify(updated)
-    );
-
-    setFoundBooking({
-      ...foundBooking,
-      status: "Cancelled",
-    });
-  };
-
-  const editBooking = () => {
-    if (!foundBooking) {
-      return;
-    }
+    setBookingMessage(`Booking confirmed. Your code is ${code}.`);
 
     setBookingForm({
-      name:
-        foundBooking.name || "",
-      phone:
-        foundBooking.phone || "",
-      email:
-        foundBooking.email || "",
-      date:
-        foundBooking.date || "",
-      time:
-        foundBooking.time || "",
-      guests:
-        String(
-          foundBooking.guests || 2
-        ),
-      menu:
-        foundBooking.menu || "",
-      note:
-        foundBooking.note || "",
+      name: "",
+      phone: "",
+      email: "",
+      date: "",
+      time: "",
+      persons: "2",
+      category: "Biryani",
+      item: "",
+      note: "",
+    });
+  }
+
+  function findBooking(e: FormEvent) {
+    e.preventDefault();
+
+    const value = trackValue.trim().toLowerCase();
+
+    if (!value) {
+      setTrackMessage("Enter your phone, email or booking code.");
+      return;
+    }
+
+    const found = reservations.find(
+      (booking) =>
+        booking.phone.toLowerCase() === value ||
+        booking.email.toLowerCase() === value ||
+        booking.code.toLowerCase() === value
+    );
+
+    if (!found) {
+      setTrackedBooking(null);
+      setTrackMessage("No booking found.");
+      return;
+    }
+
+    setTrackedBooking(found);
+    setTrackMessage("");
+  }
+
+  function submitReview(e: FormEvent) {
+    e.preventDefault();
+    setReviewMessage("");
+
+    if (!reviewForm.name.trim()) {
+      setReviewMessage("Please enter your name.");
+      return;
+    }
+
+    if (!reviewForm.phone.trim() && !reviewForm.email.trim()) {
+      setReviewMessage("Please enter phone number or email.");
+      return;
+    }
+
+    if (!reviewForm.review.trim()) {
+      setReviewMessage("Please write your review.");
+      return;
+    }
+
+    const newReview: Review = {
+      id: Date.now().toString(),
+      customerName: reviewForm.name.trim(),
+      phone: reviewForm.phone.trim(),
+      email: reviewForm.email.trim(),
+      rating: reviewForm.rating,
+      review: reviewForm.review.trim(),
+      date: new Date().toISOString(),
+      visible: true,
+      replies: [],
+    };
+
+    const next = [...reviews, newReview];
+
+    setReviews(next);
+    localStorage.setItem("nababi-reviews", JSON.stringify(next));
+
+    setReviewMessage("Thank you. Your review has been submitted.");
+
+    setReviewForm({
+      name: "",
+      phone: "",
+      email: "",
+      rating: 5,
+      review: "",
+    });
+  }
+
+  function submitReport(e: FormEvent) {
+    e.preventDefault();
+
+    if (!reportForm.contact || !reportForm.details) {
+      setReportMessage("Please enter your phone/email and report details.");
+      return;
+    }
+
+    const reports = readStorage<any[]>("nababi-review-reports", []);
+
+    reports.push({
+      id: Date.now().toString(),
+      contact: reportForm.contact,
+      details: reportForm.details,
+      date: new Date().toISOString(),
     });
 
-    setShowBookingManager(false);
+    localStorage.setItem("nababi-review-reports", JSON.stringify(reports));
 
-    window.location.hash =
-      "booking";
-  };
+    setReportMessage("Your report has been submitted.");
 
-  const selectedCategoryLabel =
-    selectedCategory
-      ? categories.find(
-          (category) =>
-            category.name.toLowerCase() ===
-            selectedCategory.toLowerCase()
-        )?.name ||
-        selectedCategory
-      : t.all;
+    setReportForm({
+      contact: "",
+      details: "",
+    });
+  }
 
-  const getDayLabel = (
-    day: OpeningDay
-  ) => {
-    return getString(
-      day,
-      ["name", "day"],
-      ""
+  function cancelTrackedBooking() {
+    if (!trackedBooking) return;
+
+    const next = reservations.map((item) =>
+      item.id === trackedBooking.id
+        ? { ...item, status: "Cancelled" }
+        : item
     );
-  };
+
+    setReservations(next);
+    localStorage.setItem("nababi-reservations", JSON.stringify(next));
+
+    setTrackedBooking({
+      ...trackedBooking,
+      status: "Cancelled",
+    });
+  }
+
+  function editTrackedBooking() {
+    if (!trackedBooking) return;
+
+    setBookingForm({
+      name: trackedBooking.name,
+      phone: trackedBooking.phone,
+      email: trackedBooking.email,
+      date: trackedBooking.date,
+      time: trackedBooking.time,
+      persons: trackedBooking.persons,
+      category: trackedBooking.category,
+      item: trackedBooking.item,
+      note: trackedBooking.note,
+    });
+
+    window.scrollTo({
+      top: document.getElementById("booking")?.offsetTop || 0,
+      behavior: "smooth",
+    });
+  }
+
+  function openAdmin() {
+    window.location.href = "/admin";
+  }
 
   return (
     <main className="site">
-
-      {/* ================= HEADER ================= */}
-
-      <header className="header">
-
-        <a
-          href="#home"
-          className="logo"
-        >
-          <span className="logo-crown">
-            ♛
-          </span>
-
-          <span>
-            <strong>NABABI</strong>
-            <small>
-              RISTORANTE
-            </small>
-          </span>
-        </a>
-
-        <nav className="nav">
-          <a href="#home">
-            {t.home}
-          </a>
-
-          <a href="#about">
-            {t.about}
-          </a>
-
-          <a href="#menu">
-            {t.menu}
-          </a>
-
-          <a href="#gallery">
-            {t.gallery}
-          </a>
-
-          <a href="#reviews">
-            {t.reviews}
-          </a>
-
-          <a href="#contact">
-            {t.contact}
-          </a>
-        </nav>
-
-        <div className="header-actions">
-
-          <a
-            href="#booking"
-            className="order-btn"
-          >
-            {t.order}
-          </a>
-
-          <a
-            href="/admin"
-            className="admin-btn"
-          >
-            🔒 {t.admin}
-          </a>
-
-          <select
-            className="language"
-            value={language}
-            onChange={(event) =>
-              setLanguage(
-                event.target.value as Language
-              )
-            }
-          >
-            <option value="it">
-              🇮🇹 IT
-            </option>
-
-            <option value="en">
-              🇬🇧 EN
-            </option>
-
-            <option value="bn">
-              🇧🇩 বাংলা
-            </option>
-          </select>
-
-        </div>
-      </header>
-
-      {/* ================= BREAKING NEWS ================= */}
-
-      {activeNews.length > 0 &&
-        !newsClosed && (
-          <div className="breaking-news">
-
-            <div className="breaking-label">
-              BREAKING NEWS
-            </div>
-
-            <div className="breaking-text">
-              {getString(
-                activeNews[0],
-                ["text", "title"],
-                ""
-              )}
-            </div>
-
-            <button
-              type="button"
-              onClick={() =>
-                setNewsClosed(true)
-              }
-              aria-label="Close"
-            >
-              ×
-            </button>
-
-          </div>
-        )}
-
-      {/* ================= HERO ================= */}
-
-      <section
-        id="home"
-        className="hero"
-      >
-
-        <div className="hero-content">
-
-          <p className="eyebrow">
-            {t.heroSmall}
-          </p>
-
-          <h1>
-            {heroTitle}
-          </h1>
-
-          <p className="hero-text">
-            {heroSubtitle}
-          </p>
-
-          <div className="hero-buttons">
-
-            <a
-              href="#menu"
-              className="primary-btn"
-            >
-              🍛 {t.viewMenu}
-            </a>
-
-            <a
-              href="#booking"
-              className="secondary-btn"
-            >
-              ◉ {t.book}
-            </a>
-
-          </div>
-
-          <div className="quick-info">
-
-            <div>
-              <span>📍</span>
-
-              <small>
-                Address
-              </small>
-
-              <strong>
-                {address}
-              </strong>
-            </div>
-
-            <div>
-              <span>☎</span>
-
-              <small>
-                {t.phone}
-              </small>
-
-              <strong>
-                {phone}
-              </strong>
-            </div>
-
-            <div>
-              <span>💬</span>
-
-              <small>
-                {t.whatsapp}
-              </small>
-
-              <strong>
-                {whatsapp}
-              </strong>
-            </div>
-
-          </div>
-
-        </div>
-
-        <div className="hero-art">
-
-          <div
-            className="royal-circle"
-            style={
-              heroImage
-                ? {
-                    backgroundImage: `linear-gradient(rgba(10,7,5,.18), rgba(10,7,5,.35)), url("${heroImage}")`,
-                    backgroundSize:
-                      "cover",
-                    backgroundPosition:
-                      "center",
-                  }
-                : undefined
-            }
-          >
-
-            {!heroImage && (
-              <div className="food-circle">
-                🍛
-              </div>
-            )}
-
-          </div>
-
-          <div className="hero-art-buttons">
-
-            {homeSettings.heroImage && (
-              <span className="image-ready">
-                Hero Image
-              </span>
-            )}
-
-            <button type="button">
-              ▶ {t.watch}
-            </button>
-
-            <a href="#gallery">
-              ▣ {t.gallery}
-            </a>
-
-          </div>
-
-        </div>
-
-      </section>
-
-      {/* ================= MENU ================= */}
-
-      <section
-        id="menu"
-        className="section specialities"
-      >
-
-        <div className="section-heading">
-
-          <p className="eyebrow">
-            NABABI RISTORANTE
-          </p>
-
-          <h2>
-            {t.specialTitle}
-          </h2>
-
-          <p>
-            {t.specialText}
-          </p>
-
-        </div>
-
-        <div className="category-grid">
-
-          <button
-            type="button"
-            className={`category-card ${
-              selectedCategory === null
-                ? "category-active"
-                : ""
-            }`}
-            onClick={() =>
-              setSelectedCategory(null)
-            }
-          >
-
-            <div className="category-image">
-              🍽️
-            </div>
-
-            <h3>
-              {t.all}
-            </h3>
-
-            <p>
-              All available dishes
-            </p>
-
-            <span>
-              View Menu →
-            </span>
-
-          </button>
-
-          {categories.map(
-            (category) => (
-              <button
-                type="button"
-                key={category.name}
-                className={`category-card ${
-                  selectedCategory?.toLowerCase() ===
-                  category.name.toLowerCase()
-                    ? "category-active"
-                    : ""
-                }`}
-                onClick={() =>
-                  setSelectedCategory(
-                    category.name
-                  )
-                }
-              >
-
-                <div className="category-image">
-                  {category.icon}
-                </div>
-
-                <h3>
-                  {category.name}
-                </h3>
-
-                <p>
-                  {category.text}
-                </p>
-
-                <span>
-                  View Menu →
-                </span>
-
-              </button>
-            )
-          )}
-
-        </div>
-
-        <div className="menu-result">
-
-          <div className="menu-result-header">
-
-            <div>
-              <p className="eyebrow">
-                MENU
-              </p>
-
-              <h3>
-                {selectedCategoryLabel}
-              </h3>
-            </div>
-
-            <span>
-              {visibleMenuItems.length} items
-            </span>
-
-          </div>
-
-          {visibleMenuItems.length === 0 ? (
-
-            <div className="empty-menu">
-              {menuItems.length === 0
-                ? "Menu items will appear here when added from Admin → Menu."
-                : t.noMenu}
-            </div>
-
-          ) : (
-
-            <div className="menu-items-grid">
-
-              {visibleMenuItems.map(
-                (item, index) => {
-
-                  const image =
-                    getMenuImage(item);
-
-                  return (
-                    <article
-                      className="menu-item-card"
-                      key={
-                        String(
-                          item.id ||
-                            getMenuName(item)
-                        ) +
-                        "-" +
-                        index
-                      }
-                    >
-
-                      <div className="menu-item-image">
-
-                        {image ? (
-                          <img
-                            src={image}
-                            alt={getMenuName(
-                              item
-                            )}
-                          />
-                        ) : (
-                          <span>
-                            🍽️
-                          </span>
-                        )}
-
-                      </div>
-
-                      <div className="menu-item-content">
-
-                        <div className="menu-item-top">
-
-                          <h4>
-                            {getMenuName(
-                              item
-                            )}
-                          </h4>
-
-                          {getMenuPrice(
-                            item
-                          ) && (
-                            <strong>
-                              €{" "}
-                              {getMenuPrice(
-                                item
-                              )}
-                            </strong>
-                          )}
-
-                        </div>
-
-                        <p>
-                          {getMenuDescription(
-                            item
-                          )}
-                        </p>
-
-                      </div>
-
-                    </article>
-                  );
-                }
-              )}
-
-            </div>
-          )}
-
-        </div>
-
-      </section>
-
-      {/* ================= ABOUT ================= */}
-
-      <section
-        id="about"
-        className="section about-section"
-      >
-
-        <div
-          className="about-image"
-          style={
-            aboutImage
-              ? {
-                  backgroundImage: `linear-gradient(rgba(10,7,5,.25), rgba(10,7,5,.45)), url("${aboutImage}")`,
-                  backgroundSize:
-                    "cover",
-                  backgroundPosition:
-                    "center",
-                }
-              : undefined
-          }
-        >
-
-          {!aboutImage && (
-            <div className="about-placeholder">
-
-              <span>
-                👑
-              </span>
-
-              <strong>
-                NABABI
-              </strong>
-
-              <small>
-                RISTORANTE
-              </small>
-
-            </div>
-          )}
-
-          {aboutSettings.video && (
-            <a
-              className="about-video-link"
-              href={aboutSettings.video}
-              target="_blank"
-              rel="noreferrer"
-            >
-              ▶ Watch Video
-            </a>
-          )}
-
-        </div>
-
-        <div className="about-content">
-
-          <p className="eyebrow">
-            NABABI RISTORANTE
-          </p>
-
-          <h2>
-            {t.aboutTitle}
-          </h2>
-
-          <p>
-            {aboutText}
-          </p>
-
-          <a
-            href="#contact"
-            className="primary-btn"
-          >
-            {t.contact} →
-          </a>
-
-        </div>
-
-      </section>
-
-      {/* ================= GALLERY ================= */}
-
-      <section
-        id="gallery"
-        className="section gallery-section"
-      >
-
-        <div className="section-heading">
-
-          <p className="eyebrow">
-            NABABI RISTORANTE
-          </p>
-
-          <h2>
-            {t.galleryTitle}
-          </h2>
-
-          <p>
-            {t.galleryText}
-          </p>
-
-        </div>
-
-        {visibleGallery.length === 0 ? (
-
-          <div className="gallery-empty">
-            Gallery images will appear here
-            when added from Admin → Gallery.
-          </div>
-
-        ) : (
-
-          <div className="gallery-grid">
-
-            {displayedGallery.map(
-              (item, index) => {
-
-                const image =
-                  getGalleryImage(item);
-
-                return (
-                  <div
-                    className={`gallery-card ${
-                      index === 0 ||
-                      index === 5
-                        ? "large"
-                        : ""
-                    }`}
-                    key={
-                      String(
-                        item.id ||
-                          item.title ||
-                          image
-                      ) +
-                      "-" +
-                      index
-                    }
-                  >
-
-                    <img
-                      src={image}
-                      alt={
-                        item.title ||
-                        "Nababi Ristorante"
-                      }
-                    />
-
-                  </div>
-                );
-              }
-            )}
-
-          </div>
-        )}
-
-        {visibleGallery.length > 6 && (
-          <div className="center">
-
-            <button
-              type="button"
-              className="secondary-btn"
-              onClick={() =>
-                setShowAllGallery(
-                  (value) => !value
-                )
-              }
-            >
-              {showAllGallery
-                ? "Show Less"
-                : "View All Gallery"}
-            </button>
-
-          </div>
-        )}
-
-      </section>
-
-      {/* ================= BOOKING ================= */}
-
-      <section
-        id="booking"
-        className="section booking-section"
-      >
-
-        <div className="section-heading">
-
-          <p className="eyebrow">
-            RESERVATION
-          </p>
-
-          <h2>
-            {bookingTitle}
-          </h2>
-
-          <p>
-            {bookingText}
-          </p>
-
-        </div>
-
-        <form
-          className="booking-form"
-          onSubmit={
-            handleBookingSubmit
-          }
-        >
-
-          <div className="form-grid">
-
-            <label>
-              {t.name}
-
-              <input
-                type="text"
-                required
-                value={
-                  bookingForm.name
-                }
-                onChange={(event) =>
-                  setBookingForm({
-                    ...bookingForm,
-                    name:
-                      event.target.value,
-                  })
-                }
-              />
-            </label>
-
-            <label>
-              {t.bookingPhone}
-
-              <input
-                type="tel"
-                required
-                value={
-                  bookingForm.phone
-                }
-                onChange={(event) =>
-                  setBookingForm({
-                    ...bookingForm,
-                    phone:
-                      event.target.value,
-                  })
-                }
-              />
-            </label>
-
-            <label>
-              {t.email}
-
-              <input
-                type="email"
-                value={
-                  bookingForm.email
-                }
-                onChange={(event) =>
-                  setBookingForm({
-                    ...bookingForm,
-                    email:
-                      event.target.value,
-                  })
-                }
-              />
-            </label>
-
-            <label>
-              {t.date}
-
-              <input
-                type="date"
-                required
-                value={
-                  bookingForm.date
-                }
-                onChange={(event) =>
-                  setBookingForm({
-                    ...bookingForm,
-                    date:
-                      event.target.value,
-                  })
-                }
-              />
-            </label>
-
-            <label>
-              {t.time}
-
-              <input
-                type="time"
-                required
-                value={
-                  bookingForm.time
-                }
-                onChange={(event) =>
-                  setBookingForm({
-                    ...bookingForm,
-                    time:
-                      event.target.value,
-                  })
-                }
-              />
-            </label>
-
-            <label>
-              {t.guests}
-
-              <select
-                required
-                value={
-                  bookingForm.guests
-                }
-                onChange={(event) =>
-                  setBookingForm({
-                    ...bookingForm,
-                    guests:
-                      event.target.value,
-                  })
-                }
-              >
-                <option value="1">
-                  1
-                </option>
-
-                <option value="2">
-                  2
-                </option>
-
-                <option value="3">
-                  3
-                </option>
-
-                <option value="4">
-                  4
-                </option>
-
-                <option value="5">
-                  5
-                </option>
-
-                <option value="6">
-                  6
-                </option>
-
-                <option value="7">
-                  7+
-                </option>
-              </select>
-            </label>
-
-            <label>
-              {t.food}
-
-              <input
-                type="text"
-                value={
-                  bookingForm.menu
-                }
-                onChange={(event) =>
-                  setBookingForm({
-                    ...bookingForm,
-                    menu:
-                      event.target.value,
-                  })
-                }
-              />
-            </label>
-
-            <label>
-              Category
-
-              <select
-                value={
-                  selectedCategory ||
-                  ""
-                }
-                onChange={(event) =>
-                  setSelectedCategory(
-                    event.target.value ||
-                      null
-                  )
-                }
-              >
-                <option value="">
-                  Select category
-                </option>
-
-                {categories.map(
-                  (category) => (
-                    <option
-                      key={category.name}
-                      value={
-                        category.name
-                      }
-                    >
-                      {category.name}
-                    </option>
-                  )
-                )}
-              </select>
-            </label>
-
-          </div>
-
-          <label>
-            {t.note}
-
-            <textarea
-              rows={5}
-              value={
-                bookingForm.note
-              }
-              onChange={(event) =>
-                setBookingForm({
-                  ...bookingForm,
-                  note:
-                    event.target.value,
-                })
-              }
-            />
-          </label>
-
-          <button
-            className="primary-btn submit-btn"
-            type="submit"
-          >
-            {t.confirm} →
-          </button>
-
-          {bookingSuccess && (
-            <div className="booking-success">
-              ✓ {t.bookingSuccess}
-              <br />
-              <small>
-                Your booking has been saved.
-              </small>
-            </div>
-          )}
-
-        </form>
-
-        <div className="manage-booking-wrap">
-
-          <button
-            type="button"
-            className="secondary-btn manage-booking-button"
-            onClick={() => {
-              setShowBookingManager(
-                true
-              );
-              setFoundBooking(null);
-              setBookingSearch("");
-              setBookingSearchMessage("");
-            }}
-          >
-            🔎 {t.manageBooking}
-          </button>
-
-        </div>
-
-      </section>
-
-      {/* ================= BOOKING MANAGER ================= */}
-
-      {showBookingManager && (
-        <div className="modal-backdrop">
-
-          <div className="booking-manager">
-
-            <button
-              type="button"
-              className="modal-close"
-              onClick={() =>
-                setShowBookingManager(
-                  false
-                )
-              }
-            >
-              ×
-            </button>
-
-            <p className="eyebrow">
-              BOOKING
-            </p>
-
-            <h2>
-              {t.manageBooking}
-            </h2>
-
-            <p>
-              Enter your phone, email or booking code.
-            </p>
-
-            <div className="booking-search">
-
-              <input
-                value={bookingSearch}
-                onChange={(event) =>
-                  setBookingSearch(
-                    event.target.value
-                  )
-                }
-                placeholder={`${t.bookingCode} / Phone / Email`}
-              />
-
-              <button
-                type="button"
-                className="primary-btn"
-                onClick={
-                  findBooking
-                }
-              >
-                {t.findBooking}
-              </button>
-
-            </div>
-
-            {bookingSearchMessage && (
-              <div className="manager-message">
-                {bookingSearchMessage}
-              </div>
-            )}
-
-            {foundBooking && (
-              <div className="found-booking">
-
-                <div>
-                  <span>
-                    Booking Code
-                  </span>
-
-                  <strong>
-                    {foundBooking.code ||
-                      foundBooking.id}
-                  </strong>
-                </div>
-
-                <div>
-                  <span>
-                    Name
-                  </span>
-
-                  <strong>
-                    {foundBooking.name}
-                  </strong>
-                </div>
-
-                <div>
-                  <span>
-                    Date & Time
-                  </span>
-
-                  <strong>
-                    {foundBooking.date}{" "}
-                    {foundBooking.time}
-                  </strong>
-                </div>
-
-                <div>
-                  <span>
-                    Guests
-                  </span>
-
-                  <strong>
-                    {foundBooking.guests}
-                  </strong>
-                </div>
-
-                <div>
-                  <span>
-                    Status
-                  </span>
-
-                  <strong>
-                    {foundBooking.status}
-                  </strong>
-                </div>
-
-                <div className="manager-actions">
-
-                  <button
-                    type="button"
-                    className="secondary-btn"
-                    onClick={
-                      editBooking
-                    }
-                    disabled={
-                      foundBooking.status ===
-                      "Cancelled"
-                    }
-                  >
-                    {t.editBooking}
-                  </button>
-
-                  <button
-                    type="button"
-                    className="danger-btn"
-                    onClick={
-                      cancelBooking
-                    }
-                    disabled={
-                      foundBooking.status ===
-                      "Cancelled"
-                    }
-                  >
-                    {t.cancelBooking}
-                  </button>
-
-                </div>
-
-              </div>
-            )}
-
-          </div>
-
-        </div>
-      )}
-
-      {/* ================= REVIEWS ================= */}
-
-      <section
-        id="reviews"
-        className="section reviews-section"
-      >
-
-        <div className="section-heading">
-
-          <p className="eyebrow">
-            REVIEWS
-          </p>
-
-          <h2>
-            {t.reviewsTitle}
-          </h2>
-
-        </div>
-
-        {displayedReviews.length === 0 ? (
-
-          <div className="reviews-empty">
-            Customer reviews will appear here
-            when added from Admin → Reviews.
-          </div>
-
-        ) : (
-
-          <div className="reviews-grid">
-
-            {displayedReviews.map(
-              (review, index) => {
-
-                const rating =
-                  getReviewRating(
-                    review
-                  );
-
-                return (
-                  <div
-                    className="review-card"
-                    key={
-                      String(
-                        review.id ||
-                          getReviewName(
-                            review
-                          )
-                      ) +
-                      "-" +
-                      index
-                    }
-                  >
-
-                    <div className="stars">
-                      {"★".repeat(
-                        rating
-                      )}
-                      <span>
-                        {"☆".repeat(
-                          5 - rating
-                        )}
-                      </span>
-                    </div>
-
-                    <p>
-                      “
-                      {getReviewText(
-                        review
-                      )}
-                      ”
-                    </p>
-
-                    <strong>
-                      {getReviewName(
-                        review
-                      )}
-                    </strong>
-
-                    {review.date && (
-                      <small>
-                        {review.date}
-                      </small>
-                    )}
-
-                    {review.replies &&
-                      review.replies
-                        .length > 0 && (
-                        <div className="review-replies">
-
-                          {review.replies.map(
-                            (
-                              reply,
-                              replyIndex
-                            ) => (
-                              <div
-                                className="review-reply"
-                                key={
-                                  replyIndex
-                                }
-                              >
-                                <b>
-                                  Restaurant
-                                  Reply
-                                </b>
-
-                                <p>
-                                  {reply.text ||
-                                    reply.reply ||
-                                    ""}
-                                </p>
-                              </div>
-                            )
-                          )}
-
-                        </div>
-                      )}
-
-                  </div>
-                );
-              }
-            )}
-
-          </div>
-        )}
-
-        {visibleReviews.length > 6 && (
-          <div className="center">
-
-            <button
-              type="button"
-              className="secondary-btn"
-              onClick={() =>
-                setShowAllReviews(
-                  (value) => !value
-                )
-              }
-            >
-              {showAllReviews
-                ? "Show Less"
-                : t.reviewButton}
-            </button>
-
-          </div>
-        )}
-
-      </section>
-
-      {/* ================= CONTACT ================= */}
-
-      <section
-        id="contact"
-        className="section contact-section"
-      >
-
-        <div className="contact-content">
-
-          <p className="eyebrow">
-            NABABI RISTORANTE
-          </p>
-
-          <h2>
-            {contactSettings.contactTitle ||
-              t.contactTitle}
-          </h2>
-
-          <p>
-            {contactSettings.contactText ||
-              t.contactText}
-          </p>
-
-          <div className="contact-list">
-
-            <a
-              href={mapsUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              📍{" "}
-              <span>
-                {address}
-              </span>
-            </a>
-
-            <a
-              href={`tel:${phone.replace(
-                /\s/g,
-                ""
-              )}`}
-            >
-              ☎{" "}
-              <span>
-                {phone}
-              </span>
-            </a>
-
-            {email && (
-              <a
-                href={`mailto:${email}`}
-              >
-                ✉{" "}
-                <span>
-                  {email}
-                </span>
-              </a>
-            )}
-
-            <a
-              href={
-                whatsapp.startsWith(
-                  "http"
-                )
-                  ? whatsapp
-                  : `https://wa.me/${whatsapp.replace(
-                      /\D/g,
-                      ""
-                    )}`
-              }
-              target="_blank"
-              rel="noreferrer"
-            >
-              💬{" "}
-              <span>
-                WhatsApp
-              </span>
-            </a>
-
-          </div>
-
-        </div>
-
-        <div className="map-box">
-
-          <div>
-
-            <span>
-              📍
-            </span>
-
-            <strong>
-              Roma
-            </strong>
-
-            <small>
-              {address}
-            </small>
-
-            <a
-              href={mapsUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Open Google Maps →
-            </a>
-
-          </div>
-
-        </div>
-
-      </section>
-
-      {/* ================= OPENING HOURS ================= */}
-
-      {openingHours.length > 0 && (
-        <section className="opening-section">
-
-          <div className="section-heading">
-
-            <p className="eyebrow">
-              NABABI RISTORANTE
-            </p>
-
-            <h2>
-              {t.openingHours}
-            </h2>
-
-          </div>
-
-          <div className="opening-grid">
-
-            {openingHours.map(
-              (day, index) => {
-
-                const isOpen =
-                  getBoolean(
-                    day,
-                    ["open", "isOpen"],
-                    true
-                  );
-
-                const opening =
-                  getString(
-                    day,
-                    [
-                      "opening",
-                      "openingTime",
-                    ],
-                    ""
-                  );
-
-                const closing =
-                  getString(
-                    day,
-                    [
-                      "closing",
-                      "closingTime",
-                    ],
-                    ""
-                  );
-
-                return (
-                  <div
-                    className="opening-card"
-                    key={
-                      getDayLabel(
-                        day
-                      ) +
-                      "-" +
-                      index
-                    }
-                  >
-
-                    <strong>
-                      {getDayLabel(
-                        day
-                      )}
-                    </strong>
-
-                    {isOpen ? (
-                      <span>
-                        {opening}
-                        {opening &&
-                          closing &&
-                          " — "}
-                        {closing}
-                      </span>
-                    ) : (
-                      <span>
-                        Closed
-                      </span>
-                    )}
-
-                    {day.breakEnabled &&
-                      day.breakStart &&
-                      day.breakEnd && (
-                        <small>
-                          Break{" "}
-                          {
-                            day.breakStart
-                          }{" "}
-                          —{" "}
-                          {
-                            day.breakEnd
-                          }
-                        </small>
-                      )}
-
-                  </div>
-                );
-              }
-            )}
-
-          </div>
-
-        </section>
-      )}
-
-      {/* ================= SOCIAL ================= */}
-
-      {getBoolean(
-        socialSettings,
-        ["visible"],
-        true
-      ) && (
-        <section className="social-section">
-
-          <p className="eyebrow">
-            {t.follow}
-          </p>
-
-          <div className="social-links">
-
-            {socialSettings.facebook && (
-              <a
-                href={
-                  socialSettings.facebook
-                }
-                target="_blank"
-                rel="noreferrer"
-              >
-                Facebook
-              </a>
-            )}
-
-            {socialSettings.instagram && (
-              <a
-                href={
-                  socialSettings.instagram
-                }
-                target="_blank"
-                rel="noreferrer"
-              >
-                Instagram
-              </a>
-            )}
-
-            {socialSettings.tiktok && (
-              <a
-                href={
-                  socialSettings.tiktok
-                }
-                target="_blank"
-                rel="noreferrer"
-              >
-                TikTok
-              </a>
-            )}
-
-            {socialSettings.youtube && (
-              <a
-                href={
-                  socialSettings.youtube
-                }
-                target="_blank"
-                rel="noreferrer"
-              >
-                YouTube
-              </a>
-            )}
-
-            {!socialSettings.facebook &&
-              !socialSettings.instagram &&
-              !socialSettings.tiktok &&
-              !socialSettings.youtube && (
-                <>
-                  <a
-                    href="https://www.facebook.com/"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Facebook
-                  </a>
-
-                  <a
-                    href="https://www.tiktok.com/"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    TikTok
-                  </a>
-                </>
-              )}
-
-          </div>
-
-        </section>
-      )}
-
-      {/* ================= FOOTER ================= */}
-
-      <footer className="footer">
-
-        <div>
-
-          <span className="footer-logo">
-            ♛ NABABI
-          </span>
-
-          <p>
-            RISTORANTE
-          </p>
-
-        </div>
-
-        <p>
-          {t.footer}
-        </p>
-
-        <a href="/admin">
-          Admin Panel
-        </a>
-
-      </footer>
-
-      {/* ================= STYLE ================= */}
-
-      <style jsx>{`
-
+      <style jsx global>{`
         * {
           box-sizing: border-box;
         }
@@ -2745,1291 +712,2257 @@ export default function Home() {
           scroll-behavior: smooth;
         }
 
+        body {
+          margin: 0;
+          background: #02090a;
+          color: #f7f0df;
+          font-family: Georgia, "Times New Roman", serif;
+        }
+
+        button,
+        input,
+        select,
+        textarea {
+          font: inherit;
+        }
+
+        button {
+          cursor: pointer;
+        }
+
+        a {
+          color: inherit;
+          text-decoration: none;
+        }
+
         .site {
           min-height: 100vh;
           background:
             radial-gradient(
-              circle at 15% 10%,
-              rgba(184, 145, 72, 0.12),
-              transparent 30%
+              circle at 50% 0%,
+              rgba(217, 164, 65, 0.08),
+              transparent 35%
             ),
-            radial-gradient(
-              circle at 85% 35%,
-              rgba(184, 145, 72, 0.09),
-              transparent 28%
-            ),
-            #100d0c;
-          color: #f5eddc;
-          font-family:
-            Georgia,
-            "Times New Roman",
-            serif;
+            #02090a;
+          overflow-x: hidden;
+        }
+
+        .gold {
+          color: ${GOLD_LIGHT};
         }
 
         .header {
           position: sticky;
           top: 0;
-          z-index: 50;
-          min-height: 82px;
-          padding: 14px 5%;
+          z-index: 100;
+          height: 62px;
           display: flex;
           align-items: center;
           justify-content: space-between;
           gap: 20px;
-          background:
-            rgba(16, 13, 12, 0.94);
-          border-bottom:
-            1px solid
-            rgba(202, 164, 83, 0.3);
-          backdrop-filter: blur(14px);
+          padding: 0 30px;
+          background: rgba(1, 7, 8, 0.96);
+          border-bottom: 1px solid ${GOLD};
+          backdrop-filter: blur(15px);
         }
 
-        .logo {
+        .brand {
           display: flex;
           align-items: center;
           gap: 10px;
-          color: #ead49a;
-          text-decoration: none;
-          min-width: 180px;
+          min-width: 210px;
         }
 
-        .logo-crown {
-          font-size: 35px;
-          color: #c9a55a;
+        .brandMark {
+          color: ${GOLD_LIGHT};
+          font-size: 37px;
+          line-height: 1;
         }
 
-        .logo strong {
-          display: block;
+        .brandText {
+          font-size: 25px;
+          font-weight: 700;
           letter-spacing: 4px;
-          font-size: 20px;
+          color: ${GOLD_LIGHT};
+          line-height: 0.9;
         }
 
-        .logo small {
+        .brandSub {
           display: block;
-          letter-spacing: 3px;
+          margin-top: 5px;
           font-size: 9px;
-          color: #c8b99b;
+          letter-spacing: 4px;
+          color: ${GOLD};
         }
 
         .nav {
           display: flex;
           align-items: center;
-          gap: 22px;
+          gap: 25px;
+          font-size: 14px;
+          white-space: nowrap;
         }
 
-        .nav a,
-        .footer a {
-          color: #eee2ca;
-          text-decoration: none;
-          font-size: 13px;
-          transition: 0.25s;
+        .nav a:hover {
+          color: ${GOLD_LIGHT};
         }
 
-        .nav a:hover,
-        .footer a:hover {
-          color: #d9b86b;
+        .navActive {
+          color: ${GOLD_LIGHT};
+          border-bottom: 2px solid ${GOLD_LIGHT};
+          padding-bottom: 8px;
         }
 
-        .header-actions {
+        .headerActions {
           display: flex;
           align-items: center;
-          gap: 9px;
+          gap: 10px;
+          min-width: 280px;
+          justify-content: flex-end;
         }
 
-        .order-btn,
-        .admin-btn,
-        .primary-btn,
-        .secondary-btn {
-          text-decoration: none;
-          border-radius: 30px;
-          padding: 11px 17px;
-          font-size: 12px;
+        .langButton,
+        .adminButton {
+          border: 1px solid ${GOLD};
+          color: #fff;
+          background: transparent;
+          border-radius: 25px;
+          padding: 8px 13px;
+        }
+
+        .adminButton {
+          color: ${GOLD_LIGHT};
           font-weight: 700;
-          cursor: pointer;
-          border: 1px solid #c9a55a;
-          transition: 0.25s;
         }
 
-        .order-btn,
-        .primary-btn {
-          color: #17110c;
+        .loginLink {
+          color: #fff;
+          font-size: 14px;
+        }
+
+        .hero {
+          min-height: 350px;
+          position: relative;
+          display: grid;
+          grid-template-columns: 30% 40% 30%;
+          align-items: center;
+          border-bottom: 1px solid ${GOLD};
           background:
             linear-gradient(
-              135deg,
-              #f0dfa7,
-              #b99045
+              90deg,
+              rgba(0, 0, 0, 0.7),
+              rgba(0, 0, 0, 0.2),
+              rgba(0, 0, 0, 0.2)
+            ),
+            url("${heroImage}") center / cover no-repeat;
+        }
+
+        .heroOverlay {
+          position: absolute;
+          inset: 0;
+          background:
+            linear-gradient(
+              90deg,
+              rgba(0, 0, 0, 0.75),
+              rgba(0, 0, 0, 0.2) 55%,
+              rgba(0, 0, 0, 0.15)
             );
         }
 
-        .admin-btn,
-        .secondary-btn {
-          color: #f2dfb0;
-          background: transparent;
+        .heroLeft,
+        .heroCenter,
+        .heroRight {
+          position: relative;
+          z-index: 2;
         }
 
-        .order-btn:hover,
-        .primary-btn:hover,
-        .admin-btn:hover,
-        .secondary-btn:hover {
-          transform: translateY(-2px);
-          box-shadow:
-            0 8px 25px
-            rgba(201, 165, 90, 0.2);
+        .heroLeft {
+          padding: 25px;
+          align-self: end;
+          padding-bottom: 25px;
         }
 
-        .language {
-          color: #ead9b0;
-          background: #211a17;
-          border: 1px solid #6e5933;
-          border-radius: 20px;
-          padding: 9px 10px;
+        .heroCenter {
+          text-align: center;
         }
 
-        .breaking-news {
-          position: fixed;
-          z-index: 100;
-          left: 24px;
-          top: 105px;
-          width: min(410px, calc(100vw - 48px));
-          display: flex;
-          align-items: stretch;
-          overflow: hidden;
-          border:
-            1px solid
-            rgba(226, 181, 79, 0.75);
-          border-radius: 10px;
-          background:
-            rgba(25, 14, 10, 0.96);
-          box-shadow:
-            0 18px 50px
-            rgba(0, 0, 0, 0.45);
-          backdrop-filter: blur(14px);
+        .heroRight {
+          height: 100%;
         }
 
-        .breaking-label {
+        .breaking {
+          position: absolute;
+          top: 17px;
+          left: 20px;
+          width: 222px;
+          padding: 8px;
+          background: rgba(2, 9, 10, 0.92);
+          border: 1px solid #b9c2c4;
+          border-radius: 8px;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .breakingHeader {
           display: flex;
           align-items: center;
-          padding: 10px;
-          background: #9e281e;
-          color: #fff2d0;
-          font-size: 9px;
-          font-weight: 800;
+          justify-content: space-between;
+          margin-bottom: 7px;
+        }
+
+        .breakingTitle {
+          background: #ff2424;
+          color: #fff;
+          font-weight: 700;
+          padding: 4px 9px;
+          border-radius: 5px;
+          font-size: 13px;
+        }
+
+        .breakingClose {
+          color: #fff;
+          background: transparent;
+          border: 0;
+          font-size: 21px;
+        }
+
+        .breakingImage {
+          width: 100%;
+          height: 86px;
+          object-fit: cover;
+          border-radius: 5px;
+        }
+
+        .breakingText {
+          margin: 5px 0 2px;
+          font-size: 12px;
+          font-weight: 700;
+        }
+
+        .breakingTime {
+          color: ${GOLD_LIGHT};
+          font-size: 11px;
+        }
+
+        .heroContact {
+          margin-top: 130px;
+          display: grid;
+          gap: 15px;
+          font-size: 14px;
+        }
+
+        .heroCenterSmall {
+          color: ${GOLD_LIGHT};
+          font-size: 16px;
           letter-spacing: 1px;
         }
 
-        .breaking-text {
+        .heroTitle {
+          margin: 8px 0;
+          font-size: clamp(40px, 5vw, 66px);
+          color: ${GOLD_LIGHT};
+          text-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+        }
+
+        .heroSubtitle {
+          font-size: 21px;
+          font-style: italic;
+          color: #fff;
+        }
+
+        .heroLine {
+          width: 230px;
+          height: 1px;
+          margin: 23px auto;
+          background: ${GOLD};
+          position: relative;
+        }
+
+        .heroLine::after {
+          content: "❧";
+          position: absolute;
+          left: 50%;
+          top: -17px;
+          transform: translateX(-50%);
+          color: ${GOLD_LIGHT};
+          font-size: 25px;
+        }
+
+        .heroDescription {
+          max-width: 430px;
+          margin: 0 auto 18px;
+          line-height: 1.5;
+        }
+
+        .goldButton {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          border: 1px solid ${GOLD_LIGHT};
+          background: linear-gradient(135deg, #211700, #6e4b08);
+          color: #fff4d5;
+          padding: 11px 24px;
+          border-radius: 24px;
+          font-weight: 700;
+          transition: 0.2s ease;
+        }
+
+        .goldButton:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 0 18px rgba(217, 164, 65, 0.25);
+        }
+
+        .highlights {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          border-bottom: 1px solid ${GOLD};
+          background: #021011;
+        }
+
+        .highlight {
+          min-height: 105px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-direction: column;
+          gap: 5px;
+          border-right: 1px solid ${GOLD};
+          text-align: center;
+        }
+
+        .highlight:last-child {
+          border-right: 0;
+        }
+
+        .roundIcon {
+          width: 49px;
+          height: 49px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid ${GOLD};
+          border-radius: 50%;
+          color: ${GOLD_LIGHT};
+          font-size: 25px;
+        }
+
+        .highlight strong {
+          font-size: 15px;
+        }
+
+        .highlight small {
+          opacity: 0.8;
+          font-size: 11px;
+        }
+
+        .aboutSection {
+          display: grid;
+          grid-template-columns: 1.05fr 1.2fr 0.75fr;
+          gap: 28px;
+          padding: 27px 40px;
+          border-bottom: 1px solid ${GOLD};
+          align-items: center;
+        }
+
+        .videoCard {
+          position: relative;
+          min-height: 170px;
+          border: 1px solid ${GOLD};
+          border-radius: 8px;
+          overflow: hidden;
+          background: #071113;
+        }
+
+        .videoImage {
+          width: 100%;
+          height: 170px;
+          object-fit: cover;
+          display: block;
+        }
+
+        .videoPlay {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          border: 1px solid #fff;
+          color: #fff;
+          background: rgba(0, 0, 0, 0.45);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 21px;
+        }
+
+        .videoLabel {
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          padding: 8px;
+          background: linear-gradient(transparent, rgba(0, 0, 0, 0.95));
+          text-align: center;
+          color: #fff;
+        }
+
+        .aboutContent h4 {
+          margin: 0 0 5px;
+          color: ${GOLD};
+          letter-spacing: 1px;
+          font-size: 13px;
+        }
+
+        .aboutContent h2 {
+          margin: 0 0 8px;
+          color: ${GOLD_LIGHT};
+          font-size: 28px;
+        }
+
+        .aboutContent p {
+          line-height: 1.5;
+          font-size: 14px;
+          color: #eee;
+        }
+
+        .reviewMini {
+          border: 1px solid ${GOLD};
+          border-radius: 8px;
+          padding: 18px;
+          min-height: 170px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          background:
+            linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.8)),
+            url("${heroImage}") center / cover;
+        }
+
+        .reviewMiniTitle {
+          font-size: 21px;
+          color: ${GOLD_LIGHT};
+          margin-bottom: 7px;
+        }
+
+        .stars {
+          color: ${GOLD_LIGHT};
+          letter-spacing: 2px;
+          font-size: 18px;
+        }
+
+        .reviewMiniText {
+          font-size: 12px;
+          margin: 7px 0 13px;
+        }
+
+        .menuSection {
+          padding: 12px 40px 25px;
+          border-bottom: 1px solid ${GOLD};
+        }
+
+        .sectionHeader {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 15px;
+          margin-bottom: 14px;
+        }
+
+        .sectionHeader h2 {
+          margin: 0;
+          color: ${GOLD_LIGHT};
+          font-size: 29px;
+        }
+
+        .sectionHeader p {
+          margin: 2px 0 0;
+          font-size: 13px;
+        }
+
+        .categoryRow {
+          display: grid;
+          grid-template-columns: repeat(8, 1fr);
+          gap: 9px;
+        }
+
+        .categoryCard {
+          min-height: 115px;
+          border: 1px solid ${GOLD};
+          border-radius: 7px;
+          background: #041012;
+          overflow: hidden;
+          color: #fff;
+          padding: 0;
+          transition: 0.2s ease;
+        }
+
+        .categoryCard:hover,
+        .categoryCard.active {
+          border-color: ${GOLD_LIGHT};
+          box-shadow: 0 0 16px rgba(217, 164, 65, 0.2);
+          transform: translateY(-2px);
+        }
+
+        .categoryImage {
+          width: 100%;
+          height: 80px;
+          object-fit: cover;
+          display: block;
+        }
+
+        .categoryName {
+          padding: 7px 3px;
+          font-size: 13px;
+        }
+
+        .menuItems {
+          margin-top: 18px;
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 13px;
+        }
+
+        .menuItem {
+          border: 1px solid rgba(217, 164, 65, 0.65);
+          border-radius: 8px;
+          overflow: hidden;
+          background: #071214;
+        }
+
+        .menuItem img {
+          width: 100%;
+          height: 120px;
+          object-fit: cover;
+        }
+
+        .menuItemBody {
+          padding: 10px;
+        }
+
+        .menuItemName {
+          color: ${GOLD_LIGHT};
+          font-weight: 700;
+        }
+
+        .menuItemDescription {
+          color: #ddd;
+          font-size: 12px;
+          min-height: 32px;
+          margin: 5px 0;
+        }
+
+        .menuItemPrice {
+          color: #fff;
+          font-weight: 700;
+        }
+
+        .utilityGrid {
+          padding: 17px 36px 20px;
+          display: grid;
+          grid-template-columns: 1.35fr 0.9fr 0.95fr 0.75fr;
+          gap: 10px;
+          border-bottom: 1px solid ${GOLD};
+        }
+
+        .utilityCard {
+          border: 1px solid rgba(217, 164, 65, 0.7);
+          border-radius: 7px;
+          padding: 13px;
+          background:
+            linear-gradient(
+              135deg,
+              rgba(8, 20, 21, 0.98),
+              rgba(1, 10, 11, 0.98)
+            );
+          min-width: 0;
+        }
+
+        .utilityTitle {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: ${GOLD_LIGHT};
+          font-size: 17px;
+          font-weight: 700;
+        }
+
+        .utilitySub {
+          font-size: 10px;
+          opacity: 0.8;
+          margin: 2px 0 12px 31px;
+        }
+
+        .formGrid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 7px;
+        }
+
+        .field {
+          display: grid;
+          gap: 4px;
+          font-size: 11px;
+        }
+
+        .field.full {
+          grid-column: 1 / -1;
+        }
+
+        .field input,
+        .field select,
+        .field textarea,
+        .reviewForm input,
+        .reviewForm textarea,
+        .reportForm input,
+        .reportForm textarea,
+        .trackInput {
+          width: 100%;
+          border: 1px solid #1c566c;
+          border-radius: 5px;
+          background: #052535;
+          color: #fff;
+          padding: 9px 10px;
+          outline: none;
+        }
+
+        .field textarea,
+        .reviewForm textarea,
+        .reportForm textarea {
+          min-height: 55px;
+          resize: vertical;
+        }
+
+        .field input:focus,
+        .field select:focus,
+        .field textarea:focus,
+        .reviewForm input:focus,
+        .reviewForm textarea:focus,
+        .reportForm input:focus,
+        .reportForm textarea:focus,
+        .trackInput:focus {
+          border-color: ${GOLD_LIGHT};
+        }
+
+        .formButtons {
+          display: flex;
+          gap: 8px;
+          margin-top: 9px;
+        }
+
+        .dangerButton,
+        .blueButton,
+        .smallButton {
+          border-radius: 5px;
+          padding: 9px 13px;
+          background: transparent;
+          color: #fff;
+          border: 1px solid ${GOLD};
+        }
+
+        .dangerButton {
+          border-color: red;
+          color: #ff6d6d;
+        }
+
+        .blueButton {
+          border-color: #00a6e8;
+          color: #54c9ff;
+        }
+
+        .trackButtons {
+          display: flex;
+          gap: 7px;
+          margin-bottom: 10px;
+        }
+
+        .trackButtons button {
           flex: 1;
-          padding: 10px 12px;
-          color: #f1dfb1;
+        }
+
+        .otpButton {
+          width: 100%;
+          margin-top: 10px;
+          border: 0;
+          border-radius: 5px;
+          padding: 10px;
+          background: linear-gradient(135deg, #f7d36b, #d79b28);
+          color: #16100a;
+          font-weight: 700;
+        }
+
+        .bookingCodeBox {
+          border: 1px solid rgba(217, 164, 65, 0.35);
+          border-radius: 6px;
+          padding: 10px;
+          background: rgba(0, 0, 0, 0.3);
+          margin-bottom: 10px;
+        }
+
+        .code {
+          color: ${GOLD_LIGHT};
+          font-size: 18px;
+          font-weight: 700;
+        }
+
+        .detailRows {
+          display: grid;
+          gap: 5px;
+          font-size: 11px;
+        }
+
+        .detailRow {
+          display: grid;
+          grid-template-columns: 72px 1fr;
+        }
+
+        .status {
+          display: inline-block;
+          width: fit-content;
+          background: #07862d;
+          color: #fff;
+          padding: 2px 7px;
+          border-radius: 4px;
+        }
+
+        .galleryPreview {
+          width: 100%;
+          height: 100px;
+          object-fit: cover;
+          border-radius: 5px;
+          margin: 5px 0 10px;
+        }
+
+        .utilityStack {
+          display: grid;
+          gap: 10px;
+        }
+
+        .miniAction {
+          min-height: 118px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+        }
+
+        .footer {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 0;
+          border-bottom: 1px solid ${GOLD};
+        }
+
+        .footerCol {
+          padding: 18px 35px;
+          border-right: 1px solid rgba(217, 164, 65, 0.75);
+          min-height: 135px;
+        }
+
+        .footerCol:last-child {
+          border-right: 0;
+        }
+
+        .footerTitle {
+          color: ${GOLD_LIGHT};
+          font-size: 16px;
+          font-weight: 700;
+          margin-bottom: 7px;
+        }
+
+        .footerLine {
+          display: flex;
+          gap: 8px;
+          margin: 6px 0;
+          font-size: 12px;
+        }
+
+        .footerLink:hover {
+          color: ${GOLD_LIGHT};
+        }
+
+        .copyright {
+          display: flex;
+          justify-content: space-between;
+          gap: 15px;
+          padding: 11px 40px;
+          font-size: 11px;
+        }
+
+        .modalBackdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 500;
+          background: rgba(0, 0, 0, 0.78);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+          overflow-y: auto;
+        }
+
+        .modal {
+          width: min(1100px, 100%);
+          max-height: 90vh;
+          overflow-y: auto;
+          border: 1px solid ${GOLD};
+          border-radius: 10px;
+          background:
+            radial-gradient(
+              circle at top,
+              rgba(217, 164, 65, 0.1),
+              transparent 35%
+            ),
+            #031011;
+          box-shadow: 0 25px 80px rgba(0, 0, 0, 0.8);
+          padding: 20px;
+        }
+
+        .modalHeader {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 15px;
+          border-bottom: 1px solid rgba(217, 164, 65, 0.5);
+          padding-bottom: 12px;
+          margin-bottom: 15px;
+        }
+
+        .modalHeader h2 {
+          margin: 0;
+          color: ${GOLD_LIGHT};
+        }
+
+        .closeButton {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          border: 1px solid ${GOLD};
+          background: transparent;
+          color: #fff;
+        }
+
+        .reviewLayout {
+          display: grid;
+          grid-template-columns: 0.8fr 1.4fr 0.8fr;
+          gap: 12px;
+        }
+
+        .reviewForm,
+        .reportForm,
+        .reviewList {
+          border: 1px solid rgba(217, 164, 65, 0.7);
+          border-radius: 7px;
+          padding: 14px;
+          background: #061315;
+        }
+
+        .reviewForm h3,
+        .reportForm h3,
+        .reviewList h3 {
+          color: ${GOLD_LIGHT};
+          margin: 0 0 10px;
+        }
+
+        .reviewForm {
+          display: grid;
+          gap: 8px;
+        }
+
+        .ratingButtons {
+          display: flex;
+          gap: 4px;
+        }
+
+        .starButton {
+          border: 0;
+          background: transparent;
+          color: #444;
+          font-size: 22px;
+          padding: 0;
+        }
+
+        .starButton.active {
+          color: ${GOLD_LIGHT};
+        }
+
+        .reviewItem {
+          border-bottom: 1px solid rgba(217, 164, 65, 0.2);
+          padding: 10px 0;
+        }
+
+        .reviewItem:last-child {
+          border-bottom: 0;
+        }
+
+        .reviewTop {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+        }
+
+        .reviewName {
+          color: #fff;
+          font-weight: 700;
+        }
+
+        .reviewDate {
+          color: #999;
+          font-size: 10px;
+        }
+
+        .reviewText {
+          margin: 5px 0;
+          color: #ddd;
           font-size: 12px;
           line-height: 1.5;
         }
 
-        .breaking-news button {
-          width: 34px;
-          border: 0;
-          background: transparent;
-          color: #d5c4a0;
-          font-size: 22px;
-          cursor: pointer;
-        }
-
-        .hero {
-          min-height: 680px;
-          padding: 90px 8%;
-          display: grid;
-          grid-template-columns: 1.1fr 0.9fr;
-          align-items: center;
-          gap: 50px;
-        }
-
-        .eyebrow {
-          color: #d2b267;
-          font-size: 11px;
-          font-weight: 800;
-          letter-spacing: 3px;
-          text-transform: uppercase;
-          margin-bottom: 15px;
-        }
-
-        .hero h1 {
-          margin: 0;
-          max-width: 700px;
-          font-size:
-            clamp(55px, 7vw, 92px);
-          line-height: 0.95;
-          color: #f0e1b1;
-          font-weight: 500;
-        }
-
-        .hero-text {
-          max-width: 570px;
-          color: #cbbda5;
-          line-height: 1.8;
-          margin: 28px 0;
-        }
-
-        .hero-buttons {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 12px;
-          margin-bottom: 42px;
-        }
-
-        .quick-info {
-          display: grid;
-          grid-template-columns:
-            repeat(3, 1fr);
-          border-top:
-            1px solid
-            rgba(207, 172, 94, 0.3);
-          padding-top: 22px;
-          gap: 18px;
-        }
-
-        .quick-info div {
-          display: grid;
-          grid-template-columns:
-            25px 1fr;
-          column-gap: 5px;
-        }
-
-        .quick-info span {
-          grid-row: span 2;
-          font-size: 18px;
-        }
-
-        .quick-info small {
-          color: #ad9b7d;
-          font-size: 9px;
-          text-transform: uppercase;
-        }
-
-        .quick-info strong {
-          font-size: 10px;
-          color: #e4d7bb;
-        }
-
-        .hero-art {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .royal-circle {
-          width:
-            min(390px, 80vw);
-          aspect-ratio: 1;
-          border-radius: 50%;
-          display: grid;
-          place-items: center;
-          border: 2px solid #aa8140;
-          box-shadow:
-            0 0 0 16px
-              rgba(172, 130, 64, 0.08),
-            0 0 0 32px
-              rgba(172, 130, 64, 0.04);
-          background:
-            radial-gradient(
-              circle,
-              #5d392d 0%,
-              #211817 47%,
-              #100d0c 70%
-            );
-          background-repeat: no-repeat;
-        }
-
-        .food-circle {
-          width: 52%;
-          aspect-ratio: 1;
-          border-radius: 50%;
-          display: grid;
-          place-items: center;
-          font-size:
-            clamp(70px, 9vw, 125px);
-          background:
-            radial-gradient(
-              circle,
-              #d99d51,
-              #7c4a31
-            );
-          border: 12px solid #5c3930;
-          box-shadow:
-            0 15px 35px
-            rgba(0, 0, 0, 0.45);
-        }
-
-        .hero-art-buttons {
-          display: flex;
-          gap: 12px;
-          margin-top: 30px;
-          align-items: center;
-          flex-wrap: wrap;
-          justify-content: center;
-        }
-
-        .hero-art-buttons button,
-        .hero-art-buttons a {
-          color: #e9d9b4;
-          background: transparent;
-          border: 1px solid #9c7a43;
-          padding: 10px 15px;
-          border-radius: 25px;
-          text-decoration: none;
-          font-size: 12px;
-          cursor: pointer;
-        }
-
-        .image-ready {
-          color: #d9bc77;
-          font-size: 10px;
-          border: 1px solid #6e5933;
-          padding: 8px 10px;
-          border-radius: 20px;
-        }
-
-        .section {
-          padding: 100px 8%;
-          border-top:
-            1px solid
-            rgba(203, 163, 78, 0.13);
-        }
-
-        .section-heading {
-          max-width: 700px;
-          margin: 0 auto 50px;
-          text-align: center;
-        }
-
-        .section-heading h2,
-        .about-content h2,
-        .contact-content h2,
-        .booking-manager h2 {
-          font-size:
-            clamp(38px, 5vw, 60px);
-          line-height: 1;
-          font-weight: 500;
-          color: #eddcae;
-          margin: 0 0 18px;
-        }
-
-        .section-heading > p:last-child,
-        .about-content > p,
-        .contact-content > p {
-          color: #bfb29c;
-          line-height: 1.8;
-        }
-
-        .category-grid {
-          display: grid;
-          grid-template-columns:
-            repeat(5, 1fr);
-          gap: 16px;
-        }
-
-        .category-card {
-          min-height: 220px;
-          padding: 22px 14px;
-          color: #f2e6cd;
-          background:
-            linear-gradient(
-              145deg,
-              rgba(74, 48, 39, 0.8),
-              rgba(28, 21, 18, 0.95)
-            );
-          border:
-            1px solid
-            rgba(194, 154, 77, 0.35);
-          border-radius: 16px;
-          cursor: pointer;
-          transition: 0.3s;
-        }
-
-        .category-card:hover,
-        .category-active {
-          transform: translateY(-8px);
-          border-color: #d2ac5f;
-          box-shadow:
-            0 15px 35px
-            rgba(0, 0, 0, 0.3);
-        }
-
-        .category-image {
-          width: 85px;
-          height: 85px;
-          margin: 0 auto 18px;
-          border-radius: 50%;
-          display: grid;
-          place-items: center;
-          font-size: 42px;
-          background: #35221c;
-          border: 1px solid #94703c;
-        }
-
-        .category-card h3 {
-          margin: 0 0 7px;
-          color: #ead6a4;
-        }
-
-        .category-card p {
-          margin: 0 0 13px;
-          color: #aa9c85;
-          font-size: 12px;
-        }
-
-        .category-card span {
-          color: #cfae65;
+        .reply {
+          margin-left: 20px;
+          padding: 7px 10px;
+          border-left: 2px solid ${GOLD};
+          color: #cfcfcf;
           font-size: 11px;
         }
 
-        .menu-result {
-          margin-top: 35px;
-          padding: 28px;
-          border:
-            1px solid
-            rgba(194, 154, 77, 0.32);
-          border-radius: 18px;
-          background:
-            rgba(28, 21, 18, 0.7);
-        }
-
-        .menu-result-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 20px;
-          margin-bottom: 25px;
-        }
-
-        .menu-result-header h3 {
-          margin: 0;
-          color: #ead6a4;
-          font-size: 30px;
-          font-weight: 500;
-        }
-
-        .menu-result-header > span {
-          color: #cda961;
-          font-size: 12px;
-        }
-
-        .menu-items-grid {
+        .galleryGrid {
           display: grid;
-          grid-template-columns:
-            repeat(2, 1fr);
-          gap: 16px;
-        }
-
-        .menu-item-card {
-          display: grid;
-          grid-template-columns: 105px 1fr;
-          gap: 16px;
-          padding: 14px;
-          border:
-            1px solid
-            rgba(194, 154, 77, 0.22);
-          border-radius: 14px;
-          background: #17110f;
-        }
-
-        .menu-item-image {
-          width: 105px;
-          height: 105px;
-          border-radius: 12px;
-          overflow: hidden;
-          display: grid;
-          place-items: center;
-          background:
-            linear-gradient(
-              145deg,
-              #5a3a2d,
-              #1e1714
-            );
-          font-size: 42px;
-        }
-
-        .menu-item-image img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-
-        .menu-item-content {
-          min-width: 0;
-        }
-
-        .menu-item-top {
-          display: flex;
-          justify-content: space-between;
-          gap: 12px;
-        }
-
-        .menu-item-top h4 {
-          margin: 0;
-          color: #ead6a4;
-          font-size: 18px;
-        }
-
-        .menu-item-top strong {
-          color: #d9b86b;
-          white-space: nowrap;
-        }
-
-        .menu-item-content p {
-          color: #a99b84;
-          font-size: 12px;
-          line-height: 1.6;
-        }
-
-        .empty-menu,
-        .gallery-empty,
-        .reviews-empty {
-          padding: 35px;
-          text-align: center;
-          border:
-            1px dashed
-            rgba(194, 154, 77, 0.35);
-          border-radius: 14px;
-          color: #a99b84;
-        }
-
-        .about-section {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          align-items: center;
-          gap: 70px;
-          background:
-            rgba(52, 34, 28, 0.2);
-        }
-
-        .about-image {
-          min-height: 480px;
-          position: relative;
-          display: grid;
-          place-items: center;
-          border-radius: 25px;
-          border:
-            1px solid
-            rgba(201, 165, 90, 0.4);
-          background:
-            radial-gradient(
-              circle at center,
-              #744b38,
-              #241815 65%
-            );
-          background-repeat: no-repeat;
-          overflow: hidden;
-        }
-
-        .about-placeholder {
-          width: 230px;
-          height: 230px;
-          border-radius: 50%;
-          border: 2px solid #c6a15a;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          color: #ead59d;
-          background: #211614;
-          box-shadow:
-            0 0 0 20px
-            rgba(198, 161, 90, 0.05);
-        }
-
-        .about-placeholder span {
-          font-size: 50px;
-        }
-
-        .about-placeholder strong {
-          letter-spacing: 4px;
-          font-size: 22px;
-        }
-
-        .about-placeholder small {
-          letter-spacing: 3px;
-        }
-
-        .about-video-link {
-          position: absolute;
-          bottom: 20px;
-          left: 20px;
-          color: #f3dfaa;
-          text-decoration: none;
-          padding: 10px 14px;
-          border-radius: 20px;
-          border: 1px solid #c6a15a;
-          background: rgba(20, 12, 9, 0.85);
-        }
-
-        .about-content .primary-btn {
-          display: inline-block;
-          margin-top: 20px;
-        }
-
-        .gallery-grid {
-          display: grid;
-          grid-template-columns:
-            repeat(4, 1fr);
-          grid-auto-rows: 190px;
-          gap: 15px;
-        }
-
-        .gallery-card {
-          overflow: hidden;
-          display: grid;
-          place-items: center;
-          border-radius: 15px;
-          border:
-            1px solid
-            rgba(198, 161, 90, 0.35);
-          background:
-            linear-gradient(
-              145deg,
-              #5a3a2d,
-              #1e1714
-            );
-          transition: 0.3s;
-        }
-
-        .gallery-card:hover {
-          transform: scale(1.02);
-          border-color: #d5b36c;
-        }
-
-        .gallery-card.large {
-          grid-column: span 2;
-        }
-
-        .gallery-card img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-
-        .booking-section {
-          background:
-            radial-gradient(
-              circle at center,
-              rgba(116, 75, 56, 0.25),
-              transparent 50%
-            );
-        }
-
-        .booking-form {
-          max-width: 950px;
-          margin: auto;
-          padding: 35px;
-          border-radius: 20px;
-          border:
-            1px solid
-            rgba(199, 163, 88, 0.4);
-          background:
-            rgba(35, 25, 21, 0.9);
-        }
-
-        .form-grid {
-          display: grid;
-          grid-template-columns:
-            repeat(2, 1fr);
-          gap: 18px;
-          margin-bottom: 18px;
-        }
-
-        .booking-form label {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          color: #d6c59f;
-          font-size: 12px;
-        }
-
-        .booking-form input,
-        .booking-form select,
-        .booking-form textarea,
-        .booking-search input {
-          width: 100%;
-          padding: 13px;
-          color: #f1e4ca;
-          background: #15100e;
-          border: 1px solid #604b2d;
-          border-radius: 9px;
-          outline: none;
-        }
-
-        .booking-form input:focus,
-        .booking-form select:focus,
-        .booking-form textarea:focus,
-        .booking-search input:focus {
-          border-color: #cba65d;
-        }
-
-        .submit-btn {
-          margin-top: 20px;
-          border: 0;
-        }
-
-        .booking-success {
-          margin-top: 20px;
-          padding: 15px 18px;
-          border:
-            1px solid
-            #806331;
-          border-radius: 10px;
-          background:
-            rgba(74, 48, 39, 0.45);
-          color: #e5cd91;
-          text-align: center;
-          line-height: 1.6;
-        }
-
-        .manage-booking-wrap {
-          text-align: center;
-          margin-top: 28px;
-        }
-
-        .manage-booking-button {
-          padding: 13px 25px;
-        }
-
-        .modal-backdrop {
-          position: fixed;
-          inset: 0;
-          z-index: 200;
-          padding: 20px;
-          display: grid;
-          place-items: center;
-          background:
-            rgba(0, 0, 0, 0.78);
-          backdrop-filter: blur(8px);
-        }
-
-        .booking-manager {
-          position: relative;
-          width: min(620px, 100%);
-          max-height: 90vh;
-          overflow-y: auto;
-          padding: 35px;
-          border-radius: 20px;
-          border:
-            1px solid
-            rgba(202, 164, 83, 0.55);
-          background:
-            #17100d;
-          box-shadow:
-            0 30px 90px
-            rgba(0, 0, 0, 0.65);
-        }
-
-        .booking-manager h2 {
-          font-size: 42px;
-        }
-
-        .booking-manager > p {
-          color: #a99b84;
-          line-height: 1.6;
-        }
-
-        .modal-close {
-          position: absolute;
-          top: 14px;
-          right: 16px;
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          border: 1px solid #765b32;
-          background: transparent;
-          color: #e4d2a7;
-          font-size: 24px;
-          cursor: pointer;
-        }
-
-        .booking-search {
-          display: grid;
-          grid-template-columns: 1fr auto;
+          grid-template-columns: repeat(4, 1fr);
           gap: 10px;
-          margin-top: 25px;
         }
 
-        .manager-message {
-          margin-top: 15px;
-          padding: 12px;
-          border-radius: 9px;
-          border: 1px solid #68432e;
-          color: #d8b776;
-          background:
-            rgba(70, 40, 28, 0.35);
+        .galleryGrid img {
+          width: 100%;
+          height: 180px;
+          object-fit: cover;
+          border-radius: 6px;
+          border: 1px solid rgba(217, 164, 65, 0.6);
         }
 
-        .found-booking {
-          display: grid;
-          gap: 13px;
-          margin-top: 22px;
-          padding: 20px;
-          border:
-            1px solid
-            rgba(194, 154, 77, 0.3);
-          border-radius: 14px;
-          background: #211613;
-        }
-
-        .found-booking > div:not(.manager-actions) {
-          display: flex;
-          justify-content: space-between;
-          gap: 20px;
-          border-bottom:
-            1px solid
-            rgba(194, 154, 77, 0.1);
-          padding-bottom: 10px;
-        }
-
-        .found-booking span {
-          color: #998a72;
-          font-size: 12px;
-        }
-
-        .found-booking strong {
-          color: #e8d7ad;
-          text-align: right;
-        }
-
-        .manager-actions {
-          display: flex;
-          gap: 10px;
-          padding-top: 10px;
-        }
-
-        .danger-btn {
-          border: 1px solid #8e3e35;
-          background: transparent;
-          color: #e7a39b;
-          border-radius: 30px;
-          padding: 11px 17px;
-          cursor: pointer;
-        }
-
-        .danger-btn:disabled,
-        .secondary-btn:disabled {
-          opacity: 0.45;
-          cursor: not-allowed;
-        }
-
-        .reviews-section {
-          background:
-            rgba(48, 31, 25, 0.2);
-        }
-
-        .reviews-grid {
-          display: grid;
-          grid-template-columns:
-            repeat(3, 1fr);
-          gap: 20px;
-          max-width: 1050px;
-          margin: auto;
-        }
-
-        .review-card {
-          padding: 30px;
-          border-radius: 17px;
-          border:
-            1px solid
-            rgba(195, 158, 83, 0.3);
-          background: #1c1512;
-        }
-
-        .stars {
-          color: #d7b15f;
-          letter-spacing: 3px;
-          margin-bottom: 18px;
-        }
-
-        .stars span {
-          color: #6f5c3d;
-        }
-
-        .review-card p {
-          color: #c8bba4;
-          line-height: 1.7;
-        }
-
-        .review-card strong {
-          display: block;
-          color: #ead7a4;
-          margin-top: 20px;
-        }
-
-        .review-card > small {
-          display: block;
-          color: #897b68;
-          margin-top: 5px;
-        }
-
-        .review-replies {
-          margin-top: 18px;
-          padding-left: 14px;
-          border-left:
-            2px solid
-            rgba(202, 164, 83, 0.35);
-        }
-
-        .review-reply {
-          margin-top: 12px;
-        }
-
-        .review-reply b {
-          color: #d6b568;
+        .message {
+          margin-top: 8px;
+          color: ${GOLD_LIGHT};
           font-size: 11px;
         }
 
-        .review-reply p {
-          margin: 5px 0 0;
-          font-size: 12px;
+        .mobileNav {
+          display: none;
         }
 
-        .center {
-          text-align: center;
-          margin-top: 35px;
+        @media (max-width: 1050px) {
+          .header {
+            padding: 0 15px;
+          }
+
+          .nav {
+            gap: 13px;
+          }
+
+          .headerActions {
+            min-width: auto;
+          }
+
+          .aboutSection {
+            grid-template-columns: 1fr 1fr;
+          }
+
+          .reviewMini {
+            grid-column: 1 / -1;
+          }
+
+          .categoryRow {
+            grid-template-columns: repeat(4, 1fr);
+          }
+
+          .utilityGrid {
+            grid-template-columns: 1fr 1fr;
+          }
+
+          .footer {
+            grid-template-columns: 1fr 1fr;
+          }
         }
 
-        .contact-section {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 60px;
-          align-items: center;
-        }
+        @media (max-width: 760px) {
+          .header {
+            height: auto;
+            min-height: 62px;
+            padding: 9px 12px;
+            flex-wrap: wrap;
+          }
 
-        .contact-list {
-          display: grid;
-          gap: 13px;
-          margin-top: 25px;
-        }
+          .brand {
+            min-width: auto;
+          }
 
-        .contact-list a {
-          color: #dfcfaa;
-          text-decoration: none;
-          padding: 16px;
-          border:
-            1px solid
-            rgba(195, 158, 83, 0.2);
-          border-radius: 12px;
-          background:
-            rgba(50, 33, 27, 0.3);
-        }
-
-        .map-box {
-          min-height: 350px;
-          border-radius: 20px;
-          border:
-            1px solid
-            rgba(200, 164, 86, 0.4);
-          display: grid;
-          place-items: center;
-          text-align: center;
-          background:
-            radial-gradient(
-              circle,
-              #503429,
-              #1c1512 65%
-            );
-        }
-
-        .map-box span {
-          display: block;
-          font-size: 50px;
-        }
-
-        .map-box strong {
-          display: block;
-          color: #e6d29b;
-          font-size: 30px;
-          margin: 10px;
-        }
-
-        .map-box small {
-          display: block;
-          color: #ad9c7e;
-        }
-
-        .map-box a {
-          display: inline-block;
-          margin-top: 20px;
-          color: #d5b269;
-        }
-
-        .opening-section {
-          padding: 80px 8%;
-          border-top:
-            1px solid
-            rgba(203, 163, 78, 0.13);
-        }
-
-        .opening-grid {
-          max-width: 1000px;
-          margin: auto;
-          display: grid;
-          grid-template-columns:
-            repeat(4, 1fr);
-          gap: 12px;
-        }
-
-        .opening-card {
-          padding: 18px;
-          border:
-            1px solid
-            rgba(195, 158, 83, 0.25);
-          border-radius: 13px;
-          background: #1c1512;
-        }
-
-        .opening-card strong {
-          display: block;
-          color: #e5d19b;
-          margin-bottom: 8px;
-        }
-
-        .opening-card span {
-          display: block;
-          color: #bdaE95;
-          font-size: 12px;
-        }
-
-        .opening-card small {
-          display: block;
-          color: #8c7e68;
-          margin-top: 5px;
-        }
-
-        .social-section {
-          padding: 55px 8%;
-          text-align: center;
-          border-top:
-            1px solid
-            rgba(203, 163, 78, 0.13);
-        }
-
-        .social-links {
-          display: flex;
-          justify-content: center;
-          gap: 15px;
-          flex-wrap: wrap;
-        }
-
-        .social-links a {
-          color: #e2d1a6;
-          text-decoration: none;
-          padding: 12px 22px;
-          border:
-            1px solid
-            #6c5430;
-          border-radius: 30px;
-        }
-
-        .footer {
-          padding: 35px 8%;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 20px;
-          border-top:
-            1px solid
-            rgba(203, 163, 78, 0.2);
-          color: #91836e;
-          font-size: 12px;
-        }
-
-        .footer-logo {
-          color: #dfc27b;
-          letter-spacing: 3px;
-        }
-
-        .footer p {
-          margin: 5px 0 0;
-        }
-
-        @media (max-width: 1200px) {
+          .brandText {
+            font-size: 20px;
+          }
 
           .nav {
             display: none;
           }
 
-          .category-grid {
-            grid-template-columns:
-              repeat(4, 1fr);
-          }
-
-          .opening-grid {
-            grid-template-columns:
-              repeat(3, 1fr);
-          }
-
-        }
-
-        @media (max-width: 950px) {
-
-          .hero {
-            grid-template-columns: 1fr;
-            padding-top: 65px;
-          }
-
-          .about-section,
-          .contact-section {
-            grid-template-columns: 1fr;
-          }
-
-          .category-grid {
-            grid-template-columns:
-              repeat(3, 1fr);
-          }
-
-          .reviews-grid {
-            grid-template-columns:
-              repeat(2, 1fr);
-          }
-
-          .menu-items-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .opening-grid {
-            grid-template-columns:
-              repeat(2, 1fr);
-          }
-
-        }
-
-        @media (max-width: 700px) {
-
-          .header {
-            flex-wrap: wrap;
-          }
-
-          .header-actions {
+          .headerActions {
             margin-left: auto;
           }
 
-          .hero h1 {
-            font-size: 55px;
-          }
-
-          .quick-info {
-            grid-template-columns: 1fr;
-          }
-
-          .category-grid {
-            grid-template-columns:
-              repeat(2, 1fr);
-          }
-
-          .gallery-grid {
-            grid-template-columns:
-              repeat(2, 1fr);
-          }
-
-          .form-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .reviews-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .opening-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .footer {
-            flex-direction: column;
-            text-align: center;
-          }
-
-        }
-
-        @media (max-width: 520px) {
-
-          .header {
-            padding: 12px 4%;
-          }
-
-          .logo {
-            min-width: auto;
-          }
-
-          .logo strong {
-            font-size: 16px;
-          }
-
-          .order-btn {
+          .loginLink {
             display: none;
           }
 
-          .admin-btn {
-            padding: 9px 10px;
-          }
-
-          .hero,
-          .section {
-            padding-left: 5%;
-            padding-right: 5%;
-          }
-
-          .hero h1 {
-            font-size: 46px;
-          }
-
-          .category-grid {
+          .hero {
             grid-template-columns: 1fr;
+            min-height: 600px;
           }
 
-          .gallery-grid {
+          .heroCenter {
+            padding: 120px 20px 30px;
+          }
+
+          .heroLeft {
+            position: absolute;
+            inset: 0;
+            padding: 0;
+          }
+
+          .heroContact {
+            position: absolute;
+            bottom: 25px;
+            left: 20px;
+            margin: 0;
+          }
+
+          .heroRight {
+            display: none;
+          }
+
+          .breaking {
+            width: 205px;
+          }
+
+          .highlights {
+            grid-template-columns: 1fr 1fr;
+          }
+
+          .highlight:nth-child(2) {
+            border-right: 0;
+          }
+
+          .highlight:nth-child(-n + 2) {
+            border-bottom: 1px solid ${GOLD};
+          }
+
+          .aboutSection {
             grid-template-columns: 1fr;
-          }
-
-          .gallery-card.large {
-            grid-column: span 1;
-          }
-
-          .booking-form {
             padding: 20px;
           }
 
-          .booking-search {
+          .reviewMini {
+            grid-column: auto;
+          }
+
+          .menuSection {
+            padding: 15px;
+          }
+
+          .sectionHeader {
+            align-items: flex-start;
+            flex-direction: column;
+          }
+
+          .categoryRow {
+            grid-template-columns: repeat(2, 1fr);
+          }
+
+          .menuItems {
+            grid-template-columns: 1fr 1fr;
+          }
+
+          .utilityGrid {
+            grid-template-columns: 1fr;
+            padding: 15px;
+          }
+
+          .footer {
             grid-template-columns: 1fr;
           }
 
-          .manager-actions {
+          .footerCol {
+            border-right: 0;
+            border-bottom: 1px solid rgba(217, 164, 65, 0.4);
+          }
+
+          .copyright {
             flex-direction: column;
+            padding: 12px 20px;
           }
 
-          .breaking-news {
-            left: 12px;
-            top: 96px;
-            width:
-              calc(100vw - 24px);
+          .reviewLayout {
+            grid-template-columns: 1fr;
           }
 
-          .menu-result {
-            padding: 18px;
+          .galleryGrid {
+            grid-template-columns: 1fr 1fr;
           }
-
-          .menu-item-card {
-            grid-template-columns: 80px 1fr;
-          }
-
-          .menu-item-image {
-            width: 80px;
-            height: 80px;
-          }
-
-          .menu-item-top {
-            flex-direction: column;
-            gap: 5px;
-          }
-
         }
-
       `}</style>
 
+      {/* HEADER */}
+      <header className="header">
+        <a href="#home" className="brand">
+          <span className="brandMark">♛</span>
+
+          <span className="brandText">
+            NABABI
+            <span className="brandSub">RISTORANTE</span>
+          </span>
+        </a>
+
+        <nav className="nav">
+          <a href="#home" className="navActive">
+            {t("home")}
+          </a>
+
+          <a href="#about">{t("about")}</a>
+
+          <a href="#menu">{t("menu")}</a>
+
+          <button
+            onClick={() => setGalleryOpen(true)}
+            style={{
+              background: "transparent",
+              border: 0,
+              color: "inherit",
+            }}
+          >
+            {t("gallery")}
+          </button>
+
+          <button
+            onClick={() => setReviewsOpen(true)}
+            style={{
+              background: "transparent",
+              border: 0,
+              color: "inherit",
+            }}
+          >
+            {t("reviews")}
+          </button>
+
+          <a href="#contact">{t("contact")}</a>
+        </nav>
+
+        <div className="headerActions">
+          <select
+            className="langButton"
+            value={lang}
+            onChange={(e) => {
+              const next = e.target.value as Lang;
+              setLang(next);
+              localStorage.setItem("nababi-language", next);
+            }}
+          >
+            <option value="en">🇬🇧 EN</option>
+            <option value="it">🇮🇹 IT</option>
+            <option value="bn">🇧🇩 BN</option>
+          </select>
+
+          <a className="loginLink" href="/login">
+            👤 {t("login")}
+          </a>
+
+          <button className="adminButton" onClick={openAdmin}>
+            ⚙ {t("admin")}
+          </button>
+        </div>
+      </header>
+
+      {/* HERO */}
+      <section className="hero" id="home">
+        <div className="heroOverlay" />
+
+        <div className="heroLeft">
+          {!newsClosed && breakingNews.length > 0 && (
+            <div className="breaking">
+              <div className="breakingHeader">
+                <span className="breakingTitle">Breaking News</span>
+
+                <button
+                  className="breakingClose"
+                  onClick={() => setNewsClosed(true)}
+                >
+                  ×
+                </button>
+              </div>
+
+              {breakingNews[0]?.image ? (
+                <img
+                  src={breakingNews[0].image}
+                  className="breakingImage"
+                  alt="Breaking News"
+                />
+              ) : (
+                <img
+                  src={heroImage}
+                  className="breakingImage"
+                  alt="Breaking News"
+                />
+              )}
+
+              <div className="breakingText">
+                {breakingNews[0]?.text || "Special Discount on Biryani!"}
+              </div>
+
+              <div className="breakingTime">◷ Live Offer</div>
+            </div>
+          )}
+
+          <div className="heroContact">
+            <div>☎ {phone}</div>
+            <div>📍 {address}</div>
+          </div>
+        </div>
+
+        <div className="heroCenter">
+          <div className="heroCenterSmall">→ {t("welcome")}</div>
+
+          <h1 className="heroTitle">{restaurantName.toUpperCase()}</h1>
+
+          <div className="heroSubtitle">{t("subtitle")}</div>
+
+          <div className="heroLine" />
+
+          <p className="heroDescription">{t("heroText")}</p>
+
+          <a className="goldButton" href="#menu">
+            {t("explore")} →
+          </a>
+        </div>
+
+        <div className="heroRight" />
+      </section>
+
+      {/* HIGHLIGHTS */}
+      <section className="highlights">
+        <div className="highlight">
+          <div className="roundIcon">🍃</div>
+          <strong>{t("fresh")}</strong>
+          <small>{t("freshSub")}</small>
+        </div>
+
+        <div className="highlight">
+          <div className="roundIcon">👨‍🍳</div>
+          <strong>{t("chefs")}</strong>
+          <small>{t("chefsSub")}</small>
+        </div>
+
+        <div className="highlight">
+          <div className="roundIcon">⌂</div>
+          <strong>{t("ambience")}</strong>
+          <small>{t("ambienceSub")}</small>
+        </div>
+
+        <div className="highlight">
+          <div className="roundIcon">⏱</div>
+          <strong>{t("service")}</strong>
+          <small>{t("serviceSub")}</small>
+        </div>
+      </section>
+
+      {/* ABOUT + VIDEO + SMALL REVIEW OPTION */}
+      <section className="aboutSection" id="about">
+        <div className="videoCard">
+          <img
+            className="videoImage"
+            src={aboutImage}
+            alt="Nababi Restaurant"
+          />
+
+          <div className="videoPlay">▶</div>
+
+          <div className="videoLabel">
+            {t("watchVideo")}
+          </div>
+        </div>
+
+        <div className="aboutContent">
+          <h4>{t("aboutUs")}</h4>
+
+          <h2>{home?.welcomeTitle || t("ourStory")}</h2>
+
+          <p>
+            {home?.welcomeText ||
+              "At Nababi Ristorante, we bring the rich culinary traditions of India and Bangladesh to the heart of Rome. Our goal is to serve you the freshest, tastiest and most memorable food with a cozy atmosphere."}
+          </p>
+
+          <a className="goldButton" href="#about">
+            {t("learnMore")} →
+          </a>
+        </div>
+
+        {/* SMALL REVIEW OPTION */}
+        <div className="reviewMini">
+          <div className="reviewMiniTitle">★ {t("smallReviews")}</div>
+
+          <div className="stars">
+            {totalReviews > 0 ? "★★★★★" : "☆☆☆☆☆"}
+          </div>
+
+          <strong>
+            {averageRating}/5
+          </strong>
+
+          <div className="reviewMiniText">
+            {totalReviews > 0
+              ? `Based on ${totalReviews} reviews`
+              : "Share your experience with us"}
+          </div>
+
+          <button
+            className="goldButton"
+            onClick={() => setReviewsOpen(true)}
+          >
+            {t("viewReviews")} →
+          </button>
+        </div>
+      </section>
+
+      {/* MENU */}
+      <section className="menuSection" id="menu">
+        <div className="sectionHeader">
+          <div>
+            <h2>{t("ourMenu")}</h2>
+            <p>{t("chooseCategory")}</p>
+          </div>
+
+          <button
+            className="goldButton"
+            onClick={() => {
+              document
+                .getElementById("menuItems")
+                ?.scrollIntoView({ behavior: "smooth" });
+            }}
+          >
+            🍴 {t("fullMenu")} →
+          </button>
+        </div>
+
+        <div className="categoryRow">
+          {categories.map((category, index) => {
+            const name = String(category);
+
+            const categoryItem = menuItems.find(
+              (item) =>
+                String(item.category || "").toLowerCase() ===
+                name.toLowerCase()
+            );
+
+            const categoryImage =
+              categoryItem?.image ||
+              [
+                "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=600&q=80",
+                "https://images.unsplash.com/photo-1579751626657-72bc17010498?auto=format&fit=crop&w=600&q=80",
+                "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80",
+                "https://images.unsplash.com/photo-1601050690117-94f5f6fa8bd7?auto=format&fit=crop&w=600&q=80",
+              ][index % 4];
+
+            return (
+              <button
+                key={`${name}-${index}`}
+                className={`categoryCard ${
+                  selectedCategory.toLowerCase() === name.toLowerCase()
+                    ? "active"
+                    : ""
+                }`}
+                onClick={() => {
+                  setSelectedCategory(name);
+                  setBookingForm((prev) => ({
+                    ...prev,
+                    category: name,
+                  }));
+                }}
+              >
+                <img
+                  className="categoryImage"
+                  src={categoryImage}
+                  alt={name}
+                />
+
+                <div className="categoryName">
+                  {name} →
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="menuItems" id="menuItems">
+          {displayItems.length > 0 ? (
+            displayItems.map((item, index) => (
+              <div
+                className="menuItem"
+                key={item.id || `${item.name}-${index}`}
+              >
+                {item.image ? (
+                  <img src={item.image} alt={item.name || "Food"} />
+                ) : (
+                  <img src={heroImage} alt={item.name || "Food"} />
+                )}
+
+                <div className="menuItemBody">
+                  <div className="menuItemName">
+                    {item.name || "Menu Item"}
+                  </div>
+
+                  <div className="menuItemDescription">
+                    {item.description || ""}
+                  </div>
+
+                  <div className="menuItemPrice">
+                    {item.price !== undefined && item.price !== ""
+                      ? `${settings?.currency || "€"} ${item.price}`
+                      : ""}
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div
+              style={{
+                gridColumn: "1 / -1",
+                padding: "25px",
+                textAlign: "center",
+                border: `1px solid ${GOLD}`,
+                borderRadius: "8px",
+              }}
+            >
+              {selectedCategory} items will appear here after adding them
+              from Admin Menu.
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* BOOKING / TRACKING / DETAILS / GALLERY */}
+      <section className="utilityGrid" id="booking">
+        {/* BOOKING */}
+        <div className="utilityCard">
+          <div className="utilityTitle">
+            <span>▣</span>
+            {t("tableBooking")}
+          </div>
+
+          <div className="utilitySub">{t("reserve")}</div>
+
+          <form onSubmit={saveReservation}>
+            <div className="formGrid">
+              <label className="field">
+                {t("name")}
+                <input
+                  value={bookingForm.name}
+                  onChange={(e) =>
+                    setBookingForm({
+                      ...bookingForm,
+                      name: e.target.value,
+                    })
+                  }
+                  placeholder="Your name"
+                />
+              </label>
+
+              <label className="field">
+                {t("phone")}
+                <input
+                  value={bookingForm.phone}
+                  onChange={(e) =>
+                    setBookingForm({
+                      ...bookingForm,
+                      phone: e.target.value,
+                    })
+                  }
+                  placeholder="Enter phone number"
+                />
+              </label>
+
+              <label className="field">
+                {t("email")}
+                <input
+                  type="email"
+                  value={bookingForm.email}
+                  onChange={(e) =>
+                    setBookingForm({
+                      ...bookingForm,
+                      email: e.target.value,
+                    })
+                  }
+                  placeholder="Enter email address"
+                />
+              </label>
+
+              <label className="field">
+                {t("date")}
+                <input
+                  type="date"
+                  value={bookingForm.date}
+                  onChange={(e) =>
+                    setBookingForm({
+                      ...bookingForm,
+                      date: e.target.value,
+                    })
+                  }
+                />
+              </label>
+
+              <label className="field">
+                {t("time")}
+                <input
+                  type="time"
+                  value={bookingForm.time}
+                  onChange={(e) =>
+                    setBookingForm({
+                      ...bookingForm,
+                      time: e.target.value,
+                    })
+                  }
+                />
+              </label>
+
+              <label className="field">
+                {t("persons")}
+                <select
+                  value={bookingForm.persons}
+                  onChange={(e) =>
+                    setBookingForm({
+                      ...bookingForm,
+                      persons: e.target.value,
+                    })
+                  }
+                >
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((number) => (
+                    <option key={number} value={number}>
+                      {number}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field">
+                {t("category")}
+                <select
+                  value={bookingForm.category}
+                  onChange={(e) =>
+                    setBookingForm({
+                      ...bookingForm,
+                      category: e.target.value,
+                      item: "",
+                    })
+                  }
+                >
+                  {categories.map((category, index) => (
+                    <option key={`${category}-${index}`} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field">
+                {t("item")}
+                <select
+                  value={bookingForm.item}
+                  onChange={(e) =>
+                    setBookingForm({
+                      ...bookingForm,
+                      item: e.target.value,
+                    })
+                  }
+                >
+                  <option value="">Select item</option>
+
+                  {menuItems
+                    .filter(
+                      (item) =>
+                        String(item.category || "").toLowerCase() ===
+                        bookingForm.category.toLowerCase()
+                    )
+                    .map((item, index) => (
+                      <option
+                        key={item.id || `${item.name}-${index}`}
+                        value={item.name || ""}
+                      >
+                        {item.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+
+              <label className="field full">
+                {t("special")}
+                <textarea
+                  value={bookingForm.note}
+                  onChange={(e) =>
+                    setBookingForm({
+                      ...bookingForm,
+                      note: e.target.value,
+                    })
+                  }
+                  placeholder="Write your request (Optional)"
+                />
+              </label>
+            </div>
+
+            <div className="formButtons">
+              <button className="goldButton" type="submit">
+                {t("confirm")}
+              </button>
+
+              <button
+                className="dangerButton"
+                type="button"
+                onClick={() =>
+                  setBookingForm({
+                    name: "",
+                    phone: "",
+                    email: "",
+                    date: "",
+                    time: "",
+                    persons: "2",
+                    category: "Biryani",
+                    item: "",
+                    note: "",
+                  })
+                }
+              >
+                {t("cancel")}
+              </button>
+            </div>
+
+            {bookingMessage && (
+              <div className="message">{bookingMessage}</div>
+            )}
+          </form>
+        </div>
+
+        {/* TRACK */}
+        <div className="utilityCard">
+          <div className="utilityTitle">
+            <span>⌘</span>
+            {t("track")}
+          </div>
+
+          <div className="utilitySub">{t("trackSub")}</div>
+
+          <form onSubmit={findBooking}>
+            <div className="trackButtons">
+              <button className="smallButton" type="button">
+                ☎ {t("phoneLogin")}
+              </button>
+
+              <button className="smallButton" type="button">
+                ✉ {t("emailLogin")}
+              </button>
+            </div>
+
+            <input
+              className="trackInput"
+              value={trackValue}
+              onChange={(e) => setTrackValue(e.target.value)}
+              placeholder="Phone / Email / Booking Code"
+            />
+
+            <button className="otpButton" type="submit">
+              {t("getOtp")}
+            </button>
+
+            {trackMessage && (
+              <div className="message">{trackMessage}</div>
+            )}
+          </form>
+        </div>
+
+        {/* DETAILS */}
+        <div className="utilityCard">
+          <div className="utilityTitle">
+            <span>▣</span>
+            {t("bookingDetails")}
+          </div>
+
+          <div className="utilitySub">{t("viewEditCancel")}</div>
+
+          {trackedBooking ? (
+            <>
+              <div className="bookingCodeBox">
+                <div style={{ fontSize: "10px" }}>
+                  {t("bookingCode")}
+                </div>
+
+                <div className="code">{trackedBooking.code}</div>
+              </div>
+
+              <div className="detailRows">
+                <div className="detailRow">
+                  <span>Name</span>
+                  <span>{trackedBooking.name}</span>
+                </div>
+
+                <div className="detailRow">
+                  <span>Date</span>
+                  <span>{trackedBooking.date}</span>
+                </div>
+
+                <div className="detailRow">
+                  <span>Time</span>
+                  <span>{trackedBooking.time}</span>
+                </div>
+
+                <div className="detailRow">
+                  <span>Persons</span>
+                  <span>{trackedBooking.persons}</span>
+                </div>
+
+                <div className="detailRow">
+                  <span>Category</span>
+                  <span>{trackedBooking.category}</span>
+                </div>
+
+                <div className="detailRow">
+                  <span>Item</span>
+                  <span>{trackedBooking.item || "-"}</span>
+                </div>
+
+                <div className="detailRow">
+                  <span>Status</span>
+                  <span className="status">
+                    {trackedBooking.status}
+                  </span>
+                </div>
+              </div>
+
+              <div className="formButtons">
+                <button
+                  className="goldButton"
+                  type="button"
+                  onClick={() => setTrackedBooking(null)}
+                >
+                  {t("viewDetails")}
+                </button>
+
+                <button
+                  className="blueButton"
+                  type="button"
+                  onClick={editTrackedBooking}
+                >
+                  {t("edit")}
+                </button>
+
+                <button
+                  className="dangerButton"
+                  type="button"
+                  onClick={cancelTrackedBooking}
+                >
+                  {t("cancel")}
+                </button>
+              </div>
+            </>
+          ) : (
+            <div
+              style={{
+                minHeight: "150px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                textAlign: "center",
+                opacity: 0.75,
+                fontSize: "12px",
+              }}
+            >
+              Enter your booking phone, email or code to see details.
+            </div>
+          )}
+        </div>
+
+        {/* GALLERY + REPORT */}
+        <div className="utilityStack">
+          <div className="utilityCard miniAction">
+            <div>
+              <div className="utilityTitle">
+                <span>▣</span>
+                {t("galleryTitle")}
+              </div>
+
+              <div className="utilitySub">
+                {t("gallerySub")}
+              </div>
+            </div>
+
+            {gallery.length > 0 ? (
+              <img
+                className="galleryPreview"
+                src={safeImage(gallery[0].image) || heroImage}
+                alt="Gallery"
+              />
+            ) : (
+              <img
+                className="galleryPreview"
+                src={heroImage}
+                alt="Gallery"
+              />
+            )}
+
+            <button
+              className="goldButton"
+              onClick={() => setGalleryOpen(true)}
+            >
+              {t("viewGallery")} →
+            </button>
+          </div>
+
+          <div className="utilityCard miniAction">
+            <div>
+              <div className="utilityTitle">
+                <span>➤</span>
+                {t("report")}
+              </div>
+
+              <div className="utilitySub">
+                {t("reportSub")}
+              </div>
+            </div>
+
+            <button
+              className="goldButton"
+              onClick={() => setReviewsOpen(true)}
+            >
+              {t("sendReport")} →
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer className="footer" id="contact">
+        <div className="footerCol">
+          <div className="footerTitle">📍 {t("map")}</div>
+
+          <div className="footerLine">Google Maps</div>
+
+          <a
+            href={mapUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="goldButton"
+          >
+            {t("openMap")}
+          </a>
+        </div>
+
+        <div className="footerCol">
+          <div className="footerTitle">☎ {t("contactUs")}</div>
+
+          <div className="footerLine">
+            ☎{" "}
+            <a href={`tel:${phone}`} className="footerLink">
+              {phone}
+            </a>
+          </div>
+
+          <div className="footerLine">
+            🟢{" "}
+            <a
+              href={`https://wa.me/${whatsapp.replace(/\D/g, "")}`}
+              target="_blank"
+              rel="noreferrer"
+              className="footerLink"
+            >
+              WhatsApp
+            </a>
+          </div>
+
+          <div className="footerLine">
+            ✉{" "}
+            <a href={`mailto:${email}`} className="footerLink">
+              {email}
+            </a>
+          </div>
+
+          <div className="footerLine">📍 {address}</div>
+        </div>
+
+        <div className="footerCol">
+          <div className="footerTitle">◉ {t("follow")}</div>
+
+          {facebook && (
+            <div className="footerLine">
+              🔵{" "}
+              <a
+                href={facebook}
+                target="_blank"
+                rel="noreferrer"
+                className="footerLink"
+              >
+                Facebook
+              </a>
+            </div>
+          )}
+
+          {instagram && (
+            <div className="footerLine">
+              🟣{" "}
+              <a
+                href={instagram}
+                target="_blank"
+                rel="noreferrer"
+                className="footerLink"
+              >
+                Instagram
+              </a>
+            </div>
+          )}
+
+          {tiktok && (
+            <div className="footerLine">
+              ⚫{" "}
+              <a
+                href={tiktok}
+                target="_blank"
+                rel="noreferrer"
+                className="footerLink"
+              >
+                TikTok
+              </a>
+            </div>
+          )}
+
+          {youtube && (
+            <div className="footerLine">
+              🔴{" "}
+              <a
+                href={youtube}
+                target="_blank"
+                rel="noreferrer"
+                className="footerLink"
+              >
+                YouTube
+              </a>
+            </div>
+          )}
+
+          {!facebook && !instagram && !tiktok && !youtube && (
+            <div className="footerLine">
+              Social media links can be added from Admin.
+            </div>
+          )}
+        </div>
+
+        <div className="footerCol">
+          <div className="footerTitle">⚡ {t("quick")}</div>
+
+          <div className="footerLine">
+            <a href="#about" className="footerLink">
+              👥 {t("about")}
+            </a>
+          </div>
+
+          <div className="footerLine">
+            <a href="#menu" className="footerLink">
+              ✉ {t("menu")}
+            </a>
+          </div>
+
+          <div className="footerLine">
+            <button
+              onClick={() => setGalleryOpen(true)}
+              className="footerLink"
+              style={{
+                background: "transparent",
+                border: 0,
+                padding: 0,
+                color: "inherit",
+              }}
+            >
+              ▣ {t("gallery")}
+            </button>
+          </div>
+
+          <div className="footerLine">
+            <a href="#contact" className="footerLink">
+              ☎ {t("contact")}
+            </a>
+          </div>
+        </div>
+      </footer>
+
+      <div className="copyright">
+        <span>© 2025 {restaurantName}. All rights reserved.</span>
+
+        <span style={{ color: GOLD_LIGHT }}>
+          ❧ Good Food&nbsp; • &nbsp;Good Mood ❧
+        </span>
+      </div>
+
+      {/* REVIEWS MODAL */}
+      {reviewsOpen && (
+        <div
+          className="modalBackdrop"
+          onClick={() => setReviewsOpen(false)}
+        >
+          <div
+            className="modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modalHeader">
+              <div>
+                <h2>★ {t("reviews")}</h2>
+
+                <div style={{ marginTop: "4px" }}>
+                  <span className="stars">
+                    {totalReviews > 0 ? "★★★★★" : "☆☆☆☆☆"}
+                  </span>{" "}
+                  {averageRating}/5 · {totalReviews} reviews
+                </div>
+              </div>
+
+              <button
+                className="closeButton"
+                onClick={() => setReviewsOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="reviewLayout">
+              {/* WRITE REVIEW */}
+              <form className="reviewForm" onSubmit={submitReview}>
+                <h3>{t("writeReview")}</h3>
+
+                <input
+                  placeholder={t("name")}
+                  value={reviewForm.name}
+                  onChange={(e) =>
+                    setReviewForm({
+                      ...reviewForm,
+                      name: e.target.value,
+                    })
+                  }
+                />
+
+                <input
+                  placeholder={t("phone")}
+                  value={reviewForm.phone}
+                  onChange={(e) =>
+                    setReviewForm({
+                      ...reviewForm,
+                      phone: e.target.value,
+                    })
+                  }
+                />
+
+                <input
+                  type="email"
+                  placeholder={t("email")}
+                  value={reviewForm.email}
+                  onChange={(e) =>
+                    setReviewForm({
+                      ...reviewForm,
+                      email: e.target.value,
+                    })
+                  }
+                />
+
+                <div>
+                  <div
+                    style={{
+                      fontSize: "11px",
+                      marginBottom: "4px",
+                    }}
+                  >
+                    {t("rating")}
+                  </div>
+
+                  <div className="ratingButtons">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        className={`starButton ${
+                          reviewForm.rating >= star ? "active" : ""
+                        }`}
+                        onClick={() =>
+                          setReviewForm({
+                            ...reviewForm,
+                            rating: star,
+                          })
+                        }
+                      >
+                        ★
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <textarea
+                  placeholder={t("reviewDetails")}
+                  value={reviewForm.review}
+                  onChange={(e) =>
+                    setReviewForm({
+                      ...reviewForm,
+                      review: e.target.value,
+                    })
+                  }
+                />
+
+                <button className="goldButton" type="submit">
+                  {t("submitReview")}
+                </button>
+
+                {reviewMessage && (
+                  <div className="message">{reviewMessage}</div>
+                )}
+              </form>
+
+              {/* ALL REVIEWS */}
+              <div className="reviewList">
+                <h3>{t("allReviews")}</h3>
+
+                {reviews.length > 0 ? (
+                  reviews.map((review) => (
+                    <div className="reviewItem" key={review.id}>
+                      <div className="reviewTop">
+                        <div className="reviewName">
+                          👤 {review.customerName}
+                        </div>
+
+                        <div className="reviewDate">
+                          {new Date(review.date).toLocaleDateString()}
+                        </div>
+                      </div>
+
+                      <div className="stars">
+                        {"★".repeat(
+                          Math.max(0, Math.min(5, Number(review.rating)))
+                        )}
+                        <span style={{ color: "#555" }}>
+                          {"★".repeat(
+                            Math.max(
+                              0,
+                              5 - Math.min(5, Number(review.rating))
+                            )
+                          )}
+                        </span>
+                      </div>
+
+                      <div className="reviewText">
+                        {review.review}
+                      </div>
+
+                      {review.replies?.map((reply) => (
+                        <div className="reply" key={reply.id}>
+                          <strong>Restaurant:</strong>{" "}
+                          {reply.text}
+                        </div>
+                      ))}
+                    </div>
+                  ))
+                ) : (
+                  <div
+                    style={{
+                      padding: "25px 5px",
+                      textAlign: "center",
+                      opacity: 0.7,
+                    }}
+                  >
+                    {t("noReviews")}
+                  </div>
+                )}
+              </div>
+
+              {/* REPORT */}
+              <form className="reportForm" onSubmit={submitReport}>
+                <h3>{t("reportReview")}</h3>
+
+                <input
+                  placeholder="Phone Number or Email"
+                  value={reportForm.contact}
+                  onChange={(e) =>
+                    setReportForm({
+                      ...reportForm,
+                      contact: e.target.value,
+                    })
+                  }
+                />
+
+                <textarea
+                  placeholder={t("reportDetails")}
+                  value={reportForm.details}
+                  onChange={(e) =>
+                    setReportForm({
+                      ...reportForm,
+                      details: e.target.value,
+                    })
+                  }
+                />
+
+                <button className="goldButton" type="submit">
+                  {t("submitReport")}
+                </button>
+
+                {reportMessage && (
+                  <div className="message">{reportMessage}</div>
+                )}
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* GALLERY MODAL */}
+      {galleryOpen && (
+        <div
+          className="modalBackdrop"
+          onClick={() => setGalleryOpen(false)}
+        >
+          <div
+            className="modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modalHeader">
+              <h2>▣ {t("galleryTitle")}</h2>
+
+              <button
+                className="closeButton"
+                onClick={() => setGalleryOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            {gallery.length > 0 ? (
+              <div className="galleryGrid">
+                {gallery.map((item, index) => (
+                  <img
+                    key={item.id || index}
+                    src={item.image || heroImage}
+                    alt={item.category || "Gallery"}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "50px 20px",
+                  opacity: 0.75,
+                }}
+              >
+                {t("noGallery")}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }
