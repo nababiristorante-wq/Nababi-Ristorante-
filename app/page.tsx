@@ -25,6 +25,7 @@ type Reservation = {
   note: string;
   status: "Pending" | "Confirmed" | "Cancelled" | "Completed";
   createdAt: string;
+  bookingCode?: string;
 };
 
 const translations = {
@@ -266,29 +267,35 @@ export default function Home() {
     useState<BookingForm>(emptyBookingForm);
 
   const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [heroImage, setHeroImage] = useState("");
+  const [menuItems, setMenuItems] = useState<any[]>([]);
+  const [openingHours, setOpeningHours] = useState<any[]>([]);
+  const [socialMedia, setSocialMedia] = useState<Record<string, string>>({});
+  const [bookingLookupOpen, setBookingLookupOpen] = useState(false);
+  const [lookupPhone, setLookupPhone] = useState("");
+  const [lookupCode, setLookupCode] = useState("");
+  const [lookupBooking, setLookupBooking] = useState<Reservation | null>(null);
+  const [lookupMessage, setLookupMessage] = useState("");
 
-  const defaultHeroImage =
-    "https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=1200&q=85";
-
-  const [heroImage, setHeroImage] = useState(defaultHeroImage);
+  const t = translations[language];
 
   useEffect(() => {
     try {
-      const storedHome = localStorage.getItem("nababi-home-settings");
+      const home = JSON.parse(localStorage.getItem("nababi-home-settings") || "{}");
+      if (home?.heroImage) setHeroImage(String(home.heroImage));
 
-      if (storedHome) {
-        const parsedHome = JSON.parse(storedHome);
+      const storedMenu = JSON.parse(localStorage.getItem("nababi-menu") || "[]");
+      if (Array.isArray(storedMenu)) setMenuItems(storedMenu);
 
-        if (typeof parsedHome?.heroImage === "string" && parsedHome.heroImage.trim()) {
-          setHeroImage(parsedHome.heroImage);
-        }
-      }
-    } catch (error) {
-      console.error("Home image load error:", error);
+      const storedHours = JSON.parse(localStorage.getItem("nababi-opening-hours") || "[]");
+      if (Array.isArray(storedHours)) setOpeningHours(storedHours);
+
+      const storedSocial = JSON.parse(localStorage.getItem("nababi-social-media") || "{}");
+      if (storedSocial && typeof storedSocial === "object") setSocialMedia(storedSocial);
+    } catch {
+      // Keep the original page content if Admin data is not available.
     }
   }, []);
-
-  const t = translations[language];
 
   const handleBookingSubmit = (
     e: React.FormEvent<HTMLFormElement>
@@ -314,6 +321,8 @@ export default function Home() {
         }
       }
 
+      const bookingCode = Math.floor(100000 + Math.random() * 900000).toString();
+
       const newReservation: Reservation = {
         id: Date.now().toString(),
         name: bookingForm.name.trim(),
@@ -325,6 +334,7 @@ export default function Home() {
         note: bookingForm.note.trim(),
         status: "Pending",
         createdAt: new Date().toISOString(),
+        bookingCode,
       };
 
       const updatedReservations = [
@@ -439,11 +449,15 @@ export default function Home() {
 
         <div className="hero-art">
           <div className="royal-circle">
-            <img
-              src={heroImage}
-              alt="Nababi Ristorante"
-              className="food-circle"
-            />
+            <div className="food-circle">
+              <img
+                src={
+                  heroImage ||
+                  "https://images.unsplash.com/photo-1585937421612-70a008356fbe?auto=format&fit=crop&w=900&q=85"
+                }
+                alt="Nababi biryani"
+              />
+            </div>
           </div>
 
           <div className="hero-art-buttons">
@@ -507,7 +521,45 @@ export default function Home() {
         {selectedCategory && (
           <div className="selected-category">
             <span>✓</span>
-            {selectedCategory} selected — menu items will appear here.
+            {selectedCategory} selected
+          </div>
+        )}
+
+        {selectedCategory && (
+          <div className="selected-menu-items">
+            {menuItems
+              .filter((item) => {
+                const category =
+                  typeof item?.category === "string"
+                    ? item.category
+                    : item?.category?.name || item?.category?.title || "";
+                return String(category).toLowerCase() === selectedCategory.toLowerCase();
+              })
+              .map((item, index) => (
+                <article className="menu-item-card" key={`${item?.id || item?.name || "item"}-${index}`}>
+                  {item?.image ? (
+                    <img src={item.image} alt={item?.name || "Menu item"} />
+                  ) : (
+                    <div className="menu-item-placeholder">🍛</div>
+                  )}
+                  <div>
+                    <h3>{item?.name || "Menu Item"}</h3>
+                    {item?.description && <p>{item.description}</p>}
+                    <strong>{item?.price ? `€${item.price}` : ""}</strong>
+                  </div>
+                </article>
+              ))}
+            {menuItems.filter((item) => {
+              const category =
+                typeof item?.category === "string"
+                  ? item.category
+                  : item?.category?.name || item?.category?.title || "";
+              return String(category).toLowerCase() === selectedCategory.toLowerCase();
+            }).length === 0 && (
+              <div className="empty-menu-message">
+                Menu items for this category will appear here after they are added from Admin.
+              </div>
+            )}
           </div>
         )}
       </section>
@@ -570,6 +622,18 @@ export default function Home() {
           <h2>{t.bookingTitle}</h2>
 
           <p>{t.bookingText}</p>
+
+          <button
+            type="button"
+            className="secondary-btn booking-details-btn"
+            onClick={() => {
+              setBookingLookupOpen(true);
+              setLookupMessage("");
+              setLookupBooking(null);
+            }}
+          >
+            📋 My Booking / Booking Details
+          </button>
         </div>
 
         <form
@@ -729,6 +793,66 @@ export default function Home() {
         </form>
       </section>
 
+      {bookingLookupOpen && (
+        <div className="booking-modal-backdrop" role="dialog" aria-modal="true">
+          <div className="booking-modal">
+            <button type="button" className="booking-modal-close" onClick={() => setBookingLookupOpen(false)} aria-label="Close">×</button>
+            <p className="eyebrow">MY BOOKING</p>
+            <h2>Booking Details</h2>
+            <p>Use the same phone number and booking code you received when booking.</p>
+
+            <div className="lookup-grid">
+              <label>
+                Phone Number
+                <input type="tel" value={lookupPhone} onChange={(e) => setLookupPhone(e.target.value)} placeholder="+39 ..." />
+              </label>
+              <label>
+                Booking Code
+                <input inputMode="numeric" value={lookupCode} onChange={(e) => setLookupCode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="6-digit code" />
+              </label>
+            </div>
+
+            <button type="button" className="primary-btn submit-btn" onClick={() => {
+              setLookupMessage("");
+              setLookupBooking(null);
+              try {
+                const saved = JSON.parse(localStorage.getItem("nababi-reservations") || "[]");
+                const reservations: Reservation[] = Array.isArray(saved) ? saved : [];
+                const found = reservations.find((item) =>
+                  String(item.phone || "").replace(/\s/g, "") === lookupPhone.replace(/\s/g, "") &&
+                  String(item.bookingCode || "") === lookupCode
+                );
+                if (!found) {
+                  setLookupMessage("Booking not found. Please check your phone number and booking code.");
+                  return;
+                }
+                setLookupBooking(found);
+              } catch {
+                setLookupMessage("Unable to read booking details. Please try again.");
+              }
+            }}>
+              View My Booking
+            </button>
+
+            {lookupMessage && <div className="lookup-message">{lookupMessage}</div>}
+
+            {lookupBooking && (
+              <div className="booking-result">
+                <div><span>Name</span><strong>{lookupBooking.name}</strong></div>
+                <div><span>Phone</span><strong>{lookupBooking.phone}</strong></div>
+                <div><span>Date</span><strong>{lookupBooking.date}</strong></div>
+                <div><span>Time</span><strong>{lookupBooking.time}</strong></div>
+                <div><span>Guests</span><strong>{lookupBooking.guests}</strong></div>
+                <div><span>Food / Category</span><strong>{lookupBooking.menu || "—"}</strong></div>
+                <div><span>Status</span><strong>{lookupBooking.status}</strong></div>
+                <div><span>Booking Code</span><strong>{lookupBooking.bookingCode || "—"}</strong></div>
+                {lookupBooking.note && <div><span>Note</span><strong>{lookupBooking.note}</strong></div>}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* REVIEWS */}
       <section id="reviews" className="section reviews-section">
         <div className="section-heading">
@@ -811,26 +935,39 @@ export default function Home() {
         </div>
       </section>
 
+      {/* OPENING HOURS */}
+      <section className="section opening-hours-section">
+        <div className="section-heading">
+          <p className="eyebrow">NABABI RISTORANTE</p>
+          <h2>Opening Hours</h2>
+          <p>Restaurant opening times from the Admin panel.</p>
+        </div>
+        <div className="opening-hours-grid">
+          {openingHours.length > 0 ? openingHours.map((day: any, index: number) => (
+            <div className="hours-card" key={`${day?.day || day?.name || "day"}-${index}`}>
+              <strong>{day?.day || day?.name || `Day ${index + 1}`}</strong>
+              {day?.closed ? <span>Closed</span> : <span>{day?.opening || day?.open || "—"} – {day?.closing || day?.close || "—"}</span>}
+            </div>
+          )) : <div className="empty-hours">Opening hours can be added from Admin → Opening Hours.</div>}
+        </div>
+      </section>
+
       {/* SOCIAL */}
       <section className="social-section">
         <p className="eyebrow">{t.follow}</p>
 
         <div className="social-links">
-          <a
-            href="https://www.facebook.com/share/1HEDPavdg6/?mibextid=wwXIfr"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Facebook
-          </a>
-
-          <a
-            href="https://www.tiktok.com/@nababiristorante?_r=1&_t=ZN-9A75cGh3gec"
-            target="_blank"
-            rel="noreferrer"
-          >
-            TikTok
-          </a>
+          {socialMedia.facebook && <a href={socialMedia.facebook} target="_blank" rel="noreferrer">Facebook</a>}
+          {socialMedia.instagram && <a href={socialMedia.instagram} target="_blank" rel="noreferrer">Instagram</a>}
+          {socialMedia.tiktok && <a href={socialMedia.tiktok} target="_blank" rel="noreferrer">TikTok</a>}
+          {socialMedia.youtube && <a href={socialMedia.youtube} target="_blank" rel="noreferrer">YouTube</a>}
+          {socialMedia.whatsapp && <a href={socialMedia.whatsapp} target="_blank" rel="noreferrer">WhatsApp</a>}
+          {Object.keys(socialMedia).length === 0 && (
+            <>
+              <a href="https://www.facebook.com/share/1HEDPavdg6/?mibextid=wwXIfr" target="_blank" rel="noreferrer">Facebook</a>
+              <a href="https://www.tiktok.com/@nababiristorante?_r=1&_t=ZN-9A75cGh3gec" target="_blank" rel="noreferrer">TikTok</a>
+            </>
+          )}
         </div>
       </section>
 
@@ -1086,11 +1223,13 @@ export default function Home() {
         }
 
         .food-circle {
-          width: 72%;
+          width: 52%;
           aspect-ratio: 1;
           border-radius: 50%;
-          display: block;
-          object-fit: cover;
+          display: grid;
+          place-items: center;
+          font-size: clamp(70px, 9vw, 125px);
+          background: radial-gradient(circle, #d99d51, #7c4a31);
           border: 12px solid #5c3930;
           box-shadow: 0 15px 35px rgba(0, 0, 0, 0.45);
         }
@@ -1618,7 +1757,33 @@ export default function Home() {
             padding: 20px;
           }
         }
-      `}</style>
+      `}        .food-circle { overflow: hidden; position: relative; }
+        .food-circle img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: inherit; }
+        .selected-menu-items { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 24px; }
+        .menu-item-card { display: flex; gap: 16px; align-items: center; padding: 16px; border: 1px solid rgba(212,175,55,0.28); background: rgba(255,255,255,0.04); border-radius: 18px; }
+        .menu-item-card img, .menu-item-placeholder { width: 92px; height: 92px; flex: 0 0 92px; object-fit: cover; border-radius: 14px; display: grid; place-items: center; background: rgba(212,175,55,0.12); font-size: 34px; }
+        .menu-item-card h3 { margin: 0 0 6px; }
+        .menu-item-card p { margin: 0 0 8px; opacity: 0.8; }
+        .empty-menu-message, .empty-hours { padding: 22px; border: 1px dashed rgba(212,175,55,0.35); border-radius: 16px; opacity: 0.8; }
+        .booking-details-btn { margin-top: 18px; cursor: pointer; }
+        .booking-modal-backdrop { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; padding: 20px; background: rgba(0,0,0,0.78); backdrop-filter: blur(8px); }
+        .booking-modal { width: min(720px, 100%); max-height: 90vh; overflow: auto; position: relative; padding: 32px; border: 1px solid rgba(212,175,55,0.4); border-radius: 24px; background: #17110d; box-shadow: 0 30px 80px rgba(0,0,0,0.45); }
+        .booking-modal-close { position: absolute; top: 12px; right: 16px; border: 0; background: transparent; color: inherit; font-size: 34px; cursor: pointer; }
+        .lookup-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; margin: 22px 0; }
+        .lookup-grid label { display: grid; gap: 8px; }
+        .lookup-grid input { width: 100%; box-sizing: border-box; padding: 13px 14px; border-radius: 10px; border: 1px solid rgba(212,175,55,0.35); background: rgba(255,255,255,0.06); color: inherit; }
+        .lookup-message { margin-top: 16px; padding: 14px; border-radius: 12px; background: rgba(180, 50, 50, 0.15); }
+        .booking-result { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; margin-top: 22px; }
+        .booking-result > div { padding: 14px; border-radius: 12px; background: rgba(255,255,255,0.05); }
+        .booking-result span { display: block; font-size: 12px; opacity: 0.65; margin-bottom: 4px; }
+        .booking-result strong { display: block; }
+        .opening-hours-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; }
+        .hours-card { padding: 18px; border: 1px solid rgba(212,175,55,0.25); border-radius: 16px; background: rgba(255,255,255,0.04); }
+        .hours-card strong, .hours-card span { display: block; }
+        .hours-card span { margin-top: 8px; opacity: 0.78; }
+        @media (max-width: 800px) { .selected-menu-items, .lookup-grid, .booking-result, .opening-hours-grid { grid-template-columns: 1fr; } }
+
+</style>
     </main>
   );
 }
