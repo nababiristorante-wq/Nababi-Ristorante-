@@ -1036,10 +1036,7 @@ return ( <main className="nababi-site"> <header className="site-header"> <div cl
     rel="noreferrer"
     aria-label="WhatsApp"
   >
-    WhatsApp
-  </a>
-</main>
-```
+  
 
 );
 }
