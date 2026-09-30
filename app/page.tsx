@@ -1045,10 +1045,3 @@ return ( <main className="nababi-site"> <header className="site-header"> <div cl
 }
 
 ```
-
-**খুব গুরুত্বপূর্ণ:** `page.tsx`-এ শুধু উপরের code থাকবে। `
-
-এরপর **Save → Commit/Push → Vercel build**।
-
-এই version-এর লক্ষ্য প্রথমে একটাই: **TypeScript/build পরিষ্কারভাবে pass করানো।** Build `Ready` হলে তারপর আমরা design/data ঠিক করব।
-```
