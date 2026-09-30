@@ -458,11 +458,11 @@ export default function HomePage() {
       return galleryItems;
     }
 
-    return FALLBACK_GALLERY.map((image, index) => ({
-      id: `fallback-${index}`,
-      image,
-      title: "Nababi Ristorante",
-    }));
+   return FALLBACK_GALLERY.map((image, index) => ({
+  id: `fallback-${index}`,
+  image,
+  title: "Nababi Ristorante",
+}));
   }, [galleryItems]);
 
   function updateBooking(
