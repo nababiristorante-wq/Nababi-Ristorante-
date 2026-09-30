@@ -1,6 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { useState } from "react";
+
+type Language = "it" | "en" | "bn";
 
 type AnyData = Record<string, any>;
 
