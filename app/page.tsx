@@ -20,7 +20,6 @@ export default function HomePage() {
   const [settings, setSettings] = useState<AnyData>({});
   const [hours, setHours] = useState<AnyData>({});
   const [social, setSocial] = useState<AnyData>({});
-  const [languages, setLanguages] = useState<AnyData>({});
   const [news, setNews] = useState<AnyData[]>([]);
   const [promotions, setPromotions] = useState<AnyData[]>([]);
   const [menu, setMenu] = useState<AnyData[]>([]);
@@ -38,9 +37,12 @@ export default function HomePage() {
     setSettings(readStorage("nababi-settings", {}));
     setHours(readStorage("nababi-opening-hours", {}));
     setSocial(readStorage("nababi-social-media", {}));
-    setLanguages(readStorage("nababi-languages", {}));
 
-    const savedNews = readStorage<AnyData[]>("nababi-breaking-news", []);
+    const savedNews = readStorage<AnyData[]>(
+      "nababi-breaking-news",
+      []
+    );
+
     setNews(
       savedNews.filter((item) => {
         if (!item.visible || !item.text?.trim()) return false;
@@ -64,7 +66,10 @@ export default function HomePage() {
       })
     );
 
-    const savedMenu = readStorage<AnyData[]>("nababi-menu", []);
+    const savedMenu = readStorage<AnyData[]>(
+      "nababi-menu",
+      []
+    );
 
     setMenu(
       savedMenu.filter(
@@ -80,7 +85,9 @@ export default function HomePage() {
     );
 
     setGallery(
-      savedGallery.filter((item) => item.visible !== false)
+      savedGallery.filter(
+        (item) => item.visible !== false
+      )
     );
 
     const savedReviews = readStorage<AnyData[]>(
@@ -89,7 +96,9 @@ export default function HomePage() {
     );
 
     setReviews(
-      savedReviews.filter((item) => item.visible !== false)
+      savedReviews.filter(
+        (item) => item.visible !== false
+      )
     );
   };
 
@@ -128,16 +137,17 @@ export default function HomePage() {
     about.text ||
     "We bring together authentic flavours, carefully selected ingredients and warm Italian hospitality.";
 
-  const aboutImage =
-    about.image ||
-    "https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=1200&q=90";
-
   const heroImage =
     home.heroImage ||
     "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=2200&q=90";
 
+  const aboutImage =
+    about.image ||
+    "https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=1400&q=90";
+
   const bookingTitle =
-    home.bookingTitle || "Reserve Your Table";
+    home.bookingTitle ||
+    "Reserve Your Table";
 
   const bookingText =
     home.bookingText ||
@@ -158,7 +168,8 @@ export default function HomePage() {
   const mapsUrl =
     contact.googleMapsUrl || "#";
 
-  const visibleSocial = social.visible !== false;
+  const visibleSocial =
+    social.visible !== false;
 
   const categories = Array.from(
     new Set(
@@ -172,38 +183,42 @@ export default function HomePage() {
     {
       id: "fallback-1",
       name: "Signature Biryani",
-      description: "Fragrant basmati rice with aromatic spices.",
+      description:
+        "Fragrant basmati rice with aromatic spices.",
       price: "16",
       category: "Biryani",
       image:
-        "https://images.unsplash.com/photo-1563379091339-03246963d96c?auto=format&fit=crop&w=900&q=85",
+        "https://images.unsplash.com/photo-1563379091339-03246963d96c?auto=format&fit=crop&w=1000&q=90",
     },
     {
       id: "fallback-2",
       name: "Tandoori Chicken",
-      description: "Tender chicken prepared with authentic spices.",
+      description:
+        "Tender chicken prepared with authentic spices.",
       price: "15",
       category: "Chicken",
       image:
-        "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?auto=format&fit=crop&w=900&q=85",
+        "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?auto=format&fit=crop&w=1000&q=90",
     },
     {
       id: "fallback-3",
       name: "Royal Mutton Curry",
-      description: "Slow-cooked mutton in a rich house gravy.",
+      description:
+        "Slow-cooked mutton in a rich house gravy.",
       price: "18",
       category: "Mutton",
       image:
-        "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=900&q=85",
+        "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=1000&q=90",
     },
     {
       id: "fallback-4",
       name: "Fresh Garden Salad",
-      description: "Fresh seasonal vegetables with house dressing.",
+      description:
+        "Fresh seasonal vegetables with house dressing.",
       price: "9",
       category: "Starters",
       image:
-        "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=900&q=85",
+        "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1000&q=90",
     },
   ];
 
@@ -212,17 +227,30 @@ export default function HomePage() {
 
   const galleryImages =
     gallery.length > 0
-      ? gallery.map((item) => item.image).filter(Boolean)
+      ? gallery
+          .map((item) => item.image)
+          .filter(Boolean)
       : [
-          "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=90",
-          "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=1200&q=90",
-          "https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=1200&q=90",
-          "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1200&q=90",
-          "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1200&q=90",
-          "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=90",
+          "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1400&q=90",
+          "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=1400&q=90",
+          "https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=1400&q=90",
+          "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1400&q=90",
+          "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1400&q=90",
         ];
 
-  const handleReservation = (e: FormEvent<HTMLFormElement>) => {
+  const scrollTo = (id: string) => {
+    setMobileOpen(false);
+
+    document
+      .getElementById(id)
+      ?.scrollIntoView({
+        behavior: "smooth",
+      });
+  };
+
+  const handleReservation = (
+    e: FormEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
 
     const form = new FormData(e.currentTarget);
@@ -240,10 +268,11 @@ export default function HomePage() {
       createdAt: new Date().toISOString(),
     };
 
-    const oldReservations = readStorage<AnyData[]>(
-      "nababi-reservations",
-      []
-    );
+    const oldReservations =
+      readStorage<AnyData[]>(
+        "nababi-reservations",
+        []
+      );
 
     localStorage.setItem(
       "nababi-reservations",
@@ -262,35 +291,24 @@ export default function HomePage() {
     }, 5000);
   };
 
-  const scrollTo = (id: string) => {
-    setMobileOpen(false);
-    document
-      .getElementById(id)
-      ?.scrollIntoView({ behavior: "smooth" });
-  };
-
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#f7f0e7] text-[#33251f]">
+    <main className="min-h-screen overflow-x-hidden bg-[#090806] text-[#f5eadb]">
 
       {/* ================= BREAKING NEWS ================= */}
       {news.length > 0 && (
-        <div className="sticky top-0 z-[100] overflow-hidden bg-[#a6402d] text-white shadow-lg">
-          <div className="flex h-10 items-center">
-
-            <div className="z-10 flex h-full shrink-0 items-center bg-[#7f2d20] px-4 text-[10px] font-black uppercase tracking-[0.18em] sm:px-6 sm:text-xs">
-              <span className="mr-2 animate-pulse">
-                ●
-              </span>
-              Breaking News
+        <div className="fixed left-0 right-0 top-0 z-[100] overflow-hidden border-b border-[#d5a85b]/30 bg-[#090806]/95 backdrop-blur-xl">
+          <div className="flex h-9 items-center">
+            <div className="shrink-0 bg-[#c9923e] px-4 py-2 text-[9px] font-black uppercase tracking-[0.2em] text-black">
+              Breaking
             </div>
 
             <div className="overflow-hidden whitespace-nowrap">
-              <div className="inline-flex min-w-max animate-[nababiMarquee_28s_linear_infinite] gap-16 px-8">
+              <div className="inline-flex min-w-max animate-[nababiMarquee_30s_linear_infinite] gap-16 px-8">
                 {[...news, ...news].map(
                   (item, index) => (
                     <span
                       key={`${item.id}-${index}`}
-                      className="text-xs font-semibold sm:text-sm"
+                      className="text-xs text-[#ead8bd]"
                     >
                       {item.text}
                     </span>
@@ -302,62 +320,59 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* ================= HEADER ================= */}
-      <header className="sticky top-10 z-50 border-b border-[#d8c5b2]/70 bg-[#f7f0e7]/90 backdrop-blur-xl">
-
-        <div className="mx-auto flex h-[78px] max-w-7xl items-center justify-between px-5 sm:px-8">
+      {/* ================= NAVIGATION ================= */}
+      <header
+        className={`fixed left-0 right-0 z-[90] border-b border-white/10 bg-[#090806]/70 backdrop-blur-2xl ${
+          news.length > 0 ? "top-9" : "top-0"
+        }`}
+      >
+        <div className="mx-auto flex h-[78px] max-w-[1500px] items-center justify-between px-5 sm:px-8 lg:px-12">
 
           <button
             onClick={() => scrollTo("home")}
-            className="text-left"
+            className="group text-left"
           >
-            <div className="font-serif text-2xl font-black tracking-tight text-[#913a29] sm:text-3xl">
+            <div className="font-serif text-xl font-black tracking-wide text-[#d9aa5c] sm:text-2xl">
               {restaurantName}
             </div>
 
-            <div className="mt-0.5 text-[8px] font-bold uppercase tracking-[0.35em] text-[#a77957]">
+            <div className="mt-1 text-[8px] uppercase tracking-[0.4em] text-[#aa9276]">
               Ristorante • Roma
             </div>
           </button>
 
-          <nav className="hidden items-center gap-7 lg:flex">
-            <button onClick={() => scrollTo("home")} className="text-sm font-semibold">
-              Home
-            </button>
-
-            <button onClick={() => scrollTo("about")} className="text-sm font-semibold">
-              About
-            </button>
-
-            <button onClick={() => scrollTo("menu")} className="text-sm font-semibold">
-              Menu
-            </button>
-
-            <button onClick={() => scrollTo("gallery")} className="text-sm font-semibold">
-              Gallery
-            </button>
-
-            <button onClick={() => scrollTo("reviews")} className="text-sm font-semibold">
-              Reviews
-            </button>
-
-            <button onClick={() => scrollTo("contact")} className="text-sm font-semibold">
-              Contact
-            </button>
+          <nav className="hidden items-center gap-8 lg:flex">
+            {[
+              ["Home", "home"],
+              ["About", "about"],
+              ["Menu", "menu"],
+              ["Gallery", "gallery"],
+              ["Reviews", "reviews"],
+              ["Contact", "contact"],
+            ].map(([label, id]) => (
+              <button
+                key={id}
+                onClick={() => scrollTo(id)}
+                className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#d6c6b3] transition hover:text-[#d8a75b]"
+              >
+                {label}
+              </button>
+            ))}
           </nav>
 
-          <div className="flex items-center gap-2">
-
+          <div className="flex items-center gap-3">
             <button
               onClick={() => scrollTo("reservation")}
-              className="hidden rounded-full bg-[#a6402d] px-6 py-3 text-xs font-black uppercase tracking-wider text-white shadow-md transition hover:bg-[#833324] sm:block"
+              className="hidden rounded-full border border-[#d2a052] bg-[#d2a052] px-6 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-black shadow-[0_10px_40px_rgba(210,160,82,.18)] transition hover:bg-[#edc477] sm:block"
             >
               Reserve Table
             </button>
 
             <button
-              onClick={() => setMobileOpen(!mobileOpen)}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-[#ccb8a5] bg-white/60 lg:hidden"
+              onClick={() =>
+                setMobileOpen(!mobileOpen)
+              }
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/5 text-lg lg:hidden"
             >
               {mobileOpen ? "×" : "☰"}
             </button>
@@ -365,9 +380,8 @@ export default function HomePage() {
         </div>
 
         {mobileOpen && (
-          <div className="border-t border-[#dac8b6] bg-[#f7f0e7] px-5 py-5 lg:hidden">
-            <div className="flex flex-col gap-4">
-
+          <div className="border-t border-white/10 bg-[#0b0907]/98 px-6 py-6 lg:hidden">
+            <div className="flex flex-col">
               {[
                 ["Home", "home"],
                 ["About", "about"],
@@ -380,7 +394,7 @@ export default function HomePage() {
                 <button
                   key={id}
                   onClick={() => scrollTo(id)}
-                  className="border-b border-[#dfd0c1] pb-3 text-left text-sm font-bold"
+                  className="border-b border-white/10 py-4 text-left text-xs font-bold uppercase tracking-[0.18em] text-[#dbcbb9]"
                 >
                   {label}
                 </button>
@@ -393,9 +407,8 @@ export default function HomePage() {
       {/* ================= HERO ================= */}
       <section
         id="home"
-        className="relative min-h-[calc(100vh-118px)] overflow-hidden"
+        className="relative flex min-h-screen items-center overflow-hidden"
       >
-
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{
@@ -403,102 +416,154 @@ export default function HomePage() {
           }}
         />
 
-        <div className="absolute inset-0 bg-gradient-to-r from-[#241712]/85 via-[#241712]/55 to-transparent" />
+        <div className="absolute inset-0 bg-[#050403]/60" />
 
-        <div className="relative mx-auto flex min-h-[calc(100vh-118px)] max-w-7xl items-center px-6 py-20 sm:px-10 lg:px-12">
+        <div className="absolute inset-0 bg-gradient-to-r from-[#050403]/95 via-[#050403]/55 to-[#050403]/20" />
 
-          <div className="max-w-3xl text-white">
+        <div className="absolute inset-0 bg-gradient-to-t from-[#090806] via-transparent to-[#090806]/30" />
 
-            <div className="mb-5 flex items-center gap-3">
-              <span className="h-px w-10 bg-[#e0ad67]" />
+        <div className="relative mx-auto flex min-h-screen w-full max-w-[1500px] items-center px-6 pb-20 pt-32 sm:px-10 lg:px-16">
 
-              <span className="text-xs font-bold uppercase tracking-[0.28em] text-[#e7bb7b]">
+          <div className="max-w-4xl">
+
+            <div className="mb-7 flex items-center gap-4">
+              <span className="h-px w-14 bg-[#d7a653]" />
+
+              <span className="text-[10px] font-black uppercase tracking-[0.38em] text-[#d8ae6b]">
                 {welcomeText}
               </span>
             </div>
 
-            <h1 className="font-serif text-5xl font-black leading-[0.95] sm:text-7xl lg:text-8xl">
+            <h1 className="max-w-5xl font-serif text-6xl font-black leading-[0.9] tracking-[-0.03em] text-[#f8eee2] sm:text-8xl lg:text-[110px]">
               {heroTitle}
             </h1>
 
-            <p className="mt-7 max-w-xl text-base leading-7 text-white/85 sm:text-lg">
+            <p className="mt-8 max-w-2xl text-base leading-8 text-[#e0d2c2] sm:text-lg">
               {heroSubtitle}
             </p>
 
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-10 flex flex-col gap-3 sm:flex-row">
 
               <button
-                onClick={() => scrollTo("reservation")}
-                className="rounded-full bg-[#b34b34] px-8 py-4 text-sm font-bold text-white shadow-xl transition hover:bg-[#913826]"
+                onClick={() =>
+                  scrollTo("reservation")
+                }
+                className="rounded-full bg-[#d3a253] px-8 py-4 text-xs font-black uppercase tracking-[0.18em] text-black shadow-[0_15px_50px_rgba(211,162,83,.2)] transition hover:bg-[#edc477]"
               >
                 Reserve Your Table
               </button>
 
               <button
                 onClick={() => scrollTo("menu")}
-                className="rounded-full border border-white/50 bg-white/10 px-8 py-4 text-sm font-bold backdrop-blur-md transition hover:bg-white/20"
+                className="rounded-full border border-white/25 bg-white/5 px-8 py-4 text-xs font-black uppercase tracking-[0.18em] text-white backdrop-blur-xl transition hover:border-[#d3a253] hover:text-[#e0b467]"
               >
                 Explore Menu
               </button>
             </div>
+
+            <div className="mt-12 flex flex-wrap gap-8 text-[10px] uppercase tracking-[0.2em] text-[#ad9a84]">
+              <span>Fine Dining</span>
+              <span>•</span>
+              <span>Authentic Flavours</span>
+              <span>•</span>
+              <span>Roma</span>
+            </div>
           </div>
+        </div>
+
+        <div className="absolute bottom-8 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-3 text-[8px] uppercase tracking-[0.3em] text-[#a9947c] sm:flex">
+          <span>Scroll</span>
+          <span className="h-10 w-px bg-gradient-to-b from-[#d5a45c] to-transparent" />
         </div>
       </section>
 
       {/* ================= ABOUT ================= */}
       {about.visible !== false && (
-        <section id="about" className="px-6 py-20 sm:py-28">
+        <section
+          id="about"
+          className="relative overflow-hidden bg-[#0d0b09] px-6 py-24 sm:py-32 lg:py-40"
+        >
+          <div className="absolute right-0 top-0 h-96 w-96 rounded-full bg-[#bd873c]/10 blur-[120px]" />
 
-          <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2">
+          <div className="relative mx-auto grid max-w-[1400px] items-center gap-14 lg:grid-cols-2 lg:gap-24">
 
-            <div className="overflow-hidden rounded-[2rem] shadow-2xl">
-              <img
-                src={aboutImage}
-                alt={restaurantName}
-                className="h-[480px] w-full object-cover transition duration-700 hover:scale-105"
-              />
+            <div className="relative">
+              <div className="absolute -left-4 -top-4 h-full w-full rounded-[2rem] border border-[#c79a54]/20" />
+
+              <div className="relative overflow-hidden rounded-[2rem] border border-white/10">
+                <img
+                  src={aboutImage}
+                  alt={restaurantName}
+                  className="h-[520px] w-full object-cover transition duration-1000 hover:scale-105"
+                />
+
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+              </div>
+
+              <div className="absolute bottom-7 left-7 rounded-2xl border border-white/15 bg-black/55 px-6 py-5 backdrop-blur-xl">
+                <div className="font-serif text-2xl font-black text-[#e2b36a]">
+                  {restaurantName}
+                </div>
+                <div className="mt-1 text-[8px] uppercase tracking-[0.3em] text-[#b8a28a]">
+                  Since • Roma
+                </div>
+              </div>
             </div>
 
             <div>
-
-              <span className="text-xs font-black uppercase tracking-[0.3em] text-[#a6402d]">
-                About Us
-              </span>
-
-              <h2 className="mt-4 font-serif text-4xl font-black leading-tight sm:text-5xl">
-                {about.title || "Where every plate tells a story."}
-              </h2>
-
-              <div className="mt-6 whitespace-pre-line text-base leading-8 text-[#715f51]">
-                {aboutText}
+              <div className="flex items-center gap-4">
+                <span className="h-px w-10 bg-[#d3a253]" />
+                <span className="text-[10px] font-black uppercase tracking-[0.35em] text-[#d3a253]">
+                  Our Story
+                </span>
               </div>
 
+              <h2 className="mt-6 font-serif text-5xl font-black leading-[1] text-[#f4e9dc] sm:text-6xl">
+                {about.title ||
+                  "Where every plate tells a story."}
+              </h2>
+
+              <p className="mt-8 whitespace-pre-line text-base leading-8 text-[#bcae9e]">
+                {aboutText}
+              </p>
+
+              <div className="mt-10 h-px w-24 bg-[#d3a253]" />
             </div>
           </div>
         </section>
       )}
 
       {/* ================= MENU ================= */}
-      <section id="menu" className="bg-[#2d1d18] px-6 py-20 text-[#f8eee4] sm:py-28">
+      <section
+        id="menu"
+        className="relative overflow-hidden bg-[#080706] px-6 py-24 sm:py-32 lg:py-40"
+      >
+        <div className="absolute left-0 top-20 h-96 w-96 rounded-full bg-[#8f5724]/10 blur-[130px]" />
 
-        <div className="mx-auto max-w-7xl">
+        <div className="relative mx-auto max-w-[1400px]">
 
-          <div className="text-center">
-            <span className="text-xs font-black uppercase tracking-[0.3em] text-[#d7a463]">
-              From Our Kitchen
-            </span>
+          <div className="max-w-3xl">
+            <div className="flex items-center gap-4">
+              <span className="h-px w-10 bg-[#d3a253]" />
 
-            <h2 className="mt-3 font-serif text-4xl font-black sm:text-6xl">
-              Our Menu
+              <span className="text-[10px] font-black uppercase tracking-[0.35em] text-[#d3a253]">
+                From Our Kitchen
+              </span>
+            </div>
+
+            <h2 className="mt-5 font-serif text-5xl font-black leading-none text-[#f7eadc] sm:text-7xl">
+              A menu made
+              <br />
+              for memories.
             </h2>
           </div>
 
           {categories.length > 0 && (
-            <div className="mt-8 flex flex-wrap justify-center gap-2">
+            <div className="mt-10 flex flex-wrap gap-2">
               {categories.map((category) => (
                 <span
                   key={category}
-                  className="rounded-full border border-[#d7a463]/30 px-4 py-2 text-xs font-bold text-[#e0b678]"
+                  className="rounded-full border border-[#d3a253]/30 bg-[#d3a253]/5 px-4 py-2 text-[9px] font-bold uppercase tracking-[0.16em] text-[#d9b06b]"
                 >
                   {category}
                 </span>
@@ -506,181 +571,238 @@ export default function HomePage() {
             </div>
           )}
 
-          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
 
-            {displayedMenu.slice(0, 8).map((item, index) => (
-              <div
-                key={item.id || index}
-                className="group overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#3a2821] shadow-xl"
-              >
+            {displayedMenu
+              .slice(0, 8)
+              .map((item, index) => (
+                <article
+                  key={item.id || index}
+                  className="group overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#12100d] shadow-2xl transition duration-500 hover:-translate-y-2 hover:border-[#c99951]/50"
+                >
+                  <div className="relative h-72 overflow-hidden">
 
-                <div className="relative h-64 overflow-hidden">
+                    <img
+                      src={
+                        item.image ||
+                        fallbackMenu[
+                          index %
+                            fallbackMenu.length
+                        ].image
+                      }
+                      alt={
+                        item.name ||
+                        "Menu item"
+                      }
+                      className="h-full w-full object-cover transition duration-1000 group-hover:scale-110"
+                    />
 
-                  <img
-                    src={
-                      item.image ||
-                      fallbackMenu[index % fallbackMenu.length].image
-                    }
-                    alt={item.name || "Menu item"}
-                    className="h-full w-full object-cover transition duration-700 group-hover:scale-110"
-                  />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#080706] via-transparent to-transparent" />
 
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-5 pt-20">
-
-                    <span className="rounded-full bg-[#d39a55] px-3 py-1 text-[9px] font-black uppercase tracking-wider text-[#2d1d18]">
-                      {item.category || "Chef Choice"}
-                    </span>
-
-                  </div>
-                </div>
-
-                <div className="p-5">
-
-                  <div className="flex items-start justify-between gap-3">
-
-                    <h3 className="font-serif text-xl font-black">
-                      {item.name || "Special Dish"}
-                    </h3>
-
-                    <span className="shrink-0 text-base font-black text-[#e2ad69]">
-                      {settings.currency === "EUR" || !settings.currency
-                        ? "€"
-                        : settings.currency}
-                      {item.price}
-                    </span>
+                    <div className="absolute bottom-4 left-4">
+                      <span className="rounded-full border border-[#e0b56c]/30 bg-black/50 px-3 py-1 text-[8px] font-black uppercase tracking-[0.15em] text-[#e2b36a] backdrop-blur-md">
+                        {item.category ||
+                          "Chef Choice"}
+                      </span>
+                    </div>
                   </div>
 
-                  <p className="mt-3 text-sm leading-6 text-[#cdb9a9]">
-                    {item.description || ""}
-                  </p>
-                </div>
-              </div>
-            ))}
+                  <div className="p-5">
+
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="font-serif text-xl font-black text-[#f2e6d8]">
+                        {item.name ||
+                          "Special Dish"}
+                      </h3>
+
+                      <span className="shrink-0 text-base font-black text-[#d7a653]">
+                        {settings.currency ===
+                          "EUR" ||
+                        !settings.currency
+                          ? "€"
+                          : settings.currency}
+                        {item.price}
+                      </span>
+                    </div>
+
+                    <p className="mt-3 text-sm leading-6 text-[#a99a8a]">
+                      {item.description || ""}
+                    </p>
+                  </div>
+                </article>
+              ))}
           </div>
         </div>
       </section>
 
       {/* ================= PROMOTIONS ================= */}
       {promotions.length > 0 && (
-        <section className="bg-[#ead9c8] px-6 py-16">
+        <section className="relative bg-[#100d0a] px-6 py-24 sm:py-32">
 
-          <div className="mx-auto max-w-6xl">
+          <div className="mx-auto max-w-[1400px]">
 
             <div className="text-center">
-              <span className="text-xs font-black uppercase tracking-[0.3em] text-[#a6402d]">
-                Special Offers
+              <span className="text-[10px] font-black uppercase tracking-[0.35em] text-[#d3a253]">
+                Limited Experiences
               </span>
 
-              <h2 className="mt-3 font-serif text-4xl font-black">
-                Our Latest Promotions
+              <h2 className="mt-4 font-serif text-5xl font-black text-[#f4e8da] sm:text-6xl">
+                Special Offers
               </h2>
             </div>
 
-            <div className="mt-10 grid gap-6 md:grid-cols-3">
+            <div className="mt-12 grid gap-6 md:grid-cols-3">
 
-              {promotions.slice(0, 3).map((item) => (
-                <div
-                  key={item.id}
-                  className="overflow-hidden rounded-3xl bg-white shadow-xl"
-                >
-                  {item.image && (
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      className="h-52 w-full object-cover"
-                    />
-                  )}
-
-                  <div className="p-6">
-
-                    <h3 className="font-serif text-2xl font-black">
-                      {item.title}
-                    </h3>
-
-                    {item.offer && (
-                      <div className="mt-3 font-black text-[#a6402d]">
-                        {item.offer}
+              {promotions
+                .slice(0, 3)
+                .map((item) => (
+                  <div
+                    key={item.id}
+                    className="group overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#18130f]"
+                  >
+                    {item.image && (
+                      <div className="h-60 overflow-hidden">
+                        <img
+                          src={item.image}
+                          alt={
+                            item.title ||
+                            "Promotion"
+                          }
+                          className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                        />
                       </div>
                     )}
 
-                    <p className="mt-3 text-sm leading-6 text-[#725f50]">
-                      {item.description}
-                    </p>
+                    <div className="p-7">
+                      <h3 className="font-serif text-2xl font-black text-[#f5e8d9]">
+                        {item.title}
+                      </h3>
+
+                      {item.offer && (
+                        <div className="mt-3 text-lg font-black text-[#d7a653]">
+                          {item.offer}
+                        </div>
+                      )}
+
+                      <p className="mt-3 text-sm leading-7 text-[#a99a89]">
+                        {item.description}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
           </div>
         </section>
       )}
 
       {/* ================= GALLERY ================= */}
-      {gallery.length > 0 && (
-        <section id="gallery" className="px-6 py-20 sm:py-28">
+      <section
+        id="gallery"
+        className="relative bg-[#090806] px-6 py-24 sm:py-32 lg:py-40"
+      >
+        <div className="mx-auto max-w-[1500px]">
 
-          <div className="mx-auto max-w-7xl">
-
-            <div className="text-center">
-              <span className="text-xs font-black uppercase tracking-[0.3em] text-[#a6402d]">
-                Gallery
+          <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-[0.35em] text-[#d3a253]">
+                Visual Journey
               </span>
 
-              <h2 className="mt-3 font-serif text-4xl font-black sm:text-6xl">
+              <h2 className="mt-4 font-serif text-5xl font-black text-[#f4e8da] sm:text-7xl">
                 Inside {restaurantName}
               </h2>
             </div>
 
-            <div className="mt-12 grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3">
+            <p className="max-w-sm text-sm leading-7 text-[#9f9182]">
+              A glimpse into the atmosphere,
+              flavours and moments waiting for
+              you in Rome.
+            </p>
+          </div>
 
-              {galleryImages.slice(0, 6).map((image, index) => (
+          <div className="mt-12 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5">
+
+            {galleryImages
+              .slice(0, 6)
+              .map((image, index) => (
                 <div
                   key={`${image}-${index}`}
-                  className="group overflow-hidden rounded-2xl"
+                  className={`group relative overflow-hidden rounded-[1.3rem] ${
+                    index === 0
+                      ? "sm:col-span-2 sm:row-span-2"
+                      : ""
+                  }`}
                 >
                   <img
                     src={image}
                     alt={`${restaurantName} gallery`}
-                    className="h-64 w-full object-cover transition duration-700 group-hover:scale-105 sm:h-80"
+                    className={`w-full object-cover transition duration-1000 group-hover:scale-110 ${
+                      index === 0
+                        ? "h-[520px]"
+                        : "h-64 sm:h-72"
+                    }`}
                   />
+
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-70" />
+
+                  <div className="absolute bottom-5 left-5 text-[9px] font-bold uppercase tracking-[0.25em] text-white/80">
+                    Nababi • Roma
+                  </div>
                 </div>
               ))}
-            </div>
           </div>
-        </section>
-      )}
+        </div>
+      </section>
 
       {/* ================= RESERVATION ================= */}
       <section
         id="reservation"
-        className="bg-[#ead9c8] px-6 py-20 sm:py-28"
+        className="relative overflow-hidden bg-[#0d0a08] px-6 py-24 sm:py-32 lg:py-40"
       >
+        <div className="absolute right-0 top-0 h-[500px] w-[500px] rounded-full bg-[#b77b32]/10 blur-[150px]" />
 
-        <div className="mx-auto grid max-w-6xl overflow-hidden rounded-[2rem] bg-[#f8f0e7] shadow-2xl lg:grid-cols-2">
+        <div className="relative mx-auto grid max-w-[1400px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#15110d] shadow-[0_30px_100px_rgba(0,0,0,.4)] lg:grid-cols-2">
 
           <div
-            className="min-h-[430px] bg-cover bg-center"
+            className="min-h-[500px] bg-cover bg-center"
             style={{
               backgroundImage:
-                "url('https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1200&q=90')",
+                "url('https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1400&q=90')",
             }}
-          />
+          >
+            <div className="flex h-full min-h-[500px] items-end bg-gradient-to-t from-black/80 via-black/20 to-transparent p-8 sm:p-12">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-[0.35em] text-[#d9aa5c]">
+                  Your Evening
+                </span>
+
+                <h3 className="mt-4 max-w-lg font-serif text-4xl font-black leading-tight text-white sm:text-5xl">
+                  Good food.
+                  <br />
+                  Good company.
+                  <br />
+                  Beautiful memories.
+                </h3>
+              </div>
+            </div>
+          </div>
 
           <div className="p-7 sm:p-10 lg:p-14">
 
-            <span className="text-xs font-black uppercase tracking-[0.3em] text-[#a6402d]">
+            <span className="text-[10px] font-black uppercase tracking-[0.35em] text-[#d3a253]">
               Reservations
             </span>
 
-            <h2 className="mt-3 font-serif text-4xl font-black sm:text-5xl">
+            <h2 className="mt-4 font-serif text-4xl font-black text-[#f3e7d8] sm:text-5xl">
               {bookingTitle}
             </h2>
 
-            <p className="mt-4 text-sm leading-6 text-[#725f50]">
+            <p className="mt-4 text-sm leading-7 text-[#a99a89]">
               {bookingText}
             </p>
 
             {bookingSent && (
-              <div className="mt-5 rounded-xl border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-700">
+              <div className="mt-5 rounded-xl border border-green-500/20 bg-green-500/10 p-4 text-sm font-bold text-green-300">
                 ✓ Reservation request sent successfully.
               </div>
             )}
@@ -689,45 +811,42 @@ export default function HomePage() {
               onSubmit={handleReservation}
               className="mt-7 space-y-4"
             >
-
               <input
                 name="name"
                 required
                 placeholder="Your Name"
-                className="w-full rounded-xl border border-[#d7c5b3] bg-white px-4 py-3.5 text-sm outline-none focus:border-[#a6402d]"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-white outline-none placeholder:text-[#857667] focus:border-[#d3a253]"
               />
 
               <div className="grid gap-4 sm:grid-cols-2">
-
                 <input
                   name="phone"
                   required
                   placeholder="Phone"
-                  className="w-full rounded-xl border border-[#d7c5b3] bg-white px-4 py-3.5 text-sm outline-none focus:border-[#a6402d]"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-white outline-none placeholder:text-[#857667] focus:border-[#d3a253]"
                 />
 
                 <input
                   name="email"
                   type="email"
                   placeholder="Email"
-                  className="w-full rounded-xl border border-[#d7c5b3] bg-white px-4 py-3.5 text-sm outline-none focus:border-[#a6402d]"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-white outline-none placeholder:text-[#857667] focus:border-[#d3a253]"
                 />
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-
                 <input
                   name="date"
                   type="date"
                   required
-                  className="w-full rounded-xl border border-[#d7c5b3] bg-white px-4 py-3.5 text-sm outline-none focus:border-[#a6402d]"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-white outline-none focus:border-[#d3a253]"
                 />
 
                 <input
                   name="time"
                   type="time"
                   required
-                  className="w-full rounded-xl border border-[#d7c5b3] bg-white px-4 py-3.5 text-sm outline-none focus:border-[#a6402d]"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-white outline-none focus:border-[#d3a253]"
                 />
               </div>
 
@@ -735,7 +854,7 @@ export default function HomePage() {
                 name="guests"
                 required
                 defaultValue=""
-                className="w-full rounded-xl border border-[#d7c5b3] bg-white px-4 py-3.5 text-sm outline-none focus:border-[#a6402d]"
+                className="w-full rounded-xl border border-white/10 bg-[#15110d] px-4 py-4 text-sm text-white outline-none focus:border-[#d3a253]"
               >
                 <option value="" disabled>
                   Number of Guests
@@ -753,12 +872,12 @@ export default function HomePage() {
                 name="message"
                 rows={3}
                 placeholder="Special request"
-                className="w-full resize-none rounded-xl border border-[#d7c5b3] bg-white px-4 py-3.5 text-sm outline-none focus:border-[#a6402d]"
+                className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-white outline-none placeholder:text-[#857667] focus:border-[#d3a253]"
               />
 
               <button
                 type="submit"
-                className="w-full rounded-xl bg-[#a6402d] px-5 py-4 text-sm font-black uppercase tracking-wider text-white shadow-lg transition hover:bg-[#873324]"
+                className="w-full rounded-xl bg-[#d3a253] px-5 py-4 text-xs font-black uppercase tracking-[0.2em] text-black shadow-lg transition hover:bg-[#edc477]"
               >
                 Confirm Reservation
               </button>
@@ -769,41 +888,47 @@ export default function HomePage() {
 
       {/* ================= REVIEWS ================= */}
       {reviews.length > 0 && (
-        <section id="reviews" className="px-6 py-20 sm:py-28">
+        <section
+          id="reviews"
+          className="bg-[#0a0807] px-6 py-24 sm:py-32"
+        >
+          <div className="mx-auto max-w-[1300px] text-center">
 
-          <div className="mx-auto max-w-6xl text-center">
-
-            <span className="text-xs font-black uppercase tracking-[0.3em] text-[#a6402d]">
+            <span className="text-[10px] font-black uppercase tracking-[0.35em] text-[#d3a253]">
               Guest Reviews
             </span>
 
-            <h2 className="mt-3 font-serif text-4xl font-black sm:text-6xl">
+            <h2 className="mt-4 font-serif text-5xl font-black text-[#f3e7d8] sm:text-6xl">
               Loved by Our Guests
             </h2>
 
             <div className="mt-12 grid gap-5 md:grid-cols-3">
 
-              {reviews.slice(0, 3).map((review) => (
-                <div
-                  key={review.id}
-                  className="rounded-3xl border border-[#dfd0c1] bg-[#f9f3ec] p-7 text-left shadow-sm"
-                >
+              {reviews
+                .slice(0, 3)
+                .map((review) => (
+                  <div
+                    key={review.id}
+                    className="rounded-[1.5rem] border border-white/10 bg-[#12100d] p-7 text-left transition hover:border-[#d3a253]/30"
+                  >
+                    <div className="text-lg tracking-widest text-[#d3a253]">
+                      {"★".repeat(
+                        Math.min(
+                          Number(review.rating) || 5,
+                          5
+                        )
+                      )}
+                    </div>
 
-                  <div className="text-lg tracking-widest text-[#c98d45]">
-                    {"★".repeat(
-                      Math.min(Number(review.rating) || 5, 5)
-                    )}
+                    <p className="mt-5 text-sm leading-7 text-[#b1a292]">
+                      “{review.review}”
+                    </p>
+
+                    <div className="mt-6 border-t border-white/10 pt-5 font-serif font-black text-[#e7d8c7]">
+                      {review.customerName}
+                    </div>
                   </div>
-
-                  <p className="mt-5 text-sm leading-7 text-[#665449]">
-                    “{review.review}”
-                  </p>
-
-                  <div className="mt-6 border-t border-[#dfd0c1] pt-4 font-serif font-black">
-                    {review.customerName}
-                  </div>
-                </div>
-              ))}
+                ))}
             </div>
           </div>
         </section>
@@ -813,41 +938,40 @@ export default function HomePage() {
       {contact.visible !== false && (
         <section
           id="contact"
-          className="bg-[#2d1d18] px-6 py-20 text-white sm:py-24"
+          className="relative overflow-hidden border-t border-white/10 bg-[#080706] px-6 py-24 text-white sm:py-32"
         >
+          <div className="absolute bottom-0 left-0 h-96 w-96 rounded-full bg-[#c08338]/10 blur-[140px]" />
 
-          <div className="mx-auto max-w-6xl">
+          <div className="relative mx-auto max-w-[1400px]">
 
-            <div className="grid gap-12 md:grid-cols-3">
+            <div className="grid gap-14 md:grid-cols-3">
 
               <div>
-                <div className="font-serif text-3xl font-black text-[#e2ad69]">
+                <div className="font-serif text-3xl font-black text-[#d9aa5c]">
                   {restaurantName}
                 </div>
 
-                <p className="mt-6 text-sm leading-7 text-[#cdb9a9]">
+                <p className="mt-6 max-w-sm text-sm leading-8 text-[#a99a8a]">
                   {contact.contactText ||
                     "A beautiful dining experience with authentic flavours and warm hospitality."}
                 </p>
               </div>
 
               <div>
-                <h3 className="font-bold">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#d3a253]">
                   Contact
                 </h3>
 
-                <div className="mt-4 space-y-3 text-sm text-[#cdb9a9]">
+                <div className="mt-6 space-y-4 text-sm text-[#b9aa99]">
 
                   {address && (
-                    <div>
-                      📍 {address}
-                    </div>
+                    <div>📍 {address}</div>
                   )}
 
                   {phone && (
                     <a
                       href={`tel:${phone}`}
-                      className="block hover:text-white"
+                      className="block transition hover:text-[#d3a253]"
                     >
                       📞 {phone}
                     </a>
@@ -856,7 +980,7 @@ export default function HomePage() {
                   {email && (
                     <a
                       href={`mailto:${email}`}
-                      className="block hover:text-white"
+                      className="block transition hover:text-[#d3a253]"
                     >
                       ✉️ {email}
                     </a>
@@ -868,7 +992,7 @@ export default function HomePage() {
                     href={mapsUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-5 inline-block rounded-full border border-[#d7a463]/40 px-5 py-3 text-xs font-bold text-[#e2ad69]"
+                    className="mt-6 inline-block rounded-full border border-[#d3a253]/40 px-5 py-3 text-[9px] font-black uppercase tracking-[0.18em] text-[#d3a253] transition hover:bg-[#d3a253] hover:text-black"
                   >
                     Open Google Maps
                   </a>
@@ -876,11 +1000,11 @@ export default function HomePage() {
               </div>
 
               <div>
-                <h3 className="font-bold">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#d3a253]">
                   Opening Hours
                 </h3>
 
-                <div className="mt-4 text-sm leading-7 text-[#cdb9a9]">
+                <div className="mt-6 text-sm leading-8 text-[#b9aa99]">
                   {hours?.monday ? (
                     <>
                       Monday:{" "}
@@ -905,7 +1029,7 @@ export default function HomePage() {
                         href={social.facebook}
                         target="_blank"
                         rel="noreferrer"
-                        className="rounded-full bg-white/10 px-4 py-2 text-xs"
+                        className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[9px] uppercase tracking-wider text-[#c5b5a3] transition hover:border-[#d3a253]/40 hover:text-[#d3a253]"
                       >
                         Facebook
                       </a>
@@ -916,7 +1040,7 @@ export default function HomePage() {
                         href={social.instagram}
                         target="_blank"
                         rel="noreferrer"
-                        className="rounded-full bg-white/10 px-4 py-2 text-xs"
+                        className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[9px] uppercase tracking-wider text-[#c5b5a3] transition hover:border-[#d3a253]/40 hover:text-[#d3a253]"
                       >
                         Instagram
                       </a>
@@ -927,7 +1051,7 @@ export default function HomePage() {
                         href={social.tiktok}
                         target="_blank"
                         rel="noreferrer"
-                        className="rounded-full bg-white/10 px-4 py-2 text-xs"
+                        className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[9px] uppercase tracking-wider text-[#c5b5a3] transition hover:border-[#d3a253]/40 hover:text-[#d3a253]"
                       >
                         TikTok
                       </a>
@@ -938,7 +1062,7 @@ export default function HomePage() {
                         href={social.youtube}
                         target="_blank"
                         rel="noreferrer"
-                        className="rounded-full bg-white/10 px-4 py-2 text-xs"
+                        className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[9px] uppercase tracking-wider text-[#c5b5a3] transition hover:border-[#d3a253]/40 hover:text-[#d3a253]"
                       >
                         YouTube
                       </a>
@@ -951,11 +1075,14 @@ export default function HomePage() {
                     href={
                       whatsapp.startsWith("http")
                         ? whatsapp
-                        : `https://wa.me/${whatsapp.replace(/\D/g, "")}`
+                        : `https://wa.me/${whatsapp.replace(
+                            /\D/g,
+                            ""
+                          )}`
                     }
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-4 inline-block rounded-full bg-[#3b9b62] px-5 py-3 text-xs font-bold"
+                    className="mt-5 inline-block rounded-full bg-[#258b55] px-5 py-3 text-[9px] font-black uppercase tracking-[0.18em] text-white"
                   >
                     WhatsApp
                   </a>
@@ -963,17 +1090,18 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="mt-14 border-t border-white/10 pt-7 text-center text-xs text-[#9f8c7f]">
-              © {new Date().getFullYear()} {restaurantName}. All rights reserved.
+            <div className="mt-16 border-t border-white/10 pt-7 text-center text-[9px] uppercase tracking-[0.2em] text-[#706458]">
+              © {new Date().getFullYear()}{" "}
+              {restaurantName}. All rights reserved.
             </div>
           </div>
         </section>
       )}
 
-      {/* ================= MOBILE BOOK BUTTON ================= */}
+      {/* ================= MOBILE BOOKING ================= */}
       <button
         onClick={() => scrollTo("reservation")}
-        className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#a6402d] px-7 py-4 text-xs font-black uppercase tracking-wider text-white shadow-2xl sm:hidden"
+        className="fixed bottom-5 left-1/2 z-[80] -translate-x-1/2 rounded-full border border-[#e1b467] bg-[#d3a253] px-7 py-4 text-[9px] font-black uppercase tracking-[0.2em] text-black shadow-[0_10px_40px_rgba(0,0,0,.5)] sm:hidden"
       >
         Reserve Table
       </button>
@@ -986,7 +1114,12 @@ export default function HomePage() {
 
         body {
           margin: 0;
-          background: #f7f0e7;
+          background: #090806;
+        }
+
+        ::selection {
+          background: #d3a253;
+          color: #090806;
         }
 
         @keyframes nababiMarquee {
@@ -997,11 +1130,6 @@ export default function HomePage() {
           100% {
             transform: translateX(-50%);
           }
-        }
-
-        ::selection {
-          background: #a6402d;
-          color: white;
         }
       `}</style>
     </main>
