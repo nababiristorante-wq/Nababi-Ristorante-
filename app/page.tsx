@@ -1,646 +1,591 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
-
-type Language = "it" | "en" | "bn";
+import { FormEvent, useEffect, useMemo, useState, type CSSProperties } from "react";
 
 type AnyData = Record<string, any>;
 
-type BookingForm = {
+type MenuItem = {
+  id?: string;
+  name?: string;
+  title?: string;
+  description?: string;
+  price?: string | number;
+  category?: string;
+  image?: string;
+  available?: boolean;
+};
+
+type GalleryItem = {
+  id?: string;
+  title?: string;
+  image?: string;
+  visible?: boolean;
+  show?: boolean;
+  order?: number;
+};
+
+type Reservation = {
+  id: string;
+  code: string;
   name: string;
-  phone: string;
-  email: string;
+  phone?: string;
+  email?: string;
   date: string;
   time: string;
-  guests: string;
+  guests: number;
   category: string;
   item: string;
   note: string;
+  status: string;
+  createdAt: string;
 };
 
-const DEFAULT_BIRYANI_IMAGE =
-  "https://images.unsplash.com/photo-1563379091339-03246963d96c?auto=format&fit=crop&w=1600&q=90";
-
-const translations = {
-  it: {
-    home: "Home",
-    about: "Chi siamo",
-    menu: "Menu",
-    gallery: "Galleria",
-    booking: "Prenota",
-    reviews: "Recensioni",
-    contact: "Contatti",
-    bookNow: "Prenota un tavolo",
-    viewMenu: "Scopri il menu",
-    heroSmall: "BENVENUTI DA NABABI RISTORANTE",
-    heroTitle: "Autentico gusto reale",
-    heroText:
-      "Scopri i veri sapori dell'India e del Bangladesh nel cuore di Roma.",
-    aboutTitle: "La nostra storia",
-    aboutText:
-      "Nababi Ristorante porta nel cuore di Roma le ricche tradizioni culinarie dell'India e del Bangladesh.",
-    menuTitle: "Il nostro menu",
-    menuText:
-      "Scegli una categoria per vedere i nostri piatti.",
-    galleryTitle: "La nostra galleria",
-    bookingTitle: "Prenota il tuo tavolo",
-    bookingText:
-      "Compila il modulo e riceveremo immediatamente la tua richiesta.",
-    name: "Nome",
-    phone: "Telefono",
-    email: "Email",
-    date: "Data",
-    time: "Orario",
-    guests: "Numero di persone",
-    category: "Categoria",
-    item: "Piatti desiderati",
-    note: "Richiesta speciale",
-    confirm: "Conferma prenotazione",
-    cancel: "Cancella",
-    reviewsTitle: "Cosa dicono i nostri clienti",
-    allReviews: "Tutte le recensioni",
-    contactTitle: "Contatti",
-    close: "Chiudi",
-    gallery: "Galleria",
-    follow: "Seguici sui social",
-    bookingSuccess: "Prenotazione ricevuta!",
-    bookingCode: "Il tuo codice di prenotazione",
-    popupClose: "Non mostrare più",
-  },
-
-  en: {
-    home: "Home",
-    about: "About",
-    menu: "Menu",
-    gallery: "Gallery",
-    booking: "Booking",
-    reviews: "Reviews",
-    contact: "Contact",
-    bookNow: "Book a table",
-    viewMenu: "View menu",
-    heroSmall: "WELCOME TO NABABI RISTORANTE",
-    heroTitle: "Authentic Royal Taste",
-    heroText:
-      "Discover the true flavors of India and Bangladesh in the heart of Rome.",
-    aboutTitle: "Our Story",
-    aboutText:
-      "Nababi Ristorante brings the rich culinary traditions of India and Bangladesh to the heart of Rome.",
-    menuTitle: "Our Menu",
-    menuText: "Choose a category to see our dishes.",
-    galleryTitle: "Our Gallery",
-    bookingTitle: "Book Your Table",
-    bookingText:
-      "Complete the form and we will immediately receive your request.",
-    name: "Name",
-    phone: "Phone",
-    email: "Email",
-    date: "Date",
-    time: "Time",
-    guests: "Number of guests",
-    category: "Category",
-    item: "Desired dishes",
-    note: "Special request",
-    confirm: "Confirm booking",
-    cancel: "Cancel",
-    reviewsTitle: "What Our Customers Say",
-    allReviews: "All Reviews",
-    contactTitle: "Contact",
-    close: "Close",
-    follow: "Follow us",
-    bookingSuccess: "Booking received!",
-    bookingCode: "Your booking code",
-    popupClose: "Don't show again",
-  },
-
-  bn: {
-    home: "হোম",
-    about: "আমাদের সম্পর্কে",
-    menu: "মেনু",
-    gallery: "গ্যালারি",
-    booking: "বুকিং",
-    reviews: "রিভিউ",
-    contact: "যোগাযোগ",
-    bookNow: "টেবিল বুক করুন",
-    viewMenu: "মেনু দেখুন",
-    heroSmall: "নাবাবি রিস্টোরান্তেতে স্বাগতম",
-    heroTitle: "আসল রাজকীয় স্বাদ",
-    heroText:
-      "রোমের হৃদয়ে ভারত ও বাংলাদেশের আসল স্বাদ উপভোগ করুন।",
-    aboutTitle: "আমাদের গল্প",
-    aboutText:
-      "Nababi Ristorante রোমের হৃদয়ে ভারত ও বাংলাদেশের সমৃদ্ধ খাবারের ঐতিহ্য নিয়ে এসেছে।",
-    menuTitle: "আমাদের মেনু",
-    menuText: "একটি ক্যাটাগরিতে ক্লিক করে খাবার দেখুন।",
-    galleryTitle: "আমাদের গ্যালারি",
-    bookingTitle: "টেবিল বুক করুন",
-    bookingText:
-      "ফর্মটি পূরণ করুন। আপনার বুকিংয়ের অনুরোধ আমরা পাব।",
-    name: "নাম",
-    phone: "ফোন নম্বর",
-    email: "ইমেইল",
-    date: "তারিখ",
-    time: "সময়",
-    guests: "কতজন",
-    category: "ক্যাটাগরি",
-    item: "পছন্দের খাবার",
-    note: "বিশেষ অনুরোধ",
-    confirm: "বুকিং নিশ্চিত করুন",
-    cancel: "বাতিল",
-    reviewsTitle: "আমাদের কাস্টমাররা কী বলেন",
-    allReviews: "সব রিভিউ",
-    contactTitle: "যোগাযোগ",
-    close: "বন্ধ করুন",
-    follow: "সোশ্যাল মিডিয়ায় আমাদের অনুসরণ করুন",
-    bookingSuccess: "বুকিং গ্রহণ করা হয়েছে!",
-    bookingCode: "আপনার বুকিং কোড",
-    popupClose: "আর দেখাবেন না",
-  },
+type SocialData = {
+  facebook?: string;
+  instagram?: string;
+  tiktok?: string;
+  youtube?: string;
+  whatsapp?: string;
+  visible?: boolean;
 };
 
-const defaultBooking: BookingForm = {
-  name: "",
-  phone: "",
-  email: "",
-  date: "",
-  time: "",
-  guests: "2",
-  category: "",
-  item: "",
-  note: "",
-};
+const DEFAULT_CATEGORIES = [
+  "Biryani",
+  "Pizza",
+  "Burger",
+  "Naan",
+  "Chicken",
+  "Mutton",
+  "Drinks",
+  "Desserts",
+];
 
-function readStorage(key: string, fallback: any) {
+function readStorage<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
 
   try {
     const value = localStorage.getItem(key);
-
-    if (!value) return fallback;
-
-    return JSON.parse(value);
+    return value ? (JSON.parse(value) as T) : fallback;
   } catch {
     return fallback;
   }
 }
 
-function getText(data: AnyData, ...keys: string[]) {
-  for (const key of keys) {
-    if (
-      data &&
-      typeof data[key] === "string" &&
-      data[key].trim()
-    ) {
-      return data[key].trim();
-    }
-  }
-
-  return "";
+function arrayData(value: unknown): any[] {
+  return Array.isArray(value) ? value : [];
 }
 
-function getCategoryName(category: any) {
-  if (typeof category === "string") {
-    return category;
-  }
+function categoryName(value: unknown): string {
+  if (typeof value === "string") return value.trim();
 
-  if (category && typeof category === "object") {
+  if (value && typeof value === "object") {
+    const item = value as AnyData;
     return String(
-      category.name ??
-        category.title ??
-        category.category ??
-        category.label ??
-        ""
-    );
+      item.name ??
+        item.title ??
+        item.label ??
+        "",
+    ).trim();
   }
 
   return "";
 }
 
-function getItemCategory(item: AnyData) {
-  return getText(item, "category", "categoryName", "type");
+function bookingCode(): string {
+  const letters = Math.random()
+    .toString(36)
+    .slice(2, 6)
+    .toUpperCase();
+
+  const number = Math.floor(1000 + Math.random() * 9000);
+
+  return `NAB-${letters}${number}`;
 }
 
-function getItemName(item: AnyData) {
-  return getText(item, "name", "title", "productName");
-}
+function Icon({
+  name,
+  size = 21,
+}: {
+  name: string;
+  size?: number;
+}) {
+  const props = {
+    width: size,
+    height: size,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+  };
 
-function getItemDescription(item: AnyData) {
-  return getText(item, "description", "details", "text");
-}
-
-function getItemImage(item: AnyData) {
-  return getText(item, "image", "imageUrl", "photo");
-}
-
-function isVisible(item: AnyData) {
-  return item?.visible !== false && item?.show !== false;
-}
-
-function normalizeDateTime(value: string) {
-  if (!value) return 0;
-
-  const timestamp = new Date(value).getTime();
-
-  return Number.isNaN(timestamp) ? 0 : timestamp;
-}
-
-function isBreakingNewsActive(news: AnyData) {
-  if (!news || !isVisible(news)) return false;
-
-  const now = new Date();
-
-  if (news.startDate) {
-    const start = new Date(
-      `${news.startDate}T${news.startTime || "00:00"}`
+  if (name === "phone") {
+    return (
+      <svg {...props}>
+        <path d="M7 3.5 4.8 4.6c-.8.4-1.2 1.2-1 2.1 1.5 6.8 6.7 12 13.5 13.5.9.2 1.7-.2 2.1-1l1.1-2.2-4.1-2.1-1.8 1.9c-2.7-1.2-4.7-3.2-5.9-5.9l1.9-1.8L8.5 5Z" />
+      </svg>
     );
-
-    if (now < start) return false;
   }
 
-  if (news.endDate) {
-    const end = new Date(
-      `${news.endDate}T${news.endTime || "23:59"}`
+  if (name === "pin") {
+    return (
+      <svg {...props}>
+        <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+        <circle cx="12" cy="10" r="2.5" />
+      </svg>
     );
-
-    if (now > end) return false;
   }
 
-  return true;
+  if (name === "mail") {
+    return (
+      <svg {...props}>
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <path d="m4 7 8 6 8-6" />
+      </svg>
+    );
+  }
+
+  if (name === "calendar") {
+    return (
+      <svg {...props}>
+        <rect x="3.5" y="5" width="17" height="15" rx="2" />
+        <path d="M7 3v4M17 3v4M3.5 9h17" />
+      </svg>
+    );
+  }
+
+  if (name === "clock") {
+    return (
+      <svg {...props}>
+        <circle cx="12" cy="12" r="8.5" />
+        <path d="M12 7v5l3.5 2" />
+      </svg>
+    );
+  }
+
+  if (name === "user") {
+    return (
+      <svg {...props}>
+        <circle cx="12" cy="8" r="3.5" />
+        <path d="M5 20c.7-3.6 3-5.5 7-5.5s6.3 1.9 7 5.5" />
+      </svg>
+    );
+  }
+
+  if (name === "settings") {
+    return (
+      <svg {...props}>
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.3-2.4 1a8 8 0 0 0-1.7-1L14.5 3h-4l-.3 3.2c-.6.2-1.2.5-1.7 1l-2.4-1-2 3.3L6 11c-.1.7-.1 1.3 0 2l-2 1.5 2 3.3 2.4-1c.5.4 1.1.8 1.7 1l.3 3.2h4l.3-3.2c.6-.2 1.2-.6 1.7-1l2.4 1 2-3.3-2-1.5c.1-.3.1-.7.1-1Z" />
+      </svg>
+    );
+  }
+
+  if (name === "map") {
+    return (
+      <svg {...props}>
+        <path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Z" />
+        <path d="M9 3v15M15 6v15" />
+      </svg>
+    );
+  }
+
+  if (name === "gallery") {
+    return (
+      <svg {...props}>
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <circle cx="9" cy="9" r="1.5" />
+        <path d="m5 17 5-5 3 3 2-2 4 4" />
+      </svg>
+    );
+  }
+
+  if (name === "close") {
+    return (
+      <svg {...props}>
+        <path d="m6 6 12 12M18 6 6 18" />
+      </svg>
+    );
+  }
+
+  if (name === "arrow") {
+    return (
+      <svg {...props}>
+        <path d="M5 12h14M13 6l6 6-6 6" />
+      </svg>
+    );
+  }
+
+  if (name === "edit") {
+    return (
+      <svg {...props}>
+        <path d="m4 16-.7 4.7L8 20l11-11-4-4L4 16Z" />
+        <path d="m13.5 6.5 4 4" />
+      </svg>
+    );
+  }
+
+  if (name === "trash") {
+    return (
+      <svg {...props}>
+        <path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5" />
+      </svg>
+    );
+  }
+
+  if (name === "check") {
+    return (
+      <svg {...props}>
+        <path d="m5 12 4 4L19 6" />
+      </svg>
+    );
+  }
+
+  if (name === "facebook") {
+    return (
+      <svg {...props} fill="currentColor" stroke="none">
+        <path d="M14 8h3V4h-3c-3 0-5 2-5 5v2H6v4h3v5h4v-5h3l1-4h-4V9c0-.7.3-1 1-1Z" />
+      </svg>
+    );
+  }
+
+  if (name === "instagram") {
+    return (
+      <svg {...props}>
+        <rect x="4" y="4" width="16" height="16" rx="4" />
+        <circle cx="12" cy="12" r="3.5" />
+        <circle cx="17" cy="7" r=".7" fill="currentColor" />
+      </svg>
+    );
+  }
+
+  if (name === "tiktok") {
+    return (
+      <svg {...props}>
+        <path d="M15 4c.3 2 1.4 3.2 3.5 3.5v3c-1.4 0-2.5-.4-3.5-1v5.2a5.2 5.2 0 1 1-4.5-5.1v3a2.2 2.2 0 1 0 1.5 2.1V4H15Z" />
+      </svg>
+    );
+  }
+
+  if (name === "youtube") {
+    return (
+      <svg {...props}>
+        <rect x="3" y="6" width="18" height="12" rx="3" />
+        <path d="m10 9 5 3-5 3V9Z" fill="currentColor" stroke="none" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg {...props}>
+      <circle cx="12" cy="12" r="8" />
+    </svg>
+  );
 }
 
-export default function Home() {
-  const [language, setLanguage] = useState<Language>("it");
+function CategoryIcon({ name }: { name: string }) {
+  const value = name.toLowerCase();
 
+  const icons: Record<string, string> = {
+    biryani: "🍛",
+    pizza: "🍕",
+    burger: "🍔",
+    naan: "🫓",
+    chicken: "🍗",
+    mutton: "🥩",
+    meat: "🥩",
+    fish: "🐟",
+    drinks: "🥤",
+    dessert: "🍨",
+    desserts: "🍨",
+    vegetarian: "🥗",
+    rice: "🍚",
+  };
+
+  return (
+    <span className="category-icon">
+      {icons[value] || "🍽️"}
+    </span>
+  );
+}
+
+export default function HomePage() {
   const [home, setHome] = useState<AnyData>({});
   const [about, setAbout] = useState<AnyData>({});
   const [contact, setContact] = useState<AnyData>({});
   const [settings, setSettings] = useState<AnyData>({});
-  const [social, setSocial] = useState<AnyData>({});
-  const [languages, setLanguages] = useState<AnyData>({});
-  const [hours, setHours] = useState<AnyData>({});
-  const [menu, setMenu] = useState<AnyData[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
-  const [gallery, setGallery] = useState<AnyData[]>([]);
+  const [social, setSocial] = useState<SocialData>({});
+
+  const [menu, setMenu] = useState<MenuItem[]>([]);
+  const [categories, setCategories] =
+    useState<string[]>(DEFAULT_CATEGORIES);
+
+  const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [reviews, setReviews] = useState<AnyData[]>([]);
-  const [promotions, setPromotions] = useState<AnyData[]>([]);
-  const [breakingNews, setBreakingNews] = useState<AnyData[]>([]);
-  const [websiteStatus, setWebsiteStatus] = useState<AnyData>({});
+  const [news, setNews] = useState<AnyData[]>([]);
 
-  const [selectedCategory, setSelectedCategory] =
-    useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState("");
 
-  const [bookingForm, setBookingForm] =
-    useState<BookingForm>(defaultBooking);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
 
-  const [bookingCode, setBookingCode] = useState("");
-  const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [bookingMessage, setBookingMessage] = useState("");
 
-  const [popupVisible, setPopupVisible] = useState(false);
-  const [popupNews, setPopupNews] = useState<AnyData | null>(
-    null
-  );
+  const [booking, setBooking] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    date: "",
+    time: "",
+    guests: "2",
+    category: "",
+    item: "",
+    note: "",
+  });
 
-  const [mobileMenu, setMobileMenu] = useState(false);
-  const [showAllReviews, setShowAllReviews] = useState(false);
-  const [galleryOpen, setGalleryOpen] = useState<string | null>(
-    null
-  );
+  const [myBookingOpen, setMyBookingOpen] = useState(false);
 
-  const t = translations[language];
+  const [lookupValue, setLookupValue] = useState("");
+  const [lookupCode, setLookupCode] = useState("");
+
+  const [lookupStep, setLookupStep] =
+    useState<"login" | "code" | "details">("login");
+
+  const [lookupMessage, setLookupMessage] = useState("");
+
+  const [foundBooking, setFoundBooking] =
+    useState<Reservation | null>(null);
+
+  const [editingBooking, setEditingBooking] =
+    useState(false);
+
+  const [newsClosed, setNewsClosed] = useState(false);
+
+  const loadData = () => {
+    setHome(readStorage("nababi-home-settings", {}));
+    setAbout(readStorage("nababi-about", {}));
+    setContact(readStorage("nababi-contact", {}));
+    setSettings(readStorage("nababi-settings", {}));
+    setSocial(readStorage("nababi-social-media", {}));
+
+    const rawMenu = arrayData(
+      readStorage("nababi-menu", []),
+    ) as MenuItem[];
+
+    setMenu(
+      rawMenu.filter((item) => item.available !== false),
+    );
+
+    const rawCategories = arrayData(
+      readStorage("nababi-categories", []),
+    );
+
+    const categoryList = Array.from(
+      new Set(
+        rawCategories
+          .map(categoryName)
+          .filter(Boolean),
+      ),
+    );
+
+    setCategories(
+      categoryList.length
+        ? categoryList
+        : DEFAULT_CATEGORIES,
+    );
+
+    const rawGallery = arrayData(
+      readStorage("nababi-gallery", []),
+    ) as GalleryItem[];
+
+    setGallery(
+      rawGallery
+        .filter(
+          (item) =>
+            item.image &&
+            item.visible !== false &&
+            item.show !== false,
+        )
+        .sort(
+          (a, b) =>
+            Number(a.order ?? 0) -
+            Number(b.order ?? 0),
+        ),
+    );
+
+    setReviews(
+      arrayData(
+        readStorage("nababi-reviews", []),
+      ).filter(
+        (item: AnyData) =>
+          item.visible !== false,
+      ),
+    );
+
+    const currentTime = new Date();
+
+    setNews(
+      arrayData(
+        readStorage(
+          "nababi-breaking-news",
+          [],
+        ),
+      ).filter((item: AnyData) => {
+        if (item.visible === false) return false;
+
+        if (
+          item.startDate &&
+          new Date(item.startDate) > currentTime
+        ) {
+          return false;
+        }
+
+        if (
+          item.endDate &&
+          new Date(item.endDate) < currentTime
+        ) {
+          return false;
+        }
+
+        return Boolean(
+          item.text ||
+            item.title ||
+            item.image ||
+            item.video,
+        );
+      }),
+    );
+  };
 
   useEffect(() => {
-    const loadData = () => {
-      const homeData = readStorage("nababi-home-settings", {});
-      const aboutData = readStorage("nababi-about", {});
-      const contactData = readStorage("nababi-contact", {});
-      const settingsData = readStorage("nababi-settings", {});
-      const socialData = readStorage("nababi-social-media", {});
-      const languagesData = readStorage("nababi-languages", {});
-      const hoursData = readStorage("nababi-opening-hours", {});
-      const menuData = readStorage("nababi-menu", []);
-      const categoryData = readStorage(
-        "nababi-categories",
-        []
-      );
-      const galleryData = readStorage("nababi-gallery", []);
-      const reviewsData = readStorage("nababi-reviews", []);
-      const promotionsData = readStorage(
-        "nababi-promotions",
-        []
-      );
-      const breakingData = readStorage(
-        "nababi-breaking-news",
-        []
-      );
-      const statusData = readStorage(
-        "nababi-website-status",
-        {}
-      );
-
-      setHome(homeData || {});
-      setAbout(aboutData || {});
-      setContact(contactData || {});
-      setSettings(settingsData || {});
-      setSocial(socialData || {});
-      setLanguages(languagesData || {});
-      setHours(hoursData || {});
-      setWebsiteStatus(statusData || {});
-
-      setMenu(
-        Array.isArray(menuData)
-          ? menuData.filter(isVisible)
-          : []
-      );
-
-      setCategories(
-        Array.isArray(categoryData) ? categoryData : []
-      );
-
-      setGallery(
-        Array.isArray(galleryData)
-          ? galleryData
-              .filter(isVisible)
-              .sort(
-                (a, b) =>
-                  Number(a.displayOrder || 0) -
-                  Number(b.displayOrder || 0)
-              )
-          : []
-      );
-
-      setReviews(
-        Array.isArray(reviewsData)
-          ? reviewsData.filter(isVisible)
-          : []
-      );
-
-      setPromotions(
-        Array.isArray(promotionsData)
-          ? promotionsData.filter(isVisible)
-          : []
-      );
-
-      setBreakingNews(
-        Array.isArray(breakingData)
-          ? breakingData
-          : breakingData
-          ? [breakingData]
-          : []
-      );
-    };
-
     loadData();
 
-    const interval = window.setInterval(loadData, 1500);
+    const interval = window.setInterval(
+      loadData,
+      1500,
+    );
 
-    return () => window.clearInterval(interval);
+    window.addEventListener(
+      "storage",
+      loadData,
+    );
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener(
+        "storage",
+        loadData,
+      );
+    };
   }, []);
-
-  useEffect(() => {
-    if (!breakingNews.length) {
-      setPopupNews(null);
-      setPopupVisible(false);
-      return;
-    }
-
-    const active = breakingNews
-      .filter(isBreakingNewsActive)
-      .sort((a, b) => {
-        const aTime =
-          normalizeDateTime(a.createdAt) ||
-          normalizeDateTime(a.startDate);
-        const bTime =
-          normalizeDateTime(b.createdAt) ||
-          normalizeDateTime(b.startDate);
-
-        return bTime - aTime;
-      })[0];
-
-    if (!active) {
-      setPopupNews(null);
-      setPopupVisible(false);
-      return;
-    }
-
-    setPopupNews(active);
-
-    const disabledUntil =
-      typeof window !== "undefined"
-        ? sessionStorage.getItem(
-            `nababi-breaking-closed-${active.id || "current"}`
-          )
-        : null;
-
-    if (disabledUntil === "1") {
-      setPopupVisible(false);
-      return;
-    }
-
-    const delay = Number(
-      active.displayAfterSeconds ??
-        active.delaySeconds ??
-        3
-    );
-
-    const timer = window.setTimeout(() => {
-      setPopupVisible(true);
-    }, Math.max(0, delay) * 1000);
-
-    return () => window.clearTimeout(timer);
-  }, [breakingNews]);
-
-  useEffect(() => {
-    if (!popupVisible || !popupNews) return;
-
-    const duration = Number(
-      popupNews.displayDurationSeconds ??
-        popupNews.durationSeconds ??
-        10
-    );
-
-    if (!duration || duration < 1) return;
-
-    const timer = window.setTimeout(() => {
-      setPopupVisible(false);
-    }, duration * 1000);
-
-    return () => window.clearTimeout(timer);
-  }, [popupVisible, popupNews]);
 
   const restaurantName =
     settings.restaurantName ||
     contact.restaurantName ||
-    "NABABI RISTORANTE";
+    "Nababi Ristorante";
 
-  const phone =
-    contact.phone ||
-    settings.phone ||
-    "+39 393 3805350";
+  const heroTitle =
+    home.heroTitle ||
+    "Authentic Royal Taste";
 
-  const whatsapp =
-    contact.whatsapp ||
-    settings.whatsapp ||
-    "+39 333 7687319";
+  const heroSubtitle =
+    home.heroSubtitle ||
+    "Authentic flavors of India & Bangladesh in the heart of Rome.";
 
+  /*
+   * IMPORTANT:
+   * এখানে কোনো default Home image নেই।
+   * Admin → Home থেকে image/video না দিলে Home-এ
+   * কোনো restaurant image দেখাবে না।
+   */
+  const heroImage =
+    home.heroImage ||
+    home.image ||
+    "";
+
+  const heroVideo =
+    home.heroVideo ||
+    home.video ||
+    "";
+
+  const aboutText =
+    about.content ||
+    about.text ||
+    "Authentic food, warm hospitality and traditional flavors.";
+
+  const phone = contact.phone || "";
+  const email = contact.email || "";
   const address =
     contact.address ||
     "Via Vespasiano 73/75/77, Roma";
 
-  const email =
-    contact.email ||
-    settings.adminEmail ||
+  const mapUrl =
+    contact.googleMapsUrl ||
     "";
 
-  const heroImage =
-    getText(home, "heroImage", "image", "heroImageUrl") ||
-    DEFAULT_BIRYANI_IMAGE;
+  const whatsapp =
+    contact.whatsapp ||
+    social.whatsapp ||
+    "";
 
-  const aboutImage =
-    getText(about, "image", "imageUrl", "photo");
+  const visibleNews =
+    news.length > 0 && !newsClosed
+      ? news[0]
+      : null;
 
-  const aboutVideo =
-    getText(about, "video", "videoUrl");
+  const categoryCards = useMemo(() => {
+    return categories.map((category) => {
+      const firstItem = menu.find(
+        (item) =>
+          categoryName(item.category)
+            .toLowerCase() ===
+          category.toLowerCase(),
+      );
 
-  const heroTitle =
-    getText(home, "heroTitle", "title") ||
-    t.heroTitle;
-
-  const heroSubtitle =
-    getText(home, "heroSubtitle", "subtitle", "heroText") ||
-    t.heroText;
-
-  const welcomeText =
-    getText(home, "welcomeText", "welcome") ||
-    t.heroSmall;
-
-  const aboutText =
-    getText(about, "content", "text", "description") ||
-    t.aboutText;
-
-  const bookingTitle =
-    getText(home, "bookingTitle") ||
-    t.bookingTitle;
-
-  const bookingText =
-    getText(home, "bookingText") ||
-    t.bookingText;
-
-  const normalizedCategories = useMemo(() => {
-    const names = [
-      ...categories.map(getCategoryName),
-      ...menu.map(getItemCategory),
-    ]
-      .map((name) => name.trim())
-      .filter(Boolean);
-
-    return Array.from(new Set(names));
+      return {
+        name: category,
+        image: firstItem?.image || "",
+      };
+    });
   }, [categories, menu]);
 
-  const visibleMenu = useMemo(() => {
-    if (!selectedCategory) return menu;
+  const selectedItems = selectedCategory
+    ? menu.filter(
+        (item) =>
+          categoryName(item.category)
+            .toLowerCase() ===
+          selectedCategory.toLowerCase(),
+      )
+    : [];
 
-    return menu.filter(
-      (item) =>
-        getItemCategory(item).toLowerCase() ===
-        selectedCategory.toLowerCase()
-    );
-  }, [menu, selectedCategory]);
+  const bookingItems = booking.category
+    ? menu.filter(
+        (item) =>
+          categoryName(item.category)
+            .toLowerCase() ===
+          booking.category.toLowerCase(),
+      )
+    : [];
 
-  const visibleReviews = useMemo(() => {
-    const sorted = [...reviews].sort((a, b) => {
-      const aRating = Number(
-        a.rating ?? a.stars ?? 0
-      );
-
-      const bRating = Number(
-        b.rating ?? b.stars ?? 0
-      );
-
-      if (bRating !== aRating) {
-        return bRating - aRating;
-      }
-
-      const aDate =
-        normalizeDateTime(a.date) ||
-        normalizeDateTime(a.createdAt);
-
-      const bDate =
-        normalizeDateTime(b.date) ||
-        normalizeDateTime(b.createdAt);
-
-      return bDate - aDate;
-    });
-
-    return showAllReviews ? sorted : sorted.slice(0, 6);
-  }, [reviews, showAllReviews]);
-
-  const closePopup = () => {
-    setPopupVisible(false);
-
-    if (popupNews) {
-      try {
-        sessionStorage.setItem(
-          `nababi-breaking-closed-${
-            popupNews.id || "current"
-          }`,
-          "1"
-        );
-      } catch {}
-    }
-  };
-
-  const handleBookingSubmit = (
-    e: FormEvent<HTMLFormElement>
-  ) => {
-    e.preventDefault();
-
-    try {
-      const existing =
-        readStorage("nababi-reservations", []);
-
-      const reservations = Array.isArray(existing)
-        ? existing
-        : [];
-
-      const code =
-        "NAB-" +
-        Math.random()
-          .toString(36)
-          .substring(2, 8)
-          .toUpperCase();
-
-      const reservation = {
-        id: Date.now().toString(),
-        bookingCode: code,
-        name: bookingForm.name.trim(),
-        phone: bookingForm.phone.trim(),
-        email: bookingForm.email.trim(),
-        date: bookingForm.date,
-        time: bookingForm.time,
-        guests: Number(bookingForm.guests),
-        category: bookingForm.category,
-        menu: bookingForm.item.trim(),
-        item: bookingForm.item.trim(),
-        note: bookingForm.note.trim(),
-        status: "Pending",
-        createdAt: new Date().toISOString(),
-      };
-
-      localStorage.setItem(
-        "nababi-reservations",
-        JSON.stringify([
-          ...reservations,
-          reservation,
-        ])
-      );
-
-      setBookingCode(code);
-      setBookingSuccess(true);
-      setBookingForm(defaultBooking);
-    } catch (error) {
-      console.error(error);
-      alert("Booking save failed. Please try again.");
-    }
-  };
+  const socialLinks = [
+    {
+      name: "facebook",
+      url: social.facebook,
+    },
+    {
+      name: "instagram",
+      url: social.instagram,
+    },
+    {
+      name: "tiktok",
+      url: social.tiktok,
+    },
+    {
+      name: "youtube",
+      url: social.youtube,
+    },
+  ].filter((item) => item.url);
 
   const scrollTo = (id: string) => {
     document
@@ -649,1125 +594,228 @@ export default function Home() {
         behavior: "smooth",
       });
 
-    setMobileMenu(false);
+    setMobileOpen(false);
   };
 
-  const getPopupMedia = () => {
-    if (!popupNews) return "";
+  const submitBooking = (
+    event: FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
 
-    return getText(
-      popupNews,
-      "mediaUrl",
-      "videoUrl",
-      "imageUrl",
-      "image",
-      "photo",
-      "url"
+    setBookingMessage("");
+
+    if (
+      !booking.name ||
+      !booking.date ||
+      !booking.time
+    ) {
+      setBookingMessage(
+        "Name, date and time are required.",
+      );
+      return;
+    }
+
+    if (!booking.phone && !booking.email) {
+      setBookingMessage(
+        "Please enter a phone number or email.",
+      );
+      return;
+    }
+
+    const newReservation: Reservation = {
+      id: `reservation-${Date.now()}`,
+      code: bookingCode(),
+      name: booking.name,
+      phone: booking.phone,
+      email: booking.email,
+      date: booking.date,
+      time: booking.time,
+      guests:
+        Number(booking.guests) || 2,
+      category: booking.category,
+      item: booking.item,
+      note: booking.note,
+      status: "Confirmed",
+      createdAt:
+        new Date().toISOString(),
+    };
+
+    const current =
+      arrayData(
+        readStorage(
+          "nababi-reservations",
+          [],
+        ),
+      ) as Reservation[];
+
+    localStorage.setItem(
+      "nababi-reservations",
+      JSON.stringify([
+        newReservation,
+        ...current,
+      ]),
+    );
+
+    setBookingMessage(
+      `Booking confirmed. Your booking code is ${newReservation.code}`,
+    );
+
+    setBooking({
+      name: "",
+      phone: "",
+      email: "",
+      date: "",
+      time: "",
+      guests: "2",
+      category: "",
+      item: "",
+      note: "",
+    });
+  };
+
+  const findMyBooking = () => {
+    const value =
+      lookupValue.trim().toLowerCase();
+
+    if (!value) {
+      setLookupMessage(
+        "Enter your phone number or email.",
+      );
+      return;
+    }
+
+    const reservations =
+      arrayData(
+        readStorage(
+          "nababi-reservations",
+          [],
+        ),
+      ) as Reservation[];
+
+    const found = reservations.find(
+      (item) =>
+        String(item.phone || "")
+          .toLowerCase() === value ||
+        String(item.email || "")
+          .toLowerCase() === value,
+    );
+
+    if (!found) {
+      setLookupMessage(
+        "No booking found for this phone number or email.",
+      );
+      return;
+    }
+
+    setFoundBooking(found);
+    setLookupMessage("");
+    setLookupStep("code");
+  };
+
+  const verifyCode = () => {
+    if (!foundBooking) return;
+
+    if (
+      lookupCode.trim().toUpperCase() !==
+      foundBooking.code.toUpperCase()
+    ) {
+      setLookupMessage(
+        "The booking code is incorrect.",
+      );
+      return;
+    }
+
+    setLookupMessage("");
+    setLookupStep("details");
+  };
+
+  const updateMyBooking = (
+    event: FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+
+    if (!foundBooking) return;
+
+    const reservations =
+      arrayData(
+        readStorage(
+          "nababi-reservations",
+          [],
+        ),
+      ) as Reservation[];
+
+    const updated =
+      reservations.map((item) =>
+        item.id === foundBooking.id
+          ? foundBooking
+          : item,
+      );
+
+    localStorage.setItem(
+      "nababi-reservations",
+      JSON.stringify(updated),
+    );
+
+    setEditingBooking(false);
+
+    setLookupMessage(
+      "Your booking has been updated.",
     );
   };
 
-  const popupMedia = getPopupMedia();
+  const cancelMyBooking = () => {
+    if (!foundBooking) return;
 
-  const popupType =
-    String(
-      popupNews?.mediaType ||
-        popupNews?.type ||
-        ""
-    ).toLowerCase();
+    const reservations =
+      arrayData(
+        readStorage(
+          "nababi-reservations",
+          [],
+        ),
+      ) as Reservation[];
 
-  const isVideo =
-    popupType.includes("video") ||
-    /\.(mp4|webm|ogg)(\?|$)/i.test(
-      popupMedia
+    const updated =
+      reservations.map((item) =>
+        item.id === foundBooking.id
+          ? {
+              ...item,
+              status: "Cancelled",
+            }
+          : item,
+      );
+
+    localStorage.setItem(
+      "nababi-reservations",
+      JSON.stringify(updated),
     );
 
-  const mapsUrl =
-    contact.googleMapsUrl ||
-    "https://www.google.com/maps/search/?api=1&query=Via+Vespasiano+73%2F75%2F77+Roma";
+    setFoundBooking({
+      ...foundBooking,
+      status: "Cancelled",
+    });
 
-  const socialLinks = [
-    {
-      name: "Facebook",
-      url: social.facebook,
-    },
-    {
-      name: "Instagram",
-      url: social.instagram,
-    },
-    {
-      name: "TikTok",
-      url: social.tiktok,
-    },
-    {
-      name: "YouTube",
-      url: social.youtube,
-    },
-    {
-      name: "WhatsApp",
-      url:
-        social.whatsapp ||
-        `https://wa.me/${whatsapp.replace(/\D/g, "")}`,
-    },
-  ].filter((item) => item.url);
-
-  if (
-    websiteStatus?.maintenanceMode === true ||
-    websiteStatus?.status === "maintenance"
-  ) {
-    return (
-      <main className="maintenance-screen">
-        <div className="maintenance-card">
-          <span>♛</span>
-          <h1>{restaurantName}</h1>
-          <p>
-            Website temporarily under maintenance.
-          </p>
-        </div>
-
-        <style jsx>{`
-          .maintenance-screen {
-            min-height: 100vh;
-            display: grid;
-            place-items: center;
-            background: #0c0a09;
-            color: #f2dfac;
-            padding: 30px;
-            font-family: Georgia, serif;
-          }
-
-          .maintenance-card {
-            text-align: center;
-            border: 1px solid rgba(213, 174, 91, 0.4);
-            padding: 50px;
-            border-radius: 28px;
-            background: rgba(255, 255, 255, 0.04);
-          }
-
-          .maintenance-card span {
-            font-size: 55px;
-          }
-
-          .maintenance-card h1 {
-            margin: 15px 0;
-          }
-
-          .maintenance-card p {
-            color: #bfb19a;
-          }
-        `}</style>
-      </main>
+    setLookupMessage(
+      "Your booking has been cancelled.",
     );
-  }
+  };
+
+  const openWhatsApp = () => {
+    if (!whatsapp) return;
+
+    const number =
+      whatsapp.replace(/[^\d+]/g, "");
+
+    window.open(
+      `https://wa.me/${number.replace(
+        "+",
+        "",
+      )}`,
+      "_blank",
+    );
+  };
 
   return (
     <main className="site">
-      {/* HEADER */}
-      <header className="header">
-        <a
-          href="#home"
-          className="logo"
-          onClick={() => setMobileMenu(false)}
-        >
-          <span className="logo-crown">♛</span>
-
-          <span>
-            <strong>NABABI</strong>
-            <small>RISTORANTE</small>
-          </span>
-        </a>
-
-        <nav
-          className={`nav ${
-            mobileMenu ? "nav-open" : ""
-          }`}
-        >
-          <a href="#home" onClick={() => setMobileMenu(false)}>
-            {t.home}
-          </a>
-
-          <a href="#about" onClick={() => setMobileMenu(false)}>
-            {t.about}
-          </a>
-
-          <a href="#menu" onClick={() => setMobileMenu(false)}>
-            {t.menu}
-          </a>
-
-          <a href="#gallery" onClick={() => setMobileMenu(false)}>
-            {t.gallery}
-          </a>
-
-          <a href="#booking" onClick={() => setMobileMenu(false)}>
-            {t.booking}
-          </a>
-
-          <a href="#reviews" onClick={() => setMobileMenu(false)}>
-            {t.reviews}
-          </a>
-
-          <a href="#contact" onClick={() => setMobileMenu(false)}>
-            {t.contact}
-          </a>
-        </nav>
-
-        <div className="header-actions">
-          <a
-            href="#booking"
-            className="order-btn"
-          >
-            {t.bookNow}
-          </a>
-
-          <a
-            href="/admin"
-            className="admin-btn"
-          >
-            🔒 Admin
-          </a>
-
-          {languages?.switcherVisible !== false && (
-            <select
-              className="language"
-              value={language}
-              onChange={(e) =>
-                setLanguage(
-                  e.target.value as Language
-                )
-              }
-            >
-              <option value="it">🇮🇹 IT</option>
-              <option value="en">🇬🇧 EN</option>
-              <option value="bn">🇧🇩 বাংলা</option>
-            </select>
-          )}
-        </div>
-
-        <button
-          type="button"
-          className="mobile-menu-button"
-          onClick={() =>
-            setMobileMenu(!mobileMenu)
-          }
-          aria-label="Open menu"
-        >
-          ☰
-        </button>
-      </header>
-
-      {/* HERO / BIRYANI SCREEN */}
-      <section
-        id="home"
-        className="hero"
-        style={{
-          backgroundImage: `
-            linear-gradient(
-              90deg,
-              rgba(7,5,4,0.97) 0%,
-              rgba(7,5,4,0.84) 42%,
-              rgba(7,5,4,0.34) 72%,
-              rgba(7,5,4,0.78) 100%
-            ),
-            url("${heroImage}")
-          `,
-        }}
-      >
-        <div className="hero-content">
-          <p className="eyebrow">
-            {welcomeText}
-          </p>
-
-          <h1>{heroTitle}</h1>
-
-          <p className="hero-text">
-            {heroSubtitle}
-          </p>
-
-          <div className="hero-buttons">
-            <button
-              type="button"
-              className="primary-btn"
-              onClick={() => scrollTo("menu")}
-            >
-              🍛 {t.viewMenu}
-            </button>
-
-            <button
-              type="button"
-              className="secondary-btn"
-              onClick={() => scrollTo("booking")}
-            >
-              ◉ {t.bookNow}
-            </button>
-          </div>
-
-          {/* SMALL PHONE + ADDRESS */}
-          <div className="hero-contact-mini">
-            <a href={`tel:${phone.replace(/\s/g, "")}`}>
-              <span>☎</span>
-              <small>{t.phone}</small>
-              <strong>{phone}</strong>
-            </a>
-
-            <a
-              href={mapsUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <span>📍</span>
-              <small>Address</small>
-              <strong>{address}</strong>
-            </a>
-          </div>
-        </div>
-
-        <div className="hero-image-side">
-          <div className="hero-food-frame">
-            <img
-              src={heroImage}
-              alt="Biryani"
-            />
-
-            <div className="food-badge">
-              <span>♛</span>
-              <strong>NABABI</strong>
-              <small>RISTORANTE</small>
-            </div>
-          </div>
-        </div>
-
-        {/* BREAKING NEWS VIDEO / IMAGE POPUP */}
-        {popupVisible &&
-          popupNews &&
-          popupMedia && (
-            <div className="breaking-popup">
-              <div className="breaking-popup-top">
-                <span>
-                  {isVideo
-                    ? "🎥 Breaking News"
-                    : "🖼️ Breaking News"}
-                </span>
-
-                <button
-                  type="button"
-                  onClick={closePopup}
-                  aria-label={t.close}
-                  title={t.close}
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="breaking-media">
-                {isVideo ? (
-                  <video
-                    src={popupMedia}
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    controls
-                  />
-                ) : (
-                  <img
-                    src={popupMedia}
-                    alt="Breaking News"
-                  />
-                )}
-              </div>
-
-              {getText(
-                popupNews,
-                "text",
-                "title",
-                "description"
-              ) && (
-                <div className="breaking-caption">
-                  {getText(
-                    popupNews,
-                    "text",
-                    "title",
-                    "description"
-                  )}
-                </div>
-              )}
-
-              <button
-                type="button"
-                className="popup-close-text"
-                onClick={closePopup}
-              >
-                {t.popupClose}
-              </button>
-            </div>
-          )}
-      </section>
-
-      {/* ABOUT */}
-      <section
-        id="about"
-        className="section about-section"
-      >
-        <div className="about-media">
-          {aboutVideo ? (
-            <video
-              src={aboutVideo}
-              controls
-              playsInline
-              muted
-            />
-          ) : aboutImage ? (
-            <img
-              src={aboutImage}
-              alt="About Nababi"
-            />
-          ) : (
-            <img
-              src={heroImage}
-              alt="Nababi Ristorante"
-            />
-          )}
-
-          <div className="about-seal">
-            <span>♛</span>
-            <strong>NABABI</strong>
-            <small>ROMA</small>
-          </div>
-        </div>
-
-        <div className="about-content">
-          <p className="eyebrow">
-            {restaurantName}
-          </p>
-
-          <h2>{t.aboutTitle}</h2>
-
-          <p>{aboutText}</p>
-
-          <p>
-            India and Bangladesh meet in Rome through
-            authentic recipes, traditional spices and a
-            warm royal atmosphere.
-          </p>
-
-          <button
-            type="button"
-            className="primary-btn"
-            onClick={() => scrollTo("contact")}
-          >
-            {t.contact} →
-          </button>
-        </div>
-      </section>
-
-      {/* MENU */}
-      <section
-        id="menu"
-        className="section menu-section"
-      >
-        <div className="section-heading">
-          <p className="eyebrow">
-            {restaurantName}
-          </p>
-
-          <h2>{t.menuTitle}</h2>
-
-          <p>{t.menuText}</p>
-        </div>
-
-        <div className="menu-categories">
-          {normalizedCategories.map(
-            (category, index) => (
-              <button
-                type="button"
-                key={`${category}-${index}`}
-                className={
-                  selectedCategory === category
-                    ? "menu-category active"
-                    : "menu-category"
-                }
-                onClick={() =>
-                  setSelectedCategory(
-                    selectedCategory === category
-                      ? ""
-                      : category
-                  )
-                }
-              >
-                <span className="category-icon">
-                  {index % 6 === 0
-                    ? "🍛"
-                    : index % 6 === 1
-                    ? "🍕"
-                    : index % 6 === 2
-                    ? "🍔"
-                    : index % 6 === 3
-                    ? "🫓"
-                    : index % 6 === 4
-                    ? "🍗"
-                    : "🥤"}
-                </span>
-
-                <strong>{category}</strong>
-              </button>
-            )
-          )}
-        </div>
-
-        {selectedCategory && (
-          <div className="selected-category-title">
-            <span>✓</span>
-            {selectedCategory}
-          </div>
-        )}
-
-        <div className="food-grid">
-          {visibleMenu.length > 0 ? (
-            visibleMenu.map(
-              (item, index) => {
-                const image =
-                  getItemImage(item);
-
-                return (
-                  <article
-                    className="food-card"
-                    key={
-                      item.id ||
-                      `${getItemName(item)}-${index}`
-                    }
-                  >
-                    <div className="food-image">
-                      {image ? (
-                        <img
-                          src={image}
-                          alt={getItemName(item)}
-                        />
-                      ) : (
-                        <div className="food-fallback">
-                          🍛
-                        </div>
-                      )}
-
-                      {item.available === false && (
-                        <span className="sold-out">
-                          Unavailable
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="food-info">
-                      <div>
-                        <h3>
-                          {getItemName(item) ||
-                            "Nababi Special"}
-                        </h3>
-
-                        <p>
-                          {getItemDescription(item)}
-                        </p>
-                      </div>
-
-                      {item.price !== undefined &&
-                        item.price !== null &&
-                        item.price !== "" && (
-                          <strong className="price">
-                            {item.price}{" "}
-                            {settings.currency ||
-                              "€"}
-                          </strong>
-                        )}
-                    </div>
-                  </article>
-                );
-              }
-            )
-          ) : (
-            <div className="empty-menu">
-              <span>🍛</span>
-              <h3>
-                {selectedCategory
-                  ? "No dishes in this category yet."
-                  : "Menu coming soon"}
-              </h3>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* PROMOTIONS */}
-      {promotions.length > 0 && (
-        <section className="section promotions-section">
-          <div className="section-heading">
-            <p className="eyebrow">SPECIAL OFFER</p>
-
-            <h2>Special Promotions</h2>
-          </div>
-
-          <div className="promotion-grid">
-            {promotions.map(
-              (promotion, index) => (
-                <article
-                  className="promotion-card"
-                  key={
-                    promotion.id ||
-                    `${promotion.title}-${index}`
-                  }
-                >
-                  {promotion.image && (
-                    <img
-                      src={promotion.image}
-                      alt={
-                        promotion.title ||
-                        "Promotion"
-                      }
-                    />
-                  )}
-
-                  <div>
-                    <span>
-                      {promotion.offer ||
-                        "Special Offer"}
-                    </span>
-
-                    <h3>
-                      {promotion.title}
-                    </h3>
-
-                    <p>
-                      {promotion.description}
-                    </p>
-                  </div>
-                </article>
-              )
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* GALLERY */}
-      <section
-        id="gallery"
-        className="section gallery-section"
-      >
-        <div className="section-heading">
-          <p className="eyebrow">
-            {restaurantName}
-          </p>
-
-          <h2>{t.galleryTitle}</h2>
-        </div>
-
-        <div className="gallery-grid">
-          {gallery.length > 0 ? (
-            gallery.map((image, index) => {
-              const src =
-                getText(
-                  image,
-                  "image",
-                  "imageUrl",
-                  "url"
-                );
-
-              if (!src) return null;
-
-              return (
-                <button
-                  type="button"
-                  className={
-                    index === 0 ||
-                    index === 5
-                      ? "gallery-card large"
-                      : "gallery-card"
-                  }
-                  key={
-                    image.id ||
-                    `${src}-${index}`
-                  }
-                  onClick={() =>
-                    setGalleryOpen(src)
-                  }
-                >
-                  <img
-                    src={src}
-                    alt={
-                      image.title ||
-                      "Nababi Gallery"
-                    }
-                  />
-                </button>
-              );
-            })
-          ) : (
-            <div className="gallery-empty">
-              <img
-                src={heroImage}
-                alt="Nababi"
-              />
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* BOOKING */}
-      <section
-        id="booking"
-        className="section booking-section"
-      >
-        <div className="booking-heading">
-          <p className="eyebrow">RESERVATION</p>
-
-          <h2>{bookingTitle}</h2>
-
-          <p>{bookingText}</p>
-
-          <div className="booking-side-info">
-            <a
-              href={`tel:${phone.replace(/\s/g, "")}`}
-            >
-              ☎ {phone}
-            </a>
-
-            {email && (
-              <a href={`mailto:${email}`}>
-                ✉ {email}
-              </a>
-            )}
-          </div>
-        </div>
-
-        <form
-          className="booking-form"
-          onSubmit={handleBookingSubmit}
-        >
-          <div className="form-grid">
-            <label>
-              {t.name}
-              <input
-                type="text"
-                required
-                value={bookingForm.name}
-                onChange={(e) =>
-                  setBookingForm({
-                    ...bookingForm,
-                    name: e.target.value,
-                  })
-                }
-              />
-            </label>
-
-            <label>
-              {t.phone}
-              <input
-                type="tel"
-                required
-                value={bookingForm.phone}
-                onChange={(e) =>
-                  setBookingForm({
-                    ...bookingForm,
-                    phone: e.target.value,
-                  })
-                }
-              />
-            </label>
-
-            <label>
-              {t.email}
-              <input
-                type="email"
-                value={bookingForm.email}
-                onChange={(e) =>
-                  setBookingForm({
-                    ...bookingForm,
-                    email: e.target.value,
-                  })
-                }
-              />
-            </label>
-
-            <label>
-              {t.date}
-              <input
-                type="date"
-                required
-                value={bookingForm.date}
-                onChange={(e) =>
-                  setBookingForm({
-                    ...bookingForm,
-                    date: e.target.value,
-                  })
-                }
-              />
-            </label>
-
-            <label>
-              {t.time}
-              <input
-                type="time"
-                required
-                value={bookingForm.time}
-                onChange={(e) =>
-                  setBookingForm({
-                    ...bookingForm,
-                    time: e.target.value,
-                  })
-                }
-              />
-            </label>
-
-            <label>
-              {t.guests}
-              <select
-                required
-                value={bookingForm.guests}
-                onChange={(e) =>
-                  setBookingForm({
-                    ...bookingForm,
-                    guests: e.target.value,
-                  })
-                }
-              >
-                {[
-                  "1",
-                  "2",
-                  "3",
-                  "4",
-                  "5",
-                  "6",
-                  "7",
-                  "8",
-                  "9",
-                  "10",
-                ].map((number) => (
-                  <option
-                    key={number}
-                    value={number}
-                  >
-                    {number}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              {t.category}
-              <select
-                value={bookingForm.category}
-                onChange={(e) =>
-                  setBookingForm({
-                    ...bookingForm,
-                    category: e.target.value,
-                    item: "",
-                  })
-                }
-              >
-                <option value="">
-                  Select category
-                </option>
-
-                {normalizedCategories.map(
-                  (category, index) => (
-                    <option
-                      key={`${category}-${index}`}
-                      value={category}
-                    >
-                      {category}
-                    </option>
-                  )
-                )}
-              </select>
-            </label>
-
-            <label>
-              {t.item}
-              <input
-                type="text"
-                value={bookingForm.item}
-                onChange={(e) =>
-                  setBookingForm({
-                    ...bookingForm,
-                    item: e.target.value,
-                  })
-                }
-              />
-            </label>
-          </div>
-
-          <label>
-            {t.note}
-            <textarea
-              rows={5}
-              value={bookingForm.note}
-              onChange={(e) =>
-                setBookingForm({
-                  ...bookingForm,
-                  note: e.target.value,
-                })
-              }
-            />
-          </label>
-
-          <button
-            type="submit"
-            className="primary-btn submit-btn"
-          >
-            {t.confirm} →
-          </button>
-
-          {bookingSuccess && (
-            <div className="booking-success">
-              <strong>
-                ✓ {t.bookingSuccess}
-              </strong>
-
-              <span>
-                {t.bookingCode}:{" "}
-                <b>{bookingCode}</b>
-              </span>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setBookingSuccess(false);
-                  setBookingCode("");
-                }}
-              >
-                {t.cancel}
-              </button>
-            </div>
-          )}
-        </form>
-      </section>
-
-      {/* REVIEWS */}
-      <section
-        id="reviews"
-        className="section reviews-section"
-      >
-        <div className="section-heading">
-          <p className="eyebrow">REVIEWS</p>
-
-          <h2>{t.reviewsTitle}</h2>
-        </div>
-
-        <div className="reviews-grid">
-          {visibleReviews.length > 0 ? (
-            visibleReviews.map(
-              (review, index) => {
-                const rating = Math.max(
-                  1,
-                  Math.min(
-                    5,
-                    Number(
-                      review.rating ??
-                        review.stars ??
-                        5
-                    )
-                  )
-                );
-
-                return (
-                  <article
-                    className="review-card"
-                    key={
-                      review.id ||
-                      `${review.customerName}-${index}`
-                    }
-                  >
-                    <div className="stars">
-                      {"★".repeat(rating)}
-                    </div>
-
-                    <p>
-                      “
-                      {getText(
-                        review,
-                        "review",
-                        "text",
-                        "comment"
-                      )}
-                      ”
-                    </p>
-
-                    <strong>
-                      {getText(
-                        review,
-                        "customerName",
-                        "name"
-                      ) || "Customer"}
-                    </strong>
-
-                    <small>
-                      Verified Customer
-                    </small>
-                  </article>
-                );
-              }
-            )
-          ) : (
-            <div className="empty-review">
-              ⭐
-              <p>No reviews yet.</p>
-            </div>
-          )}
-        </div>
-
-        {reviews.length > 6 && (
-          <div className="center">
-            <button
-              type="button"
-              className="secondary-btn"
-              onClick={() =>
-                setShowAllReviews(
-                  !showAllReviews
-                )
-              }
-            >
-              {showAllReviews
-                ? "Show Less"
-                : t.allReviews}
-            </button>
-          </div>
-        )}
-      </section>
-
-      {/* CONTACT */}
-      <section
-        id="contact"
-        className="section contact-section"
-      >
-        <div className="contact-content">
-          <p className="eyebrow">
-            {restaurantName}
-          </p>
-
-          <h2>{t.contactTitle}</h2>
-
-          <p>
-            {contact.contactText ||
-              "We are here for you. Contact us for information and reservations."}
-          </p>
-
-          <div className="contact-list">
-            <a
-              href={mapsUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              📍
-              <span>{address}</span>
-            </a>
-
-            <a
-              href={`tel:${phone.replace(
-                /\s/g,
-                ""
-              )}`}
-            >
-              ☎
-              <span>{phone}</span>
-            </a>
-
-            {email && (
-              <a href={`mailto:${email}`}>
-                ✉
-                <span>{email}</span>
-              </a>
-            )}
-
-            <a
-              href={`https://wa.me/${whatsapp.replace(
-                /\D/g,
-                ""
-              )}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              💬
-              <span>
-                WhatsApp {whatsapp}
-              </span>
-            </a>
-          </div>
-
-          <div className="social-links">
-            {socialLinks.map(
-              (socialItem) => (
-                <a
-                  href={socialItem.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  key={socialItem.name}
-                >
-                  {socialItem.name}
-                </a>
-              )
-            )}
-          </div>
-        </div>
-
-        <div className="map-box">
-          <div className="map-inner">
-            <span>📍</span>
-            <strong>Roma</strong>
-            <small>{address}</small>
-
-            <a
-              href={mapsUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Open Google Maps →
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* FOOTER */}
-      <footer className="footer">
-        <div>
-          <span className="footer-logo">
-            ♛ NABABI
-          </span>
-
-          <p>RISTORANTE</p>
-        </div>
-
-        <p>
-          © {new Date().getFullYear()}{" "}
-          {restaurantName}. All rights reserved.
-        </p>
-
-        <a href="/admin">
-          Admin Panel
-        </a>
-      </footer>
-
-      {/* GALLERY LIGHTBOX */}
-      {galleryOpen && (
-        <div
-          className="gallery-lightbox"
-          onClick={() =>
-            setGalleryOpen(null)
-          }
-        >
-          <button
-            type="button"
-            onClick={() =>
-              setGalleryOpen(null)
-            }
-          >
-            ✕
-          </button>
-
-          <img
-            src={galleryOpen}
-            alt="Gallery"
-            onClick={(e) =>
-              e.stopPropagation()
-            }
-          />
-        </div>
-      )}
-
       <style jsx global>{`
         * {
           box-sizing: border-box;
@@ -1779,1331 +827,937 @@ export default function Home() {
 
         body {
           margin: 0;
-          background: #090706;
+          background: #050607;
+          color: #fff;
+          font-family: Georgia, "Times New Roman", serif;
         }
 
         button,
         input,
-        textarea,
-        select {
+        select,
+        textarea {
           font: inherit;
+        }
+
+        button {
+          cursor: pointer;
+        }
+
+        a {
+          color: inherit;
+          text-decoration: none;
+        }
+
+        :root {
+          --gold: #f2bd45;
+          --gold-light: #ffe29a;
+          --black: #050607;
+          --panel: #0b0e10;
+          --muted: #aaa69d;
+          --line: rgba(242, 189, 69, 0.5);
         }
 
         .site {
           min-height: 100vh;
-          color: #f5ead0;
           background:
             radial-gradient(
               circle at 10% 10%,
-              rgba(190, 148, 65, 0.12),
-              transparent 30%
+              rgba(242, 189, 69, 0.08),
+              transparent 28%
             ),
-            radial-gradient(
-              circle at 90% 50%,
-              rgba(160, 70, 25, 0.08),
-              transparent 30%
-            ),
-            #0c0908;
-          font-family:
-            Georgia,
-            "Times New Roman",
-            serif;
-          overflow-x: hidden;
+            #050607;
         }
 
-        .header {
+        .topbar {
           position: sticky;
           top: 0;
           z-index: 100;
-          min-height: 78px;
-          padding: 12px 4%;
+          min-height: 70px;
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          gap: 20px;
-          background: rgba(9, 7, 6, 0.92);
-          border-bottom: 1px solid
-            rgba(208, 168, 87, 0.28);
-          backdrop-filter: blur(18px);
+          gap: 22px;
+          padding: 9px 4vw;
+          background: rgba(4, 6, 7, 0.97);
+          border-bottom: 1px solid var(--line);
+          backdrop-filter: blur(16px);
         }
 
-        .logo {
+        .brand {
+          border: 0;
+          background: transparent;
+          color: #fff;
           display: flex;
           align-items: center;
           gap: 10px;
-          color: #e8ce8c;
-          text-decoration: none;
-          min-width: 175px;
+          min-width: 220px;
+          text-align: left;
         }
 
-        .logo-crown {
-          font-size: 34px;
-          color: #d1aa59;
+        .brand-mark {
+          width: 47px;
+          height: 47px;
+          display: grid;
+          place-items: center;
+          border: 1px solid var(--gold);
+          border-radius: 50%;
+          color: var(--gold);
+          font-size: 25px;
         }
 
-        .logo strong {
+        .brand-name {
           display: block;
+          color: var(--gold);
+          font-size: 19px;
           letter-spacing: 4px;
-          font-size: 20px;
         }
 
-        .logo small {
+        .brand-sub {
           display: block;
-          letter-spacing: 3px;
-          color: #9f9177;
           font-size: 8px;
+          letter-spacing: 3px;
         }
 
         .nav {
+          flex: 1;
           display: flex;
-          align-items: center;
-          gap: 20px;
+          justify-content: center;
+          gap: 25px;
         }
 
-        .nav a,
-        .footer a {
-          color: #e5d8bd;
-          text-decoration: none;
-          font-size: 13px;
-          transition: 0.25s;
-        }
-
-        .nav a:hover,
-        .footer a:hover {
-          color: #d8b96d;
-        }
-
-        .header-actions {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .order-btn,
-        .admin-btn,
-        .primary-btn,
-        .secondary-btn {
-          border-radius: 30px;
-          padding: 11px 16px;
-          font-size: 12px;
-          font-weight: 700;
-          cursor: pointer;
-          text-decoration: none;
-          transition: 0.25s;
-        }
-
-        .order-btn,
-        .primary-btn {
-          color: #17100b;
-          border: 1px solid #d2ac5c;
-          background:
-            linear-gradient(
-              135deg,
-              #f2dfa4,
-              #b8893e
-            );
-        }
-
-        .admin-btn,
-        .secondary-btn {
-          color: #ead49a;
-          border: 1px solid
-            rgba(211, 170, 89, 0.65);
-          background: rgba(255, 255, 255, 0.03);
-        }
-
-        .order-btn:hover,
-        .admin-btn:hover,
-        .primary-btn:hover,
-        .secondary-btn:hover {
-          transform: translateY(-2px);
-          box-shadow:
-            0 10px 30px
-              rgba(203, 161, 76, 0.18);
-        }
-
-        .language {
-          color: #ead8ad;
-          background: #211a15;
-          border: 1px solid #67522f;
-          border-radius: 20px;
-          padding: 9px 10px;
-        }
-
-        .mobile-menu-button {
-          display: none;
-          border: 1px solid #725b35;
-          color: #ecd99e;
+        .nav button {
+          border: 0;
           background: transparent;
-          border-radius: 10px;
-          padding: 9px 12px;
-          cursor: pointer;
+          color: #eee;
+          padding: 9px 0;
+        }
+
+        .nav button:hover {
+          color: var(--gold);
+        }
+
+        .top-actions {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+        }
+
+        .pill,
+        .gold-btn,
+        .outline-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 7px;
+          border-radius: 999px;
+          padding: 10px 17px;
+          border: 1px solid var(--gold);
+          background: transparent;
+          color: var(--gold-light);
+        }
+
+        .gold-btn {
+          color: #171108;
+          background: linear-gradient(
+            135deg,
+            #f9d878,
+            #d99a25
+          );
+          font-weight: 700;
+        }
+
+        .mobile-menu {
+          display: none;
+          border: 1px solid var(--line);
+          background: transparent;
+          color: var(--gold);
+          padding: 8px 12px;
+          border-radius: 8px;
         }
 
         .hero {
-          min-height: calc(100vh - 78px);
+          min-height: 650px;
           position: relative;
           display: grid;
-          grid-template-columns: 1.05fr 0.95fr;
-          align-items: center;
-          gap: 50px;
-          padding: 70px 7%;
-          background-size: cover;
-          background-position: center;
-          isolation: isolate;
-        }
-
-        .hero::after {
-          content: "";
-          position: absolute;
-          inset: 0;
+          place-items: center;
+          overflow: hidden;
+          border-bottom: 1px solid var(--line);
           background:
             linear-gradient(
               90deg,
-              rgba(5, 4, 3, 0.15),
-              transparent
-            );
-          z-index: -1;
+              rgba(0, 0, 0, 0.88),
+              rgba(0, 0, 0, 0.45),
+              rgba(0, 0, 0, 0.8)
+            ),
+            #080a0c;
+        }
+
+        .hero.with-image {
+          background-image:
+            linear-gradient(
+              90deg,
+              rgba(0, 0, 0, 0.83),
+              rgba(0, 0, 0, 0.38),
+              rgba(0, 0, 0, 0.72)
+            ),
+            var(--hero-image);
+          background-size: cover;
+          background-position: center;
+        }
+
+        .hero-video {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          opacity: 0.45;
         }
 
         .hero-content {
           position: relative;
-          z-index: 5;
+          z-index: 2;
+          width: min(950px, 92%);
+          padding: 100px 0;
+          text-align: center;
         }
 
         .eyebrow {
-          margin: 0 0 15px;
-          color: #d4b46b;
-          font-size: 10px;
-          letter-spacing: 3px;
-          font-weight: 800;
+          color: var(--gold);
           text-transform: uppercase;
+          letter-spacing: 4px;
+          font-size: 13px;
         }
 
         .hero h1 {
-          max-width: 750px;
-          margin: 0;
-          color: #f4e6bd;
-          font-size: clamp(
-            48px,
-            7vw,
-            88px
-          );
-          line-height: 0.96;
-          font-weight: 500;
+          margin: 15px 0;
+          color: var(--gold);
+          font-size: clamp(45px, 7vw, 88px);
+          line-height: 1;
         }
 
-        .hero-text {
-          max-width: 590px;
-          margin: 28px 0;
-          color: #d4c6ad;
-          line-height: 1.8;
-          font-size: 16px;
+        .hero-description {
+          max-width: 700px;
+          margin: 0 auto 28px;
+          color: #eee;
+          line-height: 1.7;
+          font-size: 18px;
         }
 
         .hero-buttons {
           display: flex;
-          gap: 12px;
-          flex-wrap: wrap;
-        }
-
-        .hero-contact-mini {
-          display: flex;
-          gap: 12px;
-          margin-top: 42px;
-          flex-wrap: wrap;
-        }
-
-        .hero-contact-mini a {
-          min-width: 180px;
-          display: grid;
-          grid-template-columns: 25px 1fr;
-          align-items: center;
-          column-gap: 7px;
-          padding: 10px 13px;
-          color: #eee1c5;
-          text-decoration: none;
-          border-left: 2px solid #b88e42;
-          background: rgba(
-            0,
-            0,
-            0,
-            0.27
-          );
-          backdrop-filter: blur(10px);
-        }
-
-        .hero-contact-mini span {
-          grid-row: span 2;
-          font-size: 19px;
-        }
-
-        .hero-contact-mini small {
-          color: #a99b83;
-          font-size: 9px;
-        }
-
-        .hero-contact-mini strong {
-          font-size: 11px;
-          font-weight: 500;
-        }
-
-        .hero-image-side {
-          display: flex;
           justify-content: center;
-          position: relative;
-          z-index: 2;
+          flex-wrap: wrap;
+          gap: 12px;
         }
 
-        .hero-food-frame {
-          width: min(520px, 100%);
-          aspect-ratio: 1 / 1;
-          position: relative;
-          border-radius: 50%;
-          padding: 12px;
-          border: 1px solid
-            rgba(218, 179, 91, 0.72);
-          background:
-            radial-gradient(
-              circle,
-              rgba(215, 176, 86, 0.15),
-              transparent 65%
-            );
-          box-shadow:
-            0 0 0 12px
-              rgba(201, 161, 79, 0.05),
-            0 30px 80px
-              rgba(0, 0, 0, 0.5);
-        }
-
-        .hero-food-frame img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          border-radius: 50%;
-          display: block;
-          filter: saturate(1.05)
-            contrast(1.04);
-        }
-
-        .food-badge {
+        .hero-contact {
           position: absolute;
-          right: 2%;
-          bottom: 7%;
-          width: 112px;
-          height: 112px;
-          border-radius: 50%;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          background: #120d09;
-          border: 1px solid #cba65b;
-          box-shadow:
-            0 15px 35px
-              rgba(0, 0, 0, 0.45);
-        }
-
-        .food-badge span {
-          color: #d6b46b;
-          font-size: 24px;
-        }
-
-        .food-badge strong {
-          letter-spacing: 2px;
+          left: 4vw;
+          bottom: 25px;
+          z-index: 3;
+          display: grid;
+          gap: 8px;
+          color: #eee;
           font-size: 13px;
         }
 
-        .food-badge small {
-          color: #a5967a;
-          font-size: 7px;
-          letter-spacing: 2px;
-        }
-
-        /* BREAKING NEWS POPUP */
-
-        .breaking-popup {
-          position: fixed;
-          right: 24px;
-          top: 105px;
-          z-index: 500;
-          width: min(320px, calc(100vw - 30px));
-          overflow: hidden;
-          border-radius: 18px;
-          border: 1px solid
-            rgba(218, 174, 81, 0.8);
-          background:
-            linear-gradient(
-              145deg,
-              rgba(28, 18, 11, 0.98),
-              rgba(10, 8, 7, 0.98)
-            );
-          box-shadow:
-            0 25px 70px
-              rgba(0, 0, 0, 0.6),
-            0 0 35px
-              rgba(197, 150, 53, 0.1);
-          animation: popupIn 0.5s
-            ease-out both;
-        }
-
-        @keyframes popupIn {
-          from {
-            opacity: 0;
-            transform: translateY(-25px)
-              scale(0.96);
-          }
-
-          to {
-            opacity: 1;
-            transform: translateY(0)
-              scale(1);
-          }
-        }
-
-        .breaking-popup-top {
-          height: 42px;
-          padding: 0 11px 0 14px;
+        .hero-contact span {
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          color: #e7cd8c;
-          font-size: 11px;
-          font-weight: 800;
-          letter-spacing: 1px;
+          gap: 7px;
         }
 
-        .breaking-popup-top button {
-          width: 28px;
-          height: 28px;
-          border-radius: 50%;
-          border: 1px solid
-            rgba(218, 174, 81, 0.5);
-          background: rgba(255, 255, 255, 0.04);
-          color: #f0dfb1;
-          cursor: pointer;
+        .hero-empty {
+          margin-top: 25px;
+          color: rgba(255, 255, 255, 0.42);
+          font-size: 12px;
+        }
+
+        /*
+          BREAKING NEWS:
+          শুধু একটি box — বাম পাশে।
+          Home hero-এর দ্বিতীয় কোনো video box নেই।
+        */
+
+        .breaking-news {
+          position: absolute;
+          left: 22px;
+          top: 25px;
+          z-index: 20;
+          width: 275px;
+          background: rgba(4, 6, 7, 0.96);
+          border: 1px solid var(--gold);
+          border-radius: 13px;
+          overflow: hidden;
+          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .breaking-head {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 8px 11px;
+          background: #df3434;
+          font-weight: 700;
+        }
+
+        .breaking-close {
+          border: 0;
+          background: transparent;
+          color: #fff;
         }
 
         .breaking-media {
-          width: 100%;
-          aspect-ratio: 16 / 10;
-          background: #000;
-        }
-
-        .breaking-media img,
-        .breaking-media video {
-          width: 100%;
-          height: 100%;
           display: block;
+          width: 100%;
+          height: 150px;
           object-fit: cover;
+          background: #111;
         }
 
-        .breaking-caption {
-          padding: 10px 13px 5px;
-          color: #e9ddc6;
-          font-size: 12px;
-          line-height: 1.5;
+        .breaking-body {
+          padding: 11px;
         }
 
-        .popup-close-text {
-          border: 0;
-          background: transparent;
-          color: #9d8d72;
-          padding: 8px 13px 12px;
-          font-size: 9px;
-          cursor: pointer;
+        .breaking-body strong {
+          display: block;
+          margin-bottom: 5px;
+        }
+
+        .breaking-body small {
+          color: var(--gold);
+        }
+
+        .features {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          border-bottom: 1px solid var(--line);
+          background: #07090a;
+        }
+
+        .feature {
+          text-align: center;
+          padding: 28px 12px;
+          border-right: 1px solid rgba(242, 189, 69, 0.25);
+        }
+
+        .feature:last-child {
+          border-right: 0;
+        }
+
+        .feature-icon {
+          width: 48px;
+          height: 48px;
+          display: grid;
+          place-items: center;
+          margin: 0 auto 10px;
+          border: 1px solid var(--gold);
+          border-radius: 50%;
+          color: var(--gold);
+        }
+
+        .feature strong {
+          display: block;
+          margin-bottom: 6px;
+        }
+
+        .feature span {
+          color: var(--muted);
+          font-size: 13px;
         }
 
         .section {
-          padding: 100px 7%;
-          position: relative;
+          width: min(1180px, 92%);
+          margin: 0 auto;
+          padding: 75px 0;
         }
 
-        .section-heading {
-          max-width: 720px;
-          margin: 0 auto 45px;
-          text-align: center;
+        .section-title {
+          margin-bottom: 28px;
         }
 
-        .section-heading h2,
-        .about-content h2,
-        .booking-heading h2,
-        .contact-content h2 {
-          margin: 0 0 18px;
-          color: #f1dfac;
-          font-size: clamp(
-            38px,
-            5vw,
-            65px
-          );
-          font-weight: 500;
-          line-height: 1;
+        .section-title h2 {
+          margin: 7px 0;
+          color: var(--gold);
+          font-size: clamp(30px, 4vw, 50px);
         }
 
-        .section-heading p:not(.eyebrow) {
-          color: #bcb09a;
-          line-height: 1.8;
+        .section-title p {
+          color: var(--muted);
+          margin: 0;
         }
 
-        .about-section {
+        .about-grid {
           display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 80px;
+          grid-template-columns: 1fr 1.2fr 280px;
+          gap: 25px;
           align-items: center;
+        }
+
+        .box {
           background:
             linear-gradient(
-              180deg,
-              #0d0908,
-              #15100c
+              145deg,
+              rgba(17, 20, 22, 0.98),
+              rgba(6, 8, 9, 0.96)
             );
+          border: 1px solid var(--line);
+          border-radius: 14px;
+          box-shadow: 0 20px 55px rgba(0, 0, 0, 0.22);
         }
 
         .about-media {
-          position: relative;
-          min-height: 470px;
-          border-radius: 25px;
+          min-height: 260px;
           overflow: hidden;
-          border: 1px solid
-            rgba(204, 162, 80, 0.35);
+          display: grid;
+          place-items: center;
         }
 
         .about-media img,
         .about-media video {
           width: 100%;
           height: 100%;
-          min-height: 470px;
+          min-height: 260px;
           object-fit: cover;
-          display: block;
         }
 
-        .about-seal {
-          position: absolute;
-          left: 25px;
-          bottom: 25px;
-          width: 105px;
-          height: 105px;
-          border-radius: 50%;
-          background: #100b08;
-          border: 1px solid #c7a052;
+        .empty-box {
+          min-height: 260px;
+          display: grid;
+          place-items: center;
+          text-align: center;
+          padding: 25px;
+          color: var(--muted);
+        }
+
+        .about-text {
+          padding: 27px;
+        }
+
+        .about-text h3 {
+          margin: 7px 0 15px;
+          color: var(--gold-light);
+          font-size: 32px;
+        }
+
+        .about-text p {
+          color: #d5d0c6;
+          line-height: 1.8;
+        }
+
+        .info-box {
+          padding: 25px;
+        }
+
+        .info-box h4 {
+          margin-top: 0;
+          color: var(--gold);
+          font-size: 19px;
+        }
+
+        .info-line {
           display: flex;
-          flex-direction: column;
+          gap: 9px;
           align-items: center;
-          justify-content: center;
-        }
-
-        .about-seal span {
-          color: #d5b367;
-          font-size: 25px;
-        }
-
-        .about-seal strong {
-          font-size: 12px;
-          letter-spacing: 2px;
-        }
-
-        .about-seal small {
-          color: #95856b;
-          font-size: 8px;
-          letter-spacing: 2px;
-        }
-
-        .about-content p {
-          color: #c7b9a0;
-          line-height: 1.9;
+          margin: 16px 0;
+          color: #eee;
         }
 
         .menu-section {
-          background:
-            radial-gradient(
-              circle at 50% 0%,
-              rgba(193, 145, 54, 0.09),
-              transparent 30%
-            ),
-            #0b0807;
+          background: linear-gradient(
+            180deg,
+            #07090a,
+            #0b0d0f
+          );
+          border-top: 1px solid var(--line);
+          border-bottom: 1px solid var(--line);
         }
 
-        .menu-categories {
-          display: flex;
-          justify-content: center;
-          gap: 12px;
-          flex-wrap: wrap;
-          margin-bottom: 38px;
+        .category-grid {
+          display: grid;
+          grid-template-columns: repeat(8, 1fr);
+          gap: 10px;
         }
 
-        .menu-category {
-          min-width: 105px;
-          padding: 15px 18px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 8px;
-          color: #cfc1a7;
-          border: 1px solid
-            rgba(202, 162, 82, 0.28);
-          background: rgba(255, 255, 255, 0.025);
-          border-radius: 18px;
-          cursor: pointer;
-          transition: 0.25s;
+        .category-card {
+          min-height: 150px;
+          padding: 9px;
+          border: 1px solid var(--line);
+          border-radius: 12px;
+          background: #090c0e;
+          color: #fff;
+          transition: 0.2s;
         }
 
-        .menu-category:hover,
-        .menu-category.active {
-          color: #f4dfaa;
-          border-color: #c9a158;
+        .category-card:hover,
+        .category-card.active {
           transform: translateY(-3px);
-          background: rgba(
-            197,
-            154,
-            65,
-            0.08
+          border-color: #ffe29a;
+          box-shadow: 0 10px 30px rgba(242, 189, 69, 0.15);
+        }
+
+        .category-photo {
+          width: 100%;
+          height: 95px;
+          object-fit: cover;
+          border-radius: 8px;
+        }
+
+        .category-placeholder {
+          width: 100%;
+          height: 95px;
+          display: grid;
+          place-items: center;
+          border-radius: 8px;
+          background: radial-gradient(
+            circle,
+            #30240f,
+            #101214
           );
         }
 
         .category-icon {
-          font-size: 28px;
+          font-size: 42px;
         }
 
-        .menu-category strong {
-          font-size: 11px;
+        .category-name {
+          margin-top: 9px;
+          color: var(--gold-light);
+          font-weight: 700;
+          font-size: 13px;
         }
 
-        .selected-category-title {
-          width: fit-content;
-          margin: 0 auto 30px;
-          padding: 10px 18px;
-          border-radius: 30px;
-          color: #ead49a;
-          border: 1px solid #a17d3e;
-          background: rgba(
-            189,
-            145,
-            57,
-            0.08
-          );
+        .items-panel {
+          margin-top: 25px;
+          padding: 25px;
+          border: 1px solid var(--line);
+          border-radius: 14px;
+          background: #050708;
         }
 
-        .selected-category-title span {
-          margin-right: 7px;
+        .items-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 15px;
+          margin-bottom: 20px;
         }
 
-        .food-grid {
+        .items-header h3 {
+          margin: 0;
+          color: var(--gold);
+        }
+
+        .item-grid {
           display: grid;
-          grid-template-columns: repeat(
-            3,
-            minmax(0, 1fr)
-          );
-          gap: 22px;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 18px;
         }
 
-        .food-card {
+        .menu-item {
           overflow: hidden;
-          border-radius: 20px;
-          border: 1px solid
-            rgba(207, 164, 81, 0.24);
-          background: #15100d;
-          transition: 0.3s;
+          background: #0b0e10;
+          border: 1px solid rgba(242, 189, 69, 0.4);
+          border-radius: 12px;
         }
 
-        .food-card:hover {
-          transform: translateY(-5px);
-          border-color: #b99045;
-        }
-
-        .food-image {
-          height: 245px;
-          position: relative;
-          background: #211710;
-        }
-
-        .food-image img {
+        .menu-item img {
           width: 100%;
-          height: 100%;
-          display: block;
+          height: 190px;
           object-fit: cover;
         }
 
-        .food-fallback {
-          width: 100%;
-          height: 100%;
-          display: grid;
-          place-items: center;
-          font-size: 80px;
+        .menu-item-content {
+          padding: 16px;
         }
 
-        .sold-out {
-          position: absolute;
-          top: 12px;
-          right: 12px;
-          padding: 7px 10px;
-          border-radius: 20px;
-          background: rgba(0, 0, 0, 0.8);
-          color: #e9c77e;
-          font-size: 9px;
-        }
-
-        .food-info {
-          padding: 18px;
-          display: flex;
-          justify-content: space-between;
-          gap: 15px;
-        }
-
-        .food-info h3 {
-          margin: 0 0 8px;
-          color: #f0dfb1;
-          font-size: 18px;
-        }
-
-        .food-info p {
-          margin: 0;
-          color: #9e917c;
-          line-height: 1.6;
-          font-size: 12px;
+        .menu-item-content h4 {
+          margin: 0 0 7px;
         }
 
         .price {
-          color: #d8b56b;
-          white-space: nowrap;
+          color: var(--gold);
+          font-size: 18px;
+          font-weight: 700;
         }
 
-        .empty-menu {
-          min-height: 230px;
+        .description {
+          color: var(--muted);
+          font-size: 13px;
+          line-height: 1.6;
+        }
+
+        .booking-grid {
           display: grid;
-          place-items: center;
-          align-content: center;
-          color: #a7977c;
-          text-align: center;
-        }
-
-        .empty-menu span {
-          font-size: 60px;
-        }
-
-        .promotions-section {
-          background: #120d09;
-        }
-
-        .promotion-grid {
-          display: grid;
-          grid-template-columns: repeat(
-            3,
-            minmax(0, 1fr)
-          );
+          grid-template-columns: 1.2fr 0.8fr;
           gap: 20px;
         }
 
-        .promotion-card {
-          overflow: hidden;
-          border-radius: 22px;
-          border: 1px solid #694f29;
-          background: #1b120c;
+        .booking-box {
+          padding: 25px;
         }
 
-        .promotion-card img {
-          width: 100%;
-          height: 220px;
-          object-fit: cover;
-          display: block;
+        .booking-box h3 {
+          color: var(--gold);
+          margin: 0 0 7px;
         }
 
-        .promotion-card > div {
-          padding: 20px;
-        }
-
-        .promotion-card span {
-          color: #d9b76c;
-          font-size: 10px;
-          letter-spacing: 2px;
-        }
-
-        .promotion-card h3 {
-          color: #f2dfae;
-          font-size: 25px;
-          margin: 8px 0;
-        }
-
-        .promotion-card p {
-          color: #aaa08d;
-          line-height: 1.7;
-        }
-
-        .gallery-section {
-          background: #0a0807;
-        }
-
-        .gallery-grid {
-          display: grid;
-          grid-template-columns: repeat(
-            4,
-            1fr
-          );
-          grid-auto-rows: 220px;
-          gap: 15px;
-        }
-
-        .gallery-card {
-          padding: 0;
-          overflow: hidden;
-          border: 1px solid
-            rgba(205, 164, 81, 0.24);
-          border-radius: 18px;
-          background: #17100c;
-          cursor: pointer;
-        }
-
-        .gallery-card.large {
-          grid-column: span 2;
-          grid-row: span 2;
-        }
-
-        .gallery-card img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          display: block;
-          transition: 0.45s;
-        }
-
-        .gallery-card:hover img {
-          transform: scale(1.06);
-        }
-
-        .gallery-empty {
-          min-height: 400px;
-          border-radius: 25px;
-          overflow: hidden;
-        }
-
-        .gallery-empty img {
-          width: 100%;
-          height: 450px;
-          object-fit: cover;
-        }
-
-        .booking-section {
-          display: grid;
-          grid-template-columns: 0.75fr 1.25fr;
-          gap: 60px;
-          align-items: start;
-          background:
-            radial-gradient(
-              circle at 10% 50%,
-              rgba(182, 133, 45, 0.12),
-              transparent 30%
-            ),
-            #15100d;
-        }
-
-        .booking-heading {
-          position: sticky;
-          top: 110px;
-        }
-
-        .booking-heading > p:not(.eyebrow) {
-          color: #bdb09a;
-          line-height: 1.8;
-        }
-
-        .booking-side-info {
-          display: grid;
-          gap: 10px;
-          margin-top: 30px;
-        }
-
-        .booking-side-info a {
-          color: #d9bf80;
-          text-decoration: none;
-        }
-
-        .booking-form {
-          padding: 30px;
-          border-radius: 25px;
-          border: 1px solid
-            rgba(208, 166, 81, 0.32);
-          background: rgba(
-            255,
-            255,
-            255,
-            0.035
-          );
+        .booking-box > p {
+          color: var(--muted);
         }
 
         .form-grid {
           display: grid;
-          grid-template-columns: repeat(
-            2,
-            minmax(0, 1fr)
-          );
-          gap: 18px;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 13px;
         }
 
-        .booking-form label {
-          display: grid;
-          gap: 8px;
-          color: #c9b99d;
-          font-size: 11px;
+        .field {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
         }
 
-        .booking-form input,
-        .booking-form textarea,
-        .booking-form select {
+        .field.full {
+          grid-column: 1 / -1;
+        }
+
+        .field label {
+          color: #ddd;
+          font-size: 12px;
+        }
+
+        .field input,
+        .field select,
+        .field textarea {
           width: 100%;
-          border: 1px solid
-            rgba(201, 162, 84, 0.27);
+          border: 1px solid #46515d;
+          background: #101a25;
+          color: #fff;
+          border-radius: 7px;
+          padding: 12px;
           outline: none;
-          border-radius: 12px;
-          padding: 13px 14px;
-          color: #eee0bf;
-          background: #0f0b09;
         }
 
-        .booking-form textarea {
-          margin-top: 18px;
+        .field input:focus,
+        .field select:focus,
+        .field textarea:focus {
+          border-color: var(--gold);
+        }
+
+        .field textarea {
+          min-height: 90px;
           resize: vertical;
         }
 
-        .booking-form input:focus,
-        .booking-form textarea:focus,
-        .booking-form select:focus {
-          border-color: #c7a158;
-        }
-
-        .submit-btn {
-          margin-top: 20px;
-        }
-
-        .booking-success {
-          margin-top: 20px;
-          padding: 17px;
+        .form-actions {
           display: flex;
           flex-wrap: wrap;
-          gap: 12px;
-          align-items: center;
-          border-radius: 14px;
-          border: 1px solid #8c6c36;
-          background: rgba(
-            164,
-            125,
-            46,
-            0.08
-          );
-          color: #e8d19a;
+          gap: 9px;
+          margin-top: 17px;
         }
 
-        .booking-success span {
-          width: 100%;
-          color: #c0b298;
+        .message {
+          margin-top: 13px;
+          padding: 11px;
+          border: 1px solid var(--line);
+          border-radius: 8px;
+          color: var(--gold-light);
+          background: rgba(242, 189, 69, 0.07);
+          font-size: 13px;
         }
 
-        .booking-success b {
-          color: #f2d078;
-          letter-spacing: 2px;
-        }
-
-        .booking-success button {
-          border: 0;
-          background: transparent;
-          color: #a79679;
-          cursor: pointer;
-          font-size: 10px;
-        }
-
-        .reviews-section {
-          background: #0c0908;
-        }
-
-        .reviews-grid {
+        .gallery-review {
           display: grid;
-          grid-template-columns: repeat(
-            3,
-            minmax(0, 1fr)
-          );
+          grid-template-columns: 1fr 1fr;
           gap: 20px;
         }
 
-        .review-card {
+        .gallery-box,
+        .review-box {
           padding: 25px;
-          border-radius: 20px;
-          border: 1px solid
-            rgba(204, 163, 82, 0.25);
-          background: #15100d;
+        }
+
+        .gallery-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 8px;
+        }
+
+        .gallery-grid img {
+          width: 100%;
+          aspect-ratio: 1;
+          object-fit: cover;
+          border-radius: 8px;
+        }
+
+        .review-list {
+          display: grid;
+          gap: 10px;
+          max-height: 320px;
+          overflow: auto;
+        }
+
+        .review {
+          padding: 14px;
+          border: 1px solid rgba(242, 189, 69, 0.25);
+          border-radius: 9px;
+        }
+
+        .review strong {
+          display: block;
         }
 
         .stars {
-          color: #e2bd62;
-          letter-spacing: 3px;
-          margin-bottom: 17px;
+          color: var(--gold);
+          letter-spacing: 2px;
         }
 
-        .review-card p {
-          min-height: 75px;
-          color: #c4b6a0;
-          line-height: 1.8;
+        .review p {
+          color: #c8c3ba;
+          font-size: 13px;
+          line-height: 1.6;
         }
 
-        .review-card strong {
-          display: block;
-          color: #f0dfb1;
-        }
-
-        .review-card small {
-          color: #847762;
-        }
-
-        .empty-review {
-          grid-column: 1 / -1;
-          text-align: center;
-          color: #a49379;
-        }
-
-        .center {
-          margin-top: 30px;
-          display: flex;
-          justify-content: center;
-        }
-
-        .contact-section {
+        .contact-grid {
           display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 60px;
-          align-items: stretch;
-          background: #15100d;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 18px;
         }
 
-        .contact-content > p:not(.eyebrow) {
-          color: #bfb19b;
-          line-height: 1.8;
+        .contact-box {
+          padding: 25px;
         }
 
-        .contact-list {
-          display: grid;
-          gap: 15px;
-          margin-top: 30px;
+        .contact-box h3 {
+          color: var(--gold);
+          margin-top: 0;
         }
 
-        .contact-list a {
+        .contact-line {
           display: flex;
-          gap: 12px;
-          align-items: center;
-          color: #ddc58d;
-          text-decoration: none;
+          gap: 10px;
+          align-items: flex-start;
+          margin: 14px 0;
+          color: #ddd;
         }
 
-        .contact-list span {
-          color: #c2b39a;
-        }
-
-        .social-links {
+        .social-row {
           display: flex;
           gap: 10px;
           flex-wrap: wrap;
-          margin-top: 25px;
         }
 
-        .social-links a {
-          padding: 10px 14px;
-          border-radius: 25px;
-          color: #d8bd7d;
-          text-decoration: none;
-          border: 1px solid #5f4928;
-          background: rgba(
-            255,
-            255,
-            255,
-            0.025
-          );
-          font-size: 11px;
-        }
-
-        .map-box {
-          min-height: 360px;
-          border-radius: 25px;
-          border: 1px solid
-            rgba(203, 163, 82, 0.35);
-          background:
-            radial-gradient(
-              circle at center,
-              rgba(185, 140, 50, 0.13),
-              transparent 35%
-            ),
-            repeating-linear-gradient(
-              45deg,
-              #17110c,
-              #17110c 10px,
-              #1c140e 10px,
-              #1c140e 20px
-            );
+        .social-icon {
+          width: 44px;
+          height: 44px;
           display: grid;
           place-items: center;
-        }
-
-        .map-inner {
-          width: 80%;
-          padding: 30px;
-          text-align: center;
-          border-radius: 20px;
-          background: rgba(
-            9,
-            7,
-            6,
-            0.78
-          );
-          border: 1px solid #72572f;
-        }
-
-        .map-inner span {
-          display: block;
-          font-size: 40px;
-        }
-
-        .map-inner strong {
-          display: block;
-          margin: 10px 0;
-          color: #ead49a;
-          font-size: 25px;
-        }
-
-        .map-inner small {
-          display: block;
-          color: #a99a82;
-        }
-
-        .map-inner a {
-          display: inline-block;
-          margin-top: 18px;
-          color: #d7b66c;
-          text-decoration: none;
-          font-size: 11px;
+          border: 1px solid var(--line);
+          border-radius: 50%;
+          color: var(--gold);
         }
 
         .footer {
-          padding: 35px 7%;
           display: flex;
-          align-items: center;
           justify-content: space-between;
           gap: 20px;
-          flex-wrap: wrap;
-          border-top: 1px solid
-            rgba(204, 162, 82, 0.18);
-          background: #080605;
+          padding: 22px 4vw;
+          border-top: 1px solid var(--line);
+          color: #9c978e;
+          font-size: 12px;
         }
 
-        .footer-logo {
-          color: #e1c47e;
-          letter-spacing: 3px;
+        .floating-book {
+          position: fixed;
+          right: 20px;
+          bottom: 20px;
+          z-index: 80;
         }
 
-        .footer p {
-          color: #756956;
-          font-size: 11px;
+        .floating-book button {
+          border: 1px solid #ffe29a;
+          border-radius: 999px;
+          padding: 13px 19px;
+          background: linear-gradient(
+            135deg,
+            #f9d878,
+            #d99a25
+          );
+          color: #171108;
+          font-weight: 700;
+          box-shadow: 0 15px 40px rgba(0,0,0,.45);
         }
 
-        .gallery-lightbox {
+        .modal-bg {
           position: fixed;
           inset: 0;
-          z-index: 1000;
-          padding: 40px;
+          z-index: 300;
           display: grid;
           place-items: center;
-          background: rgba(
-            0,
-            0,
-            0,
-            0.94
-          );
+          padding: 20px;
+          background: rgba(0,0,0,.75);
+          backdrop-filter: blur(8px);
         }
 
-        .gallery-lightbox img {
-          max-width: 95vw;
+        .modal {
+          width: min(620px, 100%);
           max-height: 90vh;
-          object-fit: contain;
+          overflow: auto;
+          background: #080b0d;
+          border: 1px solid var(--gold);
           border-radius: 15px;
+          box-shadow: 0 30px 100px rgba(0,0,0,.7);
         }
 
-        .gallery-lightbox button {
-          position: absolute;
-          top: 20px;
-          right: 25px;
-          width: 42px;
-          height: 42px;
-          border-radius: 50%;
-          border: 1px solid #927039;
-          background: #130e0b;
-          color: #f0dca4;
-          cursor: pointer;
+        .modal-head {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 18px 20px;
+          border-bottom: 1px solid rgba(242,189,69,.25);
         }
 
-        @media (max-width: 1100px) {
-          .nav {
-            gap: 11px;
+        .modal-head h3 {
+          margin: 0;
+          color: var(--gold);
+        }
+
+        .modal-close {
+          border: 0;
+          background: transparent;
+          color: #fff;
+        }
+
+        .modal-body {
+          padding: 20px;
+        }
+
+        .code-display {
+          text-align: center;
+          margin: 20px 0;
+          color: var(--gold);
+          font-size: 28px;
+          letter-spacing: 2px;
+        }
+
+        .details-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+          margin: 20px 0;
+        }
+
+        .detail {
+          padding: 10px;
+          border-bottom: 1px solid rgba(255,255,255,.08);
+        }
+
+        .detail small {
+          display: block;
+          color: #888;
+          margin-bottom: 4px;
+        }
+
+        .detail strong {
+          word-break: break-word;
+        }
+
+        .small-note {
+          color: #8e8a82;
+          font-size: 12px;
+          line-height: 1.6;
+        }
+
+        @media (max-width: 1050px) {
+          .category-grid {
+            grid-template-columns: repeat(4, 1fr);
           }
 
-          .nav a {
-            font-size: 11px;
+          .about-grid {
+            grid-template-columns: 1fr 1fr;
           }
 
-          .header-actions .admin-btn {
-            display: none;
-          }
-
-          .hero {
-            padding: 60px 5%;
-          }
-
-          .section {
-            padding: 80px 5%;
+          .info-box {
+            grid-column: 1 / -1;
           }
         }
 
-        @media (max-width: 850px) {
-          .header {
-            padding: 12px 4%;
-          }
-
+        @media (max-width: 800px) {
           .nav {
             display: none;
             position: absolute;
-            top: 78px;
+            top: 70px;
             left: 0;
             right: 0;
             padding: 20px;
             flex-direction: column;
-            align-items: stretch;
-            background: rgba(
-              12,
-              9,
-              7,
-              0.98
-            );
-            border-bottom: 1px solid #5e4726;
+            background: #050607;
+            border-bottom: 1px solid var(--line);
           }
 
-          .nav.nav-open {
+          .nav.open {
             display: flex;
           }
 
-          .nav a {
-            padding: 12px;
-          }
-
-          .mobile-menu-button {
+          .mobile-menu {
             display: block;
           }
 
-          .header-actions .order-btn,
-          .header-actions .admin-btn {
+          .topbar {
+            padding: 9px 15px;
+          }
+
+          .brand {
+            min-width: auto;
+          }
+
+          .pill {
             display: none;
           }
 
-          .hero {
-            min-height: auto;
-            grid-template-columns: 1fr;
-            padding: 65px 5% 90px;
-          }
-
-          .hero-image-side {
-            order: -1;
-          }
-
-          .hero-food-frame {
-            width: min(430px, 90vw);
-          }
-
-          .about-section,
-          .booking-section,
-          .contact-section {
-            grid-template-columns: 1fr;
-            gap: 40px;
-          }
-
-          .booking-heading {
-            position: static;
-          }
-
-          .food-grid {
-            grid-template-columns: repeat(
-              2,
-              minmax(0, 1fr)
-            );
-          }
-
-          .promotion-grid {
+          .features {
             grid-template-columns: 1fr 1fr;
           }
 
-          .reviews-grid {
+          .about-grid,
+          .booking-grid,
+          .gallery-review,
+          .contact-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .item-grid {
             grid-template-columns: 1fr 1fr;
           }
 
-          .gallery-grid {
-            grid-template-columns: repeat(
-              2,
-              1fr
-            );
-          }
-
-          .gallery-card.large {
-            grid-column: span 2;
-          }
-
-          .breaking-popup {
-            right: 14px;
-            top: 92px;
-            width: min(
-              300px,
-              calc(100vw - 28px)
-            );
+          .breaking-news {
+            left: 12px;
+            top: 12px;
+            width: 230px;
           }
         }
 
         @media (max-width: 560px) {
-          .logo {
-            min-width: auto;
+          .brand-name {
+            font-size: 15px;
+            letter-spacing: 2px;
           }
 
-          .logo strong {
-            font-size: 16px;
-          }
-
-          .logo small {
+          .brand-sub {
             font-size: 7px;
           }
 
-          .language {
-            padding: 8px 7px;
+          .brand-mark {
+            width: 40px;
+            height: 40px;
           }
 
-          .hero {
-            padding-top: 40px;
+          .category-grid {
+            grid-template-columns: repeat(2, 1fr);
           }
 
-          .hero h1 {
-            font-size: 50px;
-          }
-
-          .hero-contact-mini {
-            display: grid;
-            grid-template-columns: 1fr;
-          }
-
-          .hero-contact-mini a {
-            width: 100%;
-          }
-
-          .section {
-            padding: 70px 5%;
-          }
-
-          .section-heading h2,
-          .about-content h2,
-          .booking-heading h2,
-          .contact-content h2 {
-            font-size: 42px;
-          }
-
-          .food-grid,
-          .promotion-grid,
-          .reviews-grid {
+          .item-grid {
             grid-template-columns: 1fr;
           }
 
@@ -3111,44 +1765,1888 @@ export default function Home() {
             grid-template-columns: 1fr;
           }
 
-          .booking-form {
-            padding: 18px;
+          .field.full {
+            grid-column: auto;
           }
 
-          .gallery-grid {
+          .details-grid {
             grid-template-columns: 1fr;
-            grid-auto-rows: 220px;
           }
 
-          .gallery-card.large {
-            grid-column: span 1;
-            grid-row: span 1;
+          .hero {
+            min-height: 610px;
           }
 
-          .breaking-popup {
-            top: 86px;
-            right: 10px;
+          .hero h1 {
+            font-size: 43px;
           }
 
-          .hero-food-frame {
-            width: 90vw;
+          .hero-description {
+            font-size: 15px;
           }
 
-          .food-badge {
-            width: 90px;
-            height: 90px;
-          }
-
-          .food-badge strong {
-            font-size: 10px;
+          .hero-contact {
+            display: none;
           }
 
           .footer {
+            flex-direction: column;
             text-align: center;
-            justify-content: center;
+          }
+
+          .breaking-news {
+            width: 210px;
           }
         }
       `}</style>
+
+      {/* ================= HEADER ================= */}
+
+      <header className="topbar">
+        <button
+          className="brand"
+          onClick={() => scrollTo("home")}
+        >
+          <span className="brand-mark">♛</span>
+
+          <span>
+            <strong className="brand-name">
+              NABABI
+            </strong>
+
+            <span className="brand-sub">
+              RISTORANTE
+            </span>
+          </span>
+        </button>
+
+        <nav
+          className={`nav ${
+            mobileOpen ? "open" : ""
+          }`}
+        >
+          <button onClick={() => scrollTo("home")}>
+            Home
+          </button>
+
+          <button onClick={() => scrollTo("about")}>
+            About
+          </button>
+
+          <button onClick={() => scrollTo("menu")}>
+            Menu
+          </button>
+
+          <button onClick={() => scrollTo("gallery")}>
+            Gallery
+          </button>
+
+          <button onClick={() => scrollTo("booking")}>
+            Booking
+          </button>
+
+          <button onClick={() => scrollTo("reviews")}>
+            Reviews
+          </button>
+
+          <button onClick={() => scrollTo("contact")}>
+            Contact
+          </button>
+        </nav>
+
+        <div className="top-actions">
+          <button
+            className="pill"
+            onClick={() => {
+              setMyBookingOpen(true);
+              setLookupStep("login");
+              setLookupMessage("");
+            }}
+          >
+            <Icon name="user" size={17} />
+            My Booking
+          </button>
+
+          <a
+            className="pill"
+            href="/admin"
+          >
+            <Icon name="settings" size={17} />
+            Admin
+          </a>
+
+          <button
+            className="mobile-menu"
+            onClick={() =>
+              setMobileOpen(
+                (value) => !value,
+              )
+            }
+          >
+            ☰
+          </button>
+        </div>
+      </header>
+
+      {/* ================= HOME ================= */}
+
+      <section
+        id="home"
+        className={`hero ${
+          heroImage || heroVideo
+            ? "with-image"
+            : ""
+        }`}
+        style={
+          heroImage
+            ? ({
+                "--hero-image": `url("${heroImage}")`,
+              } as CSSProperties)
+            : undefined
+        }
+      >
+        {heroVideo && (
+          <video
+            className="hero-video"
+            src={heroVideo}
+            autoPlay
+            muted
+            loop
+            playsInline
+          />
+        )}
+
+        {/* ONLY ONE BREAKING NEWS BOX */}
+
+        {visibleNews && (
+          <aside className="breaking-news">
+            <div className="breaking-head">
+              <span>
+                Breaking News
+              </span>
+
+              <button
+                className="breaking-close"
+                onClick={() =>
+                  setNewsClosed(true)
+                }
+              >
+                <Icon
+                  name="close"
+                  size={18}
+                />
+              </button>
+            </div>
+
+            {visibleNews.image ? (
+              <img
+                className="breaking-media"
+                src={visibleNews.image}
+                alt={
+                  visibleNews.title ||
+                  "Breaking News"
+                }
+              />
+            ) : visibleNews.video ? (
+              <video
+                className="breaking-media"
+                src={visibleNews.video}
+                autoPlay
+                muted
+                loop
+                playsInline
+              />
+            ) : (
+              <div className="breaking-media" />
+            )}
+
+            <div className="breaking-body">
+              <strong>
+                {visibleNews.title ||
+                  visibleNews.text ||
+                  "Restaurant News"}
+              </strong>
+
+              <small>
+                {visibleNews.description ||
+                  "Latest restaurant update"}
+              </small>
+            </div>
+          </aside>
+        )}
+
+        <div className="hero-content">
+          <div className="eyebrow">
+            Welcome to Nababi Ristorante
+          </div>
+
+          <h1>{heroTitle}</h1>
+
+          <p className="hero-description">
+            {heroSubtitle}
+          </p>
+
+          <div className="hero-buttons">
+            <button
+              className="gold-btn"
+              onClick={() =>
+                scrollTo("menu")
+              }
+            >
+              Explore Menu
+              <Icon
+                name="arrow"
+                size={17}
+              />
+            </button>
+
+            <button
+              className="outline-btn"
+              onClick={() =>
+                scrollTo("booking")
+              }
+            >
+              Book a Table
+            </button>
+          </div>
+
+          {!heroImage &&
+            !heroVideo && (
+              <div className="hero-empty">
+                Home image/video has not
+                been added from Admin → Home.
+              </div>
+            )}
+        </div>
+
+        <div className="hero-contact">
+          {phone && (
+            <span>
+              <Icon
+                name="phone"
+                size={16}
+              />
+              {phone}
+            </span>
+          )}
+
+          <span>
+            <Icon
+              name="pin"
+              size={16}
+            />
+            {address}
+          </span>
+        </div>
+      </section>
+
+      {/* ================= FEATURES ================= */}
+
+      <section className="features">
+        <div className="feature">
+          <div className="feature-icon">
+            ✦
+          </div>
+          <strong>
+            Fresh Ingredients
+          </strong>
+          <span>
+            Only the best for you
+          </span>
+        </div>
+
+        <div className="feature">
+          <div className="feature-icon">
+            ♛
+          </div>
+          <strong>
+            Skilled Chefs
+          </strong>
+          <span>
+            Crafted with love
+          </span>
+        </div>
+
+        <div className="feature">
+          <div className="feature-icon">
+            ⌂
+          </div>
+          <strong>
+            Cozy Ambience
+          </strong>
+          <span>
+            Feel at home
+          </span>
+        </div>
+
+        <div className="feature">
+          <div className="feature-icon">
+            ◷
+          </div>
+          <strong>
+            Fast Service
+          </strong>
+          <span>
+            Your time matters
+          </span>
+        </div>
+      </section>
+
+      {/* ================= ABOUT ================= */}
+
+      <section
+        id="about"
+        className="section"
+      >
+        <div className="about-grid">
+          <div className="box about-media">
+            {about.video ? (
+              <video
+                src={about.video}
+                controls
+                playsInline
+              />
+            ) : about.image ? (
+              <img
+                src={about.image}
+                alt="About restaurant"
+              />
+            ) : (
+              <div className="empty-box">
+                <div>
+                  <Icon
+                    name="gallery"
+                    size={40}
+                  />
+                  <p>
+                    No About image/video
+                    added yet.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="box about-text">
+            <div className="eyebrow">
+              About Us
+            </div>
+
+            <h3>
+              {about.title ||
+                "A Place for Food Lovers"}
+            </h3>
+
+            <p>{aboutText}</p>
+
+            <button
+              className="outline-btn"
+              onClick={() =>
+                scrollTo("contact")
+              }
+            >
+              Learn More
+              <Icon
+                name="arrow"
+                size={16}
+              />
+            </button>
+          </div>
+
+          <div className="box info-box">
+            <h4>
+              Restaurant Experience
+            </h4>
+
+            <div className="info-line">
+              ✦ Fresh & Organic Food
+            </div>
+
+            <div className="info-line">
+              ♨ Authentic Recipes
+            </div>
+
+            <div className="info-line">
+              ♛ Royal Dining Experience
+            </div>
+
+            <div className="info-line">
+              ♡ Family Friendly
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ================= MENU ================= */}
+
+      <section
+        id="menu"
+        className="menu-section"
+      >
+        <div className="section">
+          <div className="section-title">
+            <div className="eyebrow">
+              Our Menu
+            </div>
+
+            <h2>
+              Choose Your Favourite
+              Category
+            </h2>
+
+            <p>
+              Click on a category image
+              or icon to view its items.
+            </p>
+          </div>
+
+          <div className="category-grid">
+            {categoryCards.map(
+              (category, index) => (
+                <button
+                  key={`${category.name}-${index}`}
+                  className={`category-card ${
+                    selectedCategory ===
+                    category.name
+                      ? "active"
+                      : ""
+                  }`}
+                  onClick={() =>
+                    setSelectedCategory(
+                      selectedCategory ===
+                        category.name
+                        ? ""
+                        : category.name,
+                    )
+                  }
+                >
+                  {category.image ? (
+                    <img
+                      className="category-photo"
+                      src={
+                        category.image
+                      }
+                      alt={
+                        category.name
+                      }
+                    />
+                  ) : (
+                    <span className="category-placeholder">
+                      <CategoryIcon
+                        name={
+                          category.name
+                        }
+                      />
+                    </span>
+                  )}
+
+                  <div className="category-name">
+                    {category.name} →
+                  </div>
+                </button>
+              ),
+            )}
+          </div>
+
+          {/* আগে কোনো food item নেই।
+              Category click করার পরেই items দেখাবে। */}
+
+          {selectedCategory && (
+            <div className="items-panel">
+              <div className="items-header">
+                <h3>
+                  {selectedCategory}
+                </h3>
+
+                <button
+                  className="outline-btn"
+                  onClick={() =>
+                    setSelectedCategory(
+                      "",
+                    )
+                  }
+                >
+                  Close
+                </button>
+              </div>
+
+              {selectedItems.length >
+              0 ? (
+                <div className="item-grid">
+                  {selectedItems.map(
+                    (item, index) => (
+                      <article
+                        className="menu-item"
+                        key={`${
+                          item.id ||
+                          item.name ||
+                          "item"
+                        }-${index}`}
+                      >
+                        {item.image ? (
+                          <img
+                            src={item.image}
+                            alt={
+                              item.name ||
+                              item.title ||
+                              "Food"
+                            }
+                          />
+                        ) : (
+                          <div className="category-placeholder">
+                            <CategoryIcon
+                              name={
+                                selectedCategory
+                              }
+                            />
+                          </div>
+                        )}
+
+                        <div className="menu-item-content">
+                          <h4>
+                            {item.name ||
+                              item.title ||
+                              "Menu Item"}
+                          </h4>
+
+                          {item.price !==
+                            undefined &&
+                            item.price !==
+                              "" && (
+                              <div className="price">
+                                {item.price}{" "}
+                                {settings.currency ||
+                                  "€"}
+                              </div>
+                            )}
+
+                          {item.description && (
+                            <p className="description">
+                              {
+                                item.description
+                              }
+                            </p>
+                          )}
+                        </div>
+                      </article>
+                    ),
+                  )}
+                </div>
+              ) : (
+                <div className="empty-box">
+                  No items have been
+                  added to this category
+                  yet.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ================= BOOKING ================= */}
+
+      <section
+        id="booking"
+        className="section"
+      >
+        <div className="section-title">
+          <div className="eyebrow">
+            Reservations
+          </div>
+
+          <h2>
+            Book a Table
+          </h2>
+
+          <p>
+            New booking করুন। আগে
+            booking থাকলে My Booking
+            দিয়ে দেখতে, edit করতে বা
+            cancel করতে পারবেন।
+          </p>
+        </div>
+
+        <div className="booking-grid">
+          <form
+            className="box booking-box"
+            onSubmit={
+              submitBooking
+            }
+          >
+            <h3>
+              Book Your Table
+            </h3>
+
+            <p>
+              Booking confirm হলে
+              একটি unique booking code
+              তৈরি হবে।
+            </p>
+
+            <div className="form-grid">
+              <div className="field">
+                <label>
+                  Name *
+                </label>
+
+                <input
+                  value={
+                    booking.name
+                  }
+                  onChange={(event) =>
+                    setBooking({
+                      ...booking,
+                      name:
+                        event.target
+                          .value,
+                    })
+                  }
+                  placeholder="Your name"
+                  required
+                />
+              </div>
+
+              <div className="field">
+                <label>
+                  Phone
+                </label>
+
+                <input
+                  value={
+                    booking.phone
+                  }
+                  onChange={(event) =>
+                    setBooking({
+                      ...booking,
+                      phone:
+                        event.target
+                          .value,
+                    })
+                  }
+                  placeholder="Phone number"
+                />
+              </div>
+
+              <div className="field">
+                <label>
+                  Email
+                </label>
+
+                <input
+                  type="email"
+                  value={
+                    booking.email
+                  }
+                  onChange={(event) =>
+                    setBooking({
+                      ...booking,
+                      email:
+                        event.target
+                          .value,
+                    })
+                  }
+                  placeholder="Email address"
+                />
+              </div>
+
+              <div className="field">
+                <label>
+                  Date *
+                </label>
+
+                <input
+                  type="date"
+                  value={
+                    booking.date
+                  }
+                  onChange={(event) =>
+                    setBooking({
+                      ...booking,
+                      date:
+                        event.target
+                          .value,
+                    })
+                  }
+                  required
+                />
+              </div>
+
+              <div className="field">
+                <label>
+                  Time *
+                </label>
+
+                <input
+                  type="time"
+                  value={
+                    booking.time
+                  }
+                  onChange={(event) =>
+                    setBooking({
+                      ...booking,
+                      time:
+                        event.target
+                          .value,
+                    })
+                  }
+                  required
+                />
+              </div>
+
+              <div className="field">
+                <label>
+                  Persons
+                </label>
+
+                <select
+                  value={
+                    booking.guests
+                  }
+                  onChange={(event) =>
+                    setBooking({
+                      ...booking,
+                      guests:
+                        event.target
+                          .value,
+                    })
+                  }
+                >
+                  {Array.from(
+                    {
+                      length: 12,
+                    },
+                    (_, index) =>
+                      index + 1,
+                  ).map((number) => (
+                    <option
+                      key={number}
+                      value={number}
+                    >
+                      {number}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label>
+                  Category
+                </label>
+
+                <select
+                  value={
+                    booking.category
+                  }
+                  onChange={(event) =>
+                    setBooking({
+                      ...booking,
+                      category:
+                        event.target
+                          .value,
+                      item: "",
+                    })
+                  }
+                >
+                  <option value="">
+                    Select category
+                  </option>
+
+                  {categories.map(
+                    (
+                      category,
+                      index,
+                    ) => (
+                      <option
+                        key={`${category}-${index}`}
+                        value={
+                          category
+                        }
+                      >
+                        {category}
+                      </option>
+                    ),
+                  )}
+                </select>
+              </div>
+
+              <div className="field">
+                <label>
+                  Food / Item
+                </label>
+
+                <select
+                  value={
+                    booking.item
+                  }
+                  disabled={
+                    !booking.category
+                  }
+                  onChange={(event) =>
+                    setBooking({
+                      ...booking,
+                      item:
+                        event.target
+                          .value,
+                    })
+                  }
+                >
+                  <option value="">
+                    Select item
+                  </option>
+
+                  {bookingItems.map(
+                    (
+                      item,
+                      index,
+                    ) => (
+                      <option
+                        key={`${
+                          item.id ||
+                          item.name ||
+                          "food"
+                        }-${index}`}
+                        value={
+                          item.name ||
+                          item.title ||
+                          ""
+                        }
+                      >
+                        {item.name ||
+                          item.title}
+                      </option>
+                    ),
+                  )}
+                </select>
+              </div>
+
+              <div className="field full">
+                <label>
+                  Special Request
+                </label>
+
+                <textarea
+                  value={
+                    booking.note
+                  }
+                  onChange={(event) =>
+                    setBooking({
+                      ...booking,
+                      note:
+                        event.target
+                          .value,
+                    })
+                  }
+                  placeholder="Write your request"
+                />
+              </div>
+            </div>
+
+            <div className="form-actions">
+              <button
+                className="gold-btn"
+                type="submit"
+              >
+                <Icon
+                  name="check"
+                  size={17}
+                />
+                Confirm Booking
+              </button>
+
+              <button
+                className="outline-btn"
+                type="button"
+                onClick={() =>
+                  setBooking({
+                    name: "",
+                    phone: "",
+                    email: "",
+                    date: "",
+                    time: "",
+                    guests: "2",
+                    category: "",
+                    item: "",
+                    note: "",
+                  })
+                }
+              >
+                Cancel
+              </button>
+            </div>
+
+            {bookingMessage && (
+              <div className="message">
+                {bookingMessage}
+              </div>
+            )}
+          </form>
+
+          <div className="box booking-box">
+            <h3>
+              My Booking
+            </h3>
+
+            <p>
+              আগে booking করেছেন?
+              একই phone/email দিয়ে
+              আপনার booking খুঁজে
+              বের করুন।
+            </p>
+
+            <button
+              className="gold-btn"
+              onClick={() => {
+                setMyBookingOpen(
+                  true,
+                );
+                setLookupStep(
+                  "login",
+                );
+                setLookupMessage(
+                  "",
+                );
+              }}
+            >
+              <Icon
+                name="user"
+                size={18}
+              />
+              My Booking
+            </button>
+
+            <p
+              className="small-note"
+              style={{
+                marginTop: 20,
+              }}
+            >
+              Phone অথবা Email →
+              Booking Code →
+              Booking Details →
+              Edit / Cancel
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ================= GALLERY + REVIEWS ================= */}
+
+      <section
+        className="section"
+      >
+        <div className="gallery-review">
+          <div
+            id="gallery"
+            className="box gallery-box"
+          >
+            <div className="section-title">
+              <div className="eyebrow">
+                Gallery
+              </div>
+
+              <h2>
+                Our Gallery
+              </h2>
+
+              <p>
+                Admin → Gallery থেকে
+                image যোগ করলেই এখানে
+                দেখাবে।
+              </p>
+            </div>
+
+            {gallery.length >
+            0 ? (
+              <>
+                <div className="gallery-grid">
+                  {gallery
+                    .slice(0, 6)
+                    .map(
+                      (
+                        item,
+                        index,
+                      ) => (
+                        <img
+                          key={`${
+                            item.id ||
+                            item.image
+                          }-${index}`}
+                          src={
+                            item.image
+                          }
+                          alt={
+                            item.title ||
+                            "Gallery"
+                          }
+                        />
+                      ),
+                    )}
+                </div>
+
+                <button
+                  className="outline-btn"
+                  style={{
+                    marginTop: 15,
+                  }}
+                  onClick={() =>
+                    setGalleryOpen(
+                      true,
+                    )
+                  }
+                >
+                  <Icon
+                    name="gallery"
+                    size={17}
+                  />
+                  View Gallery
+                </button>
+              </>
+            ) : (
+              <div className="empty-box">
+                <div>
+                  <Icon
+                    name="gallery"
+                    size={42}
+                  />
+                  <p>
+                    No images yet.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div
+            id="reviews"
+            className="box review-box"
+          >
+            <div className="section-title">
+              <div className="eyebrow">
+                Reviews
+              </div>
+
+              <h2>
+                What Customers Say
+              </h2>
+
+              <p>
+                Admin থেকে যোগ করা
+                reviews এখানে
+                দেখাবে।
+              </p>
+            </div>
+
+            {reviews.length >
+            0 ? (
+              <div className="review-list">
+                {reviews
+                  .slice(0, 8)
+                  .map(
+                    (
+                      review,
+                      index,
+                    ) => (
+                      <div
+                        className="review"
+                        key={`${
+                          review.id ||
+                          review.customerName ||
+                          "review"
+                        }-${index}`}
+                      >
+                        <strong>
+                          {review.customerName ||
+                            review.name ||
+                            "Customer"}
+                        </strong>
+
+                        <div className="stars">
+                          {"★".repeat(
+                            Math.min(
+                              5,
+                              Math.max(
+                                0,
+                                Number(
+                                  review.rating,
+                                ) ||
+                                  0,
+                              ),
+                            ),
+                          )}
+                        </div>
+
+                        <p>
+                          {review.review ||
+                            review.text ||
+                            ""}
+                        </p>
+                      </div>
+                    ),
+                  )}
+              </div>
+            ) : (
+              <div className="empty-box">
+                No reviews added yet.
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ================= CONTACT ================= */}
+
+      <section
+        id="contact"
+        className="section"
+      >
+        <div className="section-title">
+          <div className="eyebrow">
+            Contact
+          </div>
+
+          <h2>
+            Find & Contact Us
+          </h2>
+
+          <p>
+            Admin থেকে যে data দেওয়া
+            আছে শুধু সেটাই এখানে
+            দেখাবে।
+          </p>
+        </div>
+
+        <div className="contact-grid">
+          <div className="box contact-box">
+            <h3>
+              Find Us on Map
+            </h3>
+
+            <div className="contact-line">
+              <Icon
+                name="pin"
+                size={20}
+              />
+
+              <span>
+                {address}
+              </span>
+            </div>
+
+            {mapUrl ? (
+              <a
+                className="outline-btn"
+                href={mapUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <Icon
+                  name="map"
+                  size={17}
+                />
+                Open Google Maps
+              </a>
+            ) : (
+              <span className="small-note">
+                Google Maps link has
+                not been added yet.
+              </span>
+            )}
+          </div>
+
+          <div className="box contact-box">
+            <h3>
+              Contact Us
+            </h3>
+
+            {phone && (
+              <div className="contact-line">
+                <Icon
+                  name="phone"
+                  size={20}
+                />
+
+                <a
+                  href={`tel:${phone}`}
+                >
+                  {phone}
+                </a>
+              </div>
+            )}
+
+            {email && (
+              <div className="contact-line">
+                <Icon
+                  name="mail"
+                  size={20}
+                />
+
+                <a
+                  href={`mailto:${email}`}
+                >
+                  {email}
+                </a>
+              </div>
+            )}
+
+            {whatsapp && (
+              <div className="contact-line">
+                <button
+                  style={{
+                    background:
+                      "transparent",
+                    border: 0,
+                    padding: 0,
+                    color: "#fff",
+                    display: "flex",
+                    alignItems:
+                      "center",
+                    gap: 10,
+                  }}
+                  onClick={
+                    openWhatsApp
+                  }
+                >
+                  <Icon
+                    name="phone"
+                    size={20}
+                  />
+                  WhatsApp
+                </button>
+              </div>
+            )}
+
+            <div className="contact-line">
+              <Icon
+                name="pin"
+                size={20}
+              />
+
+              <span>
+                {address}
+              </span>
+            </div>
+          </div>
+
+          <div className="box contact-box">
+            <h3>
+              Follow Us
+            </h3>
+
+            {socialLinks.length >
+            0 ? (
+              <div className="social-row">
+                {socialLinks.map(
+                  (item) => (
+                    <a
+                      key={item.name}
+                      className="social-icon"
+                      href={
+                        item.url
+                      }
+                      target="_blank"
+                      rel="noreferrer"
+                      title={
+                        item.name
+                      }
+                    >
+                      <Icon
+                        name={
+                          item.name
+                        }
+                        size={22}
+                      />
+                    </a>
+                  ),
+                )}
+              </div>
+            ) : (
+              <p className="small-note">
+                Facebook, Instagram,
+                TikTok এবং YouTube
+                link Admin → Social
+                Media থেকে যোগ করলে
+                icon এখানে দেখাবে।
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <footer className="footer">
+        <span>
+          © 2026 {restaurantName}.
+          All rights reserved.
+        </span>
+
+        <span>
+          Good Food • Good Mood
+        </span>
+      </footer>
+
+      <div className="floating-book">
+        <button
+          onClick={() =>
+            scrollTo("booking")
+          }
+        >
+          Table Booking
+        </button>
+      </div>
+
+      {/* ================= MY BOOKING MODAL ================= */}
+
+      {myBookingOpen && (
+        <div
+          className="modal-bg"
+          onMouseDown={() =>
+            setMyBookingOpen(false)
+          }
+        >
+          <div
+            className="modal"
+            onMouseDown={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <div className="modal-head">
+              <h3>
+                My Booking
+              </h3>
+
+              <button
+                className="modal-close"
+                onClick={() =>
+                  setMyBookingOpen(
+                    false,
+                  )
+                }
+              >
+                <Icon name="close" />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {lookupStep ===
+                "login" && (
+                <>
+                  <p className="small-note">
+                    যে phone number
+                    অথবা email দিয়ে
+                    booking করেছিলেন
+                    সেটি দিন।
+                  </p>
+
+                  <div className="field">
+                    <label>
+                      Phone / Email
+                    </label>
+
+                    <input
+                      value={
+                        lookupValue
+                      }
+                      onChange={(event) =>
+                        setLookupValue(
+                          event.target
+                            .value,
+                        )
+                      }
+                      placeholder="Phone number or email"
+                    />
+                  </div>
+
+                  <div className="form-actions">
+                    <button
+                      className="gold-btn"
+                      onClick={
+                        findMyBooking
+                      }
+                    >
+                      Continue
+                      <Icon
+                        name="arrow"
+                        size={17}
+                      />
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {lookupStep ===
+                "code" &&
+                foundBooking && (
+                  <>
+                    <p className="small-note">
+                      আপনার booking
+                      পাওয়া গেছে। এখন
+                      আপনার booking
+                      code দিন।
+                    </p>
+
+                    <div className="code-display">
+                      {foundBooking.code}
+                    </div>
+
+                    <div className="field">
+                      <label>
+                        Booking Code
+                      </label>
+
+                      <input
+                        value={
+                          lookupCode
+                        }
+                        onChange={(event) =>
+                          setLookupCode(
+                            event.target
+                              .value,
+                          )
+                        }
+                        placeholder="Enter booking code"
+                      />
+                    </div>
+
+                    <div className="form-actions">
+                      <button
+                        className="gold-btn"
+                        onClick={
+                          verifyCode
+                        }
+                      >
+                        Verify Code
+                      </button>
+
+                      <button
+                        className="outline-btn"
+                        onClick={() => {
+                          setLookupStep(
+                            "login",
+                          );
+                          setFoundBooking(
+                            null,
+                          );
+                        }}
+                      >
+                        Back
+                      </button>
+                    </div>
+                  </>
+                )}
+
+              {lookupStep ===
+                "details" &&
+                foundBooking && (
+                  <>
+                    <div className="details-grid">
+                      <div className="detail">
+                        <small>
+                          Name
+                        </small>
+                        <strong>
+                          {
+                            foundBooking.name
+                          }
+                        </strong>
+                      </div>
+
+                      <div className="detail">
+                        <small>
+                          Status
+                        </small>
+                        <strong>
+                          {
+                            foundBooking.status
+                          }
+                        </strong>
+                      </div>
+
+                      <div className="detail">
+                        <small>
+                          Date
+                        </small>
+                        <strong>
+                          {
+                            foundBooking.date
+                          }
+                        </strong>
+                      </div>
+
+                      <div className="detail">
+                        <small>
+                          Time
+                        </small>
+                        <strong>
+                          {
+                            foundBooking.time
+                          }
+                        </strong>
+                      </div>
+
+                      <div className="detail">
+                        <small>
+                          Persons
+                        </small>
+                        <strong>
+                          {
+                            foundBooking.guests
+                          }
+                        </strong>
+                      </div>
+
+                      <div className="detail">
+                        <small>
+                          Category
+                        </small>
+                        <strong>
+                          {
+                            foundBooking.category ||
+                            "—"
+                          }
+                        </strong>
+                      </div>
+
+                      <div className="detail">
+                        <small>
+                          Item
+                        </small>
+                        <strong>
+                          {
+                            foundBooking.item ||
+                            "—"
+                          }
+                        </strong>
+                      </div>
+
+                      <div className="detail">
+                        <small>
+                          Booking Code
+                        </small>
+                        <strong>
+                          {
+                            foundBooking.code
+                          }
+                        </strong>
+                      </div>
+                    </div>
+
+                    {editingBooking ? (
+                      <form
+                        onSubmit={
+                          updateMyBooking
+                        }
+                      >
+                        <div className="form-grid">
+                          <div className="field">
+                            <label>
+                              Name
+                            </label>
+
+                            <input
+                              value={
+                                foundBooking.name
+                              }
+                              onChange={(
+                                event,
+                              ) =>
+                                setFoundBooking(
+                                  {
+                                    ...foundBooking,
+                                    name: event
+                                      .target
+                                      .value,
+                                  },
+                                )
+                              }
+                            />
+                          </div>
+
+                          <div className="field">
+                            <label>
+                              Phone
+                            </label>
+
+                            <input
+                              value={
+                                foundBooking.phone ||
+                                ""
+                              }
+                              onChange={(
+                                event,
+                              ) =>
+                                setFoundBooking(
+                                  {
+                                    ...foundBooking,
+                                    phone: event
+                                      .target
+                                      .value,
+                                  },
+                                )
+                              }
+                            />
+                          </div>
+
+                          <div className="field">
+                            <label>
+                              Email
+                            </label>
+
+                            <input
+                              value={
+                                foundBooking.email ||
+                                ""
+                              }
+                              onChange={(
+                                event,
+                              ) =>
+                                setFoundBooking(
+                                  {
+                                    ...foundBooking,
+                                    email: event
+                                      .target
+                                      .value,
+                                  },
+                                )
+                              }
+                            />
+                          </div>
+
+                          <div className="field">
+                            <label>
+                              Date
+                            </label>
+
+                            <input
+                              type="date"
+                              value={
+                                foundBooking.date
+                              }
+                              onChange={(
+                                event,
+                              ) =>
+                                setFoundBooking(
+                                  {
+                                    ...foundBooking,
+                                    date: event
+                                      .target
+                                      .value,
+                                  },
+                                )
+                              }
+                            />
+                          </div>
+
+                          <div className="field">
+                            <label>
+                              Time
+                            </label>
+
+                            <input
+                              type="time"
+                              value={
+                                foundBooking.time
+                              }
+                              onChange={(
+                                event,
+                              ) =>
+                                setFoundBooking(
+                                  {
+                                    ...foundBooking,
+                                    time: event
+                                      .target
+                                      .value,
+                                  },
+                                )
+                              }
+                            />
+                          </div>
+
+                          <div className="field">
+                            <label>
+                              Persons
+                            </label>
+
+                            <input
+                              type="number"
+                              min="1"
+                              value={
+                                foundBooking.guests
+                              }
+                              onChange={(
+                                event,
+                              ) =>
+                                setFoundBooking(
+                                  {
+                                    ...foundBooking,
+                                    guests:
+                                      Number(
+                                        event
+                                          .target
+                                          .value,
+                                      ) || 1,
+                                  },
+                                )
+                              }
+                            />
+                          </div>
+
+                          <div className="field full">
+                            <label>
+                              Special Request
+                            </label>
+
+                            <textarea
+                              value={
+                                foundBooking.note
+                              }
+                              onChange={(
+                                event,
+                              ) =>
+                                setFoundBooking(
+                                  {
+                                    ...foundBooking,
+                                    note: event
+                                      .target
+                                      .value,
+                                  },
+                                )
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        <div className="form-actions">
+                          <button
+                            className="gold-btn"
+                            type="submit"
+                          >
+                            Save Changes
+                          </button>
+
+                          <button
+                            className="outline-btn"
+                            type="button"
+                            onClick={() =>
+                              setEditingBooking(
+                                false,
+                              )
+                            }
+                          >
+                            Back
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <div className="form-actions">
+                        <button
+                          className="gold-btn"
+                          onClick={() =>
+                            setEditingBooking(
+                              true,
+                            )
+                          }
+                        >
+                          <Icon
+                            name="edit"
+                            size={17}
+                          />
+                          Edit
+                        </button>
+
+                        <button
+                          className="outline-btn"
+                          style={{
+                            borderColor:
+                              "#e74b4b",
+                            color:
+                              "#ff8d8d",
+                          }}
+                          disabled={
+                            foundBooking.status ===
+                            "Cancelled"
+                          }
+                          onClick={
+                            cancelMyBooking
+                          }
+                        >
+                          <Icon
+                            name="trash"
+                            size={17}
+                          />
+                          Cancel Booking
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+
+              {lookupMessage && (
+                <div className="message">
+                  {lookupMessage}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= GALLERY MODAL ================= */}
+
+      {galleryOpen && (
+        <div
+          className="modal-bg"
+          onMouseDown={() =>
+            setGalleryOpen(false)
+          }
+        >
+          <div
+            className="modal"
+            onMouseDown={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <div className="modal-head">
+              <h3>
+                Gallery
+              </h3>
+
+              <button
+                className="modal-close"
+                onClick={() =>
+                  setGalleryOpen(false)
+                }
+              >
+                <Icon name="close" />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div className="gallery-grid">
+                {gallery.map(
+                  (
+                    item,
+                    index,
+                  ) => (
+                    <img
+                      key={`gallery-${
+                        item.id ||
+                        index
+                      }`}
+                      src={
+                        item.image
+                      }
+                      alt={
+                        item.title ||
+                        "Gallery"
+                      }
+                    />
+                  ),
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
