@@ -60,9 +60,6 @@ const FALLBACK_HERO =
 const FALLBACK_ABOUT =
   "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1200&q=85";
 
-const FALLBACK_PROMOTION =
-  "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=1200&q=85";
-
 const FALLBACK_MENU =
   "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=1000&q=85";
 
@@ -79,7 +76,8 @@ const FALLBACK_MENU_ITEMS: MenuItem[] = [
   {
     id: "1",
     name: "Chicken Tikka",
-    description: "Tender chicken marinated with aromatic spices and grilled to perfection.",
+    description:
+      "Tender chicken marinated with aromatic spices and grilled to perfection.",
     price: "€12",
     category: "Starters",
     image: FALLBACK_MENU,
@@ -88,7 +86,8 @@ const FALLBACK_MENU_ITEMS: MenuItem[] = [
   {
     id: "2",
     name: "Biryani Nababi",
-    description: "Fragrant basmati rice, tender meat and traditional aromatic spices.",
+    description:
+      "Fragrant basmati rice, tender meat and traditional aromatic spices.",
     price: "€16",
     category: "Main Course",
     image:
@@ -98,7 +97,8 @@ const FALLBACK_MENU_ITEMS: MenuItem[] = [
   {
     id: "3",
     name: "Butter Chicken",
-    description: "Classic creamy tomato curry with tender chicken and Indian spices.",
+    description:
+      "Classic creamy tomato curry with tender chicken and Indian spices.",
     price: "€15",
     category: "Main Course",
     image:
@@ -108,7 +108,8 @@ const FALLBACK_MENU_ITEMS: MenuItem[] = [
   {
     id: "4",
     name: "Lamb Curry",
-    description: "Slow-cooked lamb in a rich and aromatic traditional curry.",
+    description:
+      "Slow-cooked lamb in a rich and aromatic traditional curry.",
     price: "€17",
     category: "Main Course",
     image:
@@ -154,7 +155,6 @@ const translations = {
     message: "Messaggio",
     sendBooking: "Invia Prenotazione",
     bookingSuccess: "La tua richiesta di prenotazione è stata inviata.",
-    reviewsTitle: "Cosa Dicono i Nostri Ospiti",
     hoursTitle: "Orari di Apertura",
     contactTitle: "Contatti",
     address: "Indirizzo",
@@ -167,6 +167,7 @@ const translations = {
     noPromotions: "Nessuna promozione disponibile al momento.",
     noReviews: "Presto condivideremo qui le recensioni dei nostri ospiti.",
   },
+
   en: {
     home: "Home",
     about: "About",
@@ -203,7 +204,6 @@ const translations = {
     message: "Message",
     sendBooking: "Send Booking",
     bookingSuccess: "Your booking request has been sent.",
-    reviewsTitle: "What Our Guests Say",
     hoursTitle: "Opening Hours",
     contactTitle: "Contact",
     address: "Address",
@@ -216,6 +216,7 @@ const translations = {
     noPromotions: "No promotions are available at the moment.",
     noReviews: "Guest reviews will be shared here soon.",
   },
+
   bn: {
     home: "হোম",
     about: "আমাদের সম্পর্কে",
@@ -252,7 +253,6 @@ const translations = {
     message: "মেসেজ",
     sendBooking: "বুকিং পাঠান",
     bookingSuccess: "আপনার বুকিং অনুরোধ পাঠানো হয়েছে।",
-    reviewsTitle: "আমাদের অতিথিরা কী বলেন",
     hoursTitle: "খোলার সময়",
     contactTitle: "যোগাযোগ",
     address: "ঠিকানা",
@@ -295,7 +295,7 @@ function getImage(item?: {
 
 function getWhatsappUrl(phone: string): string {
   const cleanPhone = phone.replace(/[^\d]/g, "");
-  return `https://wa.me/${cleanPhone}`;
+  return "https://wa.me/" + cleanPhone;
 }
 
 export default function HomePage() {
@@ -448,7 +448,9 @@ export default function HomePage() {
     "Lun - Dom: 12:00 - 23:30";
 
   const availableMenuItems = useMemo(() => {
-    return menuItems.filter((item) => item.available !== false);
+    return menuItems.filter(
+      (item) => item.available !== false
+    );
   }, [menuItems]);
 
   const displayGallery = useMemo(() => {
@@ -473,7 +475,9 @@ export default function HomePage() {
     }));
   }
 
-  function handleBookingSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleBookingSubmit(
+    event: FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
 
     setBookingSent(false);
@@ -697,44 +701,43 @@ export default function HomePage() {
 
           {promotions.length > 0 ? (
             <div className="promotions-grid">
-              {promotions.map((promotion, index) => (
-                <article
-                  className="promotion-card"
-                  key={
-                    promotion.id ??
-                    `promotion-${index}`
-                  }
-                >
-                  <img
-                    src={
-                      getImage(promotion) ||
-                      FALLBACK_PROMOTION
+              {promotions.map(
+                (promotion, index) => (
+                  <article
+                    className="promotion-card"
+                    key={
+                      promotion.id ??
+                      `promotion-${index}`
                     }
-                    alt={
-                      promotion.title ||
-                      "Promotion"
-                    }
-                  />
+                  >
+                    <img
+                      src={getImage(promotion)}
+                      alt={
+                        promotion.title ||
+                        "Promotion"
+                      }
+                    />
 
-                  <div className="promotion-content">
-                    {promotion.discount && (
-                      <span className="promotion-discount">
-                        {promotion.discount}
-                      </span>
-                    )}
+                    <div className="promotion-content">
+                      {promotion.discount && (
+                        <span className="promotion-discount">
+                          {promotion.discount}
+                        </span>
+                      )}
 
-                    <h3>
-                      {promotion.title ||
-                        "Nababi Special"}
-                    </h3>
+                      <h3>
+                        {promotion.title ||
+                          "Nababi Special"}
+                      </h3>
 
-                    <p>
-                      {promotion.description ||
-                        ""}
-                    </p>
-                  </div>
-                </article>
-              ))}
+                      <p>
+                        {promotion.description ||
+                          ""}
+                      </p>
+                    </div>
+                  </article>
+                )
+              )}
             </div>
           ) : (
             <div className="empty-state">
@@ -757,53 +760,58 @@ export default function HomePage() {
           </div>
 
           <div className="menu-grid">
-            {availableMenuItems.map((item, index) => (
-              <article
-                className="menu-card"
-                key={item.id ?? `menu-${index}`}
-              >
-                <div className="menu-card-image">
-                  <img
-                    src={getImage(item)}
-                    alt={
-                      item.name ||
-                      item.title ||
-                      "Menu item"
-                    }
-                  />
-                </div>
-
-                <div className="menu-card-content">
-                  <div className="menu-card-title">
-                    <h3>
-                      {item.name ||
+            {availableMenuItems.map(
+              (item, index) => (
+                <article
+                  className="menu-card"
+                  key={
+                    item.id ??
+                    `menu-${index}`
+                  }
+                >
+                  <div className="menu-card-image">
+                    <img
+                      src={getImage(item)}
+                      alt={
+                        item.name ||
                         item.title ||
-                        "Nababi Special"}
-                    </h3>
-
-                    {item.price && (
-                      <span>
-                        {String(item.price).includes(
-                          "€"
-                        )
-                          ? String(item.price)
-                          : `€${item.price}`}
-                      </span>
-                    )}
+                        "Menu item"
+                      }
+                    />
                   </div>
 
-                  {item.category && (
-                    <small className="menu-category">
-                      {item.category}
-                    </small>
-                  )}
+                  <div className="menu-card-content">
+                    <div className="menu-card-title">
+                      <h3>
+                        {item.name ||
+                          item.title ||
+                          "Nababi Special"}
+                      </h3>
 
-                  {item.description && (
-                    <p>{item.description}</p>
-                  )}
-                </div>
-              </article>
-            ))}
+                      {item.price && (
+                        <span>
+                          {String(
+                            item.price
+                          ).includes("€")
+                            ? String(item.price)
+                            : `€${item.price}`}
+                        </span>
+                      )}
+                    </div>
+
+                    {item.category && (
+                      <small className="menu-category">
+                        {item.category}
+                      </small>
+                    )}
+
+                    {item.description && (
+                      <p>{item.description}</p>
+                    )}
+                  </div>
+                </article>
+              )
+            )}
           </div>
         </div>
       </section>
@@ -824,23 +832,25 @@ export default function HomePage() {
           </div>
 
           <div className="gallery-grid">
-            {displayGallery.map((item, index) => (
-              <div
-                className="gallery-item"
-                key={
-                  item.id ??
-                  `gallery-${index}`
-                }
-              >
-                <img
-                  src={getImage(item)}
-                  alt={
-                    item.title ||
-                    "Nababi Ristorante"
+            {displayGallery.map(
+              (item, index) => (
+                <div
+                  className="gallery-item"
+                  key={
+                    item.id ??
+                    `gallery-${index}`
                   }
-                />
-              </div>
-            ))}
+                >
+                  <img
+                    src={getImage(item)}
+                    alt={
+                      item.title ||
+                      "Nababi Ristorante"
+                    }
+                  />
+                </div>
+              )
+            )}
           </div>
         </div>
       </section>
@@ -867,7 +877,9 @@ export default function HomePage() {
               </a>
 
               <a
-                href={getWhatsappUrl(whatsapp)}
+                href={getWhatsappUrl(
+                  whatsapp
+                )}
                 target="_blank"
                 rel="noreferrer"
               >
@@ -1066,43 +1078,46 @@ export default function HomePage() {
 
           {reviews.length > 0 ? (
             <div className="reviews-grid">
-              {reviews.map((review, index) => (
-                <article
-                  className="review-card"
-                  key={
-                    review.id ??
-                    `review-${index}`
-                  }
-                >
-                  <div className="review-stars">
-                    {"★".repeat(
-                      Math.min(
-                        5,
-                        Math.max(
-                          1,
-                          Number(
-                            review.rating || 5
+              {reviews.map(
+                (review, index) => (
+                  <article
+                    className="review-card"
+                    key={
+                      review.id ??
+                      `review-${index}`
+                    }
+                  >
+                    <div className="review-stars">
+                      {"★".repeat(
+                        Math.min(
+                          5,
+                          Math.max(
+                            1,
+                            Number(
+                              review.rating ||
+                                5
+                            )
                           )
                         )
-                      )
-                    )}
-                  </div>
+                      )}
+                    </div>
 
-                  <p>
-                    “
-                    {review.comment ||
-                      review.text ||
-                      ""}
-                    ”
-                  </p>
+                    <p>
+                      “
+                      {review.comment ||
+                        review.text ||
+                        ""}
+                      ”
+                    </p>
 
-                  <strong>
-                    {review.name ||
-                      review.author ||
-                      "Guest"}
-                  </strong>
-                </article>
-              ))}
+                    <strong>
+                      {review.name ||
+                        review.author ||
+                        "Guest"}
+                    </strong>
+                  </article>
+                )
+              )}
             </div>
           ) : (
             <div className="empty-state">
@@ -1148,7 +1163,6 @@ export default function HomePage() {
             <div className="contact-details">
               <div>
                 <span>{t.address}</span>
-
                 <p>{address}</p>
               </div>
 
@@ -1203,9 +1217,11 @@ export default function HomePage() {
           <div className="map-wrapper">
             <iframe
               title="Nababi Ristorante location"
-              src={`https://www.google.com/maps?q=${encodeURIComponent(
-                address
-              )}&output=embed`}
+              src={
+                "https://www.google.com/maps?q=" +
+                encodeURIComponent(address) +
+                "&output=embed"
+              }
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
             />
