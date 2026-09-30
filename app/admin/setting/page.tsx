@@ -10,9 +10,22 @@ type Settings = {
   dateFormat: string;
   maintenanceMode: boolean;
   adminNotifications: boolean;
+
+  // Advanced settings
+  settingsCode: string;
+  advancedSettingsEnabled: boolean;
 };
 
 const STORAGE_KEY = "nababi-settings";
+
+/*
+ * IMPORTANT:
+ * Change this value to your own code.
+ *
+ * Example:
+ * "NABABI2026"
+ */
+const ADVANCED_ACCESS_CODE = "NABABI2026";
 
 const defaultSettings: Settings = {
   restaurantName: "Nababi Ristorante",
@@ -22,6 +35,9 @@ const defaultSettings: Settings = {
   dateFormat: "DD/MM/YYYY",
   maintenanceMode: false,
   adminNotifications: true,
+
+  settingsCode: "",
+  advancedSettingsEnabled: false,
 };
 
 export default function SettingsManagementPage() {
@@ -30,15 +46,34 @@ export default function SettingsManagementPage() {
 
   const [saved, setSaved] = useState(false);
 
+  const [codeInput, setCodeInput] = useState("");
+
+  const [advancedUnlocked, setAdvancedUnlocked] =
+    useState(false);
+
+  const [codeError, setCodeError] = useState("");
+
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
 
     if (stored) {
       try {
-        setSettings({
+        const parsed = JSON.parse(stored);
+
+        const mergedSettings: Settings = {
           ...defaultSettings,
-          ...JSON.parse(stored),
-        });
+          ...parsed,
+        };
+
+        setSettings(mergedSettings);
+
+        /*
+         * Advanced settings are not automatically opened
+         * just because they were previously enabled.
+         *
+         * The code must be entered again.
+         */
+        setAdvancedUnlocked(false);
       } catch {
         setSettings(defaultSettings);
       }
@@ -55,7 +90,44 @@ export default function SettingsManagementPage() {
     }));
   };
 
-  const handleSave = (event: FormEvent<HTMLFormElement>) => {
+  const handleUnlockAdvancedSettings = () => {
+    setCodeError("");
+
+    const enteredCode = codeInput.trim();
+
+    if (!enteredCode) {
+      setCodeError("Please enter the settings code.");
+      return;
+    }
+
+    if (enteredCode !== ADVANCED_ACCESS_CODE) {
+      setAdvancedUnlocked(false);
+      setCodeError("Incorrect settings code.");
+      return;
+    }
+
+    setAdvancedUnlocked(true);
+    setCodeError("");
+    setCodeInput("");
+
+    setSettings((current) => ({
+      ...current,
+      advancedSettingsEnabled: true,
+    }));
+  };
+
+  const handleLockAdvancedSettings = () => {
+    setAdvancedUnlocked(false);
+
+    setSettings((current) => ({
+      ...current,
+      advancedSettingsEnabled: false,
+    }));
+  };
+
+  const handleSave = (
+    event: FormEvent<HTMLFormElement>
+  ) => {
     event.preventDefault();
 
     if (!settings.restaurantName.trim()) {
@@ -63,10 +135,23 @@ export default function SettingsManagementPage() {
       return;
     }
 
+    /*
+     * Do not store the entered access code itself.
+     * Only store whether advanced settings were enabled
+     * in the current settings state.
+     */
+    const settingsToSave: Settings = {
+      ...settings,
+      settingsCode: "",
+      advancedSettingsEnabled: advancedUnlocked,
+    };
+
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify(settings)
+      JSON.stringify(settingsToSave)
     );
+
+    setSettings(settingsToSave);
 
     setSaved(true);
 
@@ -83,6 +168,10 @@ export default function SettingsManagementPage() {
     if (!confirmed) return;
 
     setSettings(defaultSettings);
+
+    setCodeInput("");
+    setCodeError("");
+    setAdvancedUnlocked(false);
 
     localStorage.setItem(
       STORAGE_KEY,
@@ -102,6 +191,7 @@ export default function SettingsManagementPage() {
       {/* Center */}
       <div className="relative flex min-h-[calc(100vh-4rem)] w-full items-center justify-center">
         <div className="w-full max-w-4xl">
+
           {/* Header */}
           <header className="mb-7 text-center">
             <div className="mb-3 inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-orange-100 shadow-lg backdrop-blur-xl">
@@ -111,6 +201,10 @@ export default function SettingsManagementPage() {
             <h1 className="text-3xl font-bold text-white sm:text-4xl">
               Settings Management
             </h1>
+
+            <p className="mt-2 text-sm text-white/50">
+              Manage your restaurant and website settings.
+            </p>
           </header>
 
           {/* Main Card */}
@@ -118,6 +212,7 @@ export default function SettingsManagementPage() {
             onSubmit={handleSave}
             className="rounded-[32px] border border-white/15 bg-white/10 p-5 shadow-2xl backdrop-blur-2xl sm:p-7"
           >
+
             {/* General Settings */}
             <section className="rounded-3xl border border-white/10 bg-black/15 p-5 sm:p-6">
               <h2 className="mb-5 text-lg font-bold text-white">
@@ -125,6 +220,7 @@ export default function SettingsManagementPage() {
               </h2>
 
               <div className="grid gap-5 md:grid-cols-2">
+
                 {/* Restaurant Name */}
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-white">
@@ -276,6 +372,7 @@ export default function SettingsManagementPage() {
               </h2>
 
               <div className="space-y-4">
+
                 {/* Maintenance */}
                 <label className="flex cursor-pointer items-center justify-between gap-5 rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:bg-white/10">
                   <div>
@@ -328,6 +425,182 @@ export default function SettingsManagementPage() {
               </div>
             </section>
 
+            {/* Settings Code */}
+            <section className="mt-5 rounded-3xl border border-orange-300/20 bg-black/20 p-5 sm:p-6">
+              <div className="mb-5">
+                <h2 className="text-lg font-bold text-white">
+                  Advanced Settings Access
+                </h2>
+
+                <p className="mt-1 text-xs text-white/45">
+                  Enter the settings code to unlock additional settings.
+                </p>
+              </div>
+
+              {!advancedUnlocked ? (
+                <div className="space-y-4">
+
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-white">
+                      Settings Code
+                    </label>
+
+                    <input
+                      type="password"
+                      value={codeInput}
+                      onChange={(e) => {
+                        setCodeInput(e.target.value);
+                        setCodeError("");
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleUnlockAdvancedSettings();
+                        }
+                      }}
+                      placeholder="Enter settings code"
+                      autoComplete="off"
+                      className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-orange-300/50"
+                    />
+                  </div>
+
+                  {codeError && (
+                    <div className="rounded-2xl border border-red-300/20 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-200">
+                      {codeError}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleUnlockAdvancedSettings}
+                    className="w-full rounded-2xl bg-gradient-to-r from-orange-500 via-red-500 to-fuchsia-500 px-6 py-3.5 font-bold text-white shadow-lg shadow-orange-950/30 transition hover:scale-[1.01]"
+                  >
+                    Unlock Advanced Settings
+                  </button>
+
+                  <div className="rounded-2xl border border-yellow-300/10 bg-yellow-500/5 px-4 py-3">
+                    <p className="text-xs leading-5 text-yellow-100/60">
+                      Advanced settings are hidden until the correct code
+                      is entered.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-5">
+
+                  {/* Unlocked Status */}
+                  <div className="flex flex-col gap-4 rounded-2xl border border-green-300/20 bg-green-500/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-bold text-green-100">
+                        Advanced Settings Unlocked
+                      </p>
+
+                      <p className="mt-1 text-xs text-green-100/50">
+                        Additional settings are now available.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleLockAdvancedSettings}
+                      className="rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/15"
+                    >
+                      Lock
+                    </button>
+                  </div>
+
+                  {/* Advanced Settings */}
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                    <h3 className="mb-4 font-bold text-white">
+                      Advanced Settings
+                    </h3>
+
+                    <div className="space-y-4">
+
+                      {/* Website Status */}
+                      <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-black/10 p-4">
+                        <div>
+                          <p className="font-semibold text-white">
+                            Public Website
+                          </p>
+
+                          <p className="mt-1 text-xs text-white/40">
+                            Control whether the public website is available.
+                          </p>
+                        </div>
+
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-bold ${
+                            settings.maintenanceMode
+                              ? "bg-yellow-500/15 text-yellow-200"
+                              : "bg-green-500/15 text-green-200"
+                          }`}
+                        >
+                          {settings.maintenanceMode
+                            ? "Maintenance"
+                            : "Online"}
+                        </span>
+                      </div>
+
+                      {/* Admin Notifications */}
+                      <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-black/10 p-4">
+                        <div>
+                          <p className="font-semibold text-white">
+                            Admin Notifications
+                          </p>
+
+                          <p className="mt-1 text-xs text-white/40">
+                            Notification system status.
+                          </p>
+                        </div>
+
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-bold ${
+                            settings.adminNotifications
+                              ? "bg-green-500/15 text-green-200"
+                              : "bg-white/10 text-white/50"
+                          }`}
+                        >
+                          {settings.adminNotifications
+                            ? "Enabled"
+                            : "Disabled"}
+                        </span>
+                      </div>
+
+                      {/* Reservation System */}
+                      <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-black/10 p-4">
+                        <div>
+                          <p className="font-semibold text-white">
+                            Reservation System
+                          </p>
+
+                          <p className="mt-1 text-xs text-white/40">
+                            Reservation data uses the existing restaurant
+                            reservation system.
+                          </p>
+                        </div>
+
+                        <span className="rounded-full bg-green-500/15 px-3 py-1 text-xs font-bold text-green-200">
+                          Connected
+                        </span>
+                      </div>
+
+                      {/* Storage Key */}
+                      <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                        <p className="text-xs text-white/40">
+                          Settings Storage
+                        </p>
+
+                        <p className="mt-1 font-mono text-sm font-semibold text-orange-100">
+                          {STORAGE_KEY}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </section>
+
             {/* Current Settings */}
             <section className="mt-5 rounded-3xl border border-white/10 bg-black/15 p-5 sm:p-6">
               <h2 className="mb-4 text-lg font-bold text-white">
@@ -335,6 +608,7 @@ export default function SettingsManagementPage() {
               </h2>
 
               <div className="grid gap-3 sm:grid-cols-2">
+
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                   <p className="text-xs text-white/40">
                     Restaurant
@@ -382,11 +656,48 @@ export default function SettingsManagementPage() {
                       : "Online"}
                   </p>
                 </div>
+
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-xs text-white/40">
+                    Advanced Access
+                  </p>
+
+                  <p
+                    className={`mt-1 font-semibold ${
+                      advancedUnlocked
+                        ? "text-green-200"
+                        : "text-white/50"
+                    }`}
+                  >
+                    {advancedUnlocked
+                      ? "Unlocked"
+                      : "Locked"}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-xs text-white/40">
+                    Admin Notifications
+                  </p>
+
+                  <p
+                    className={`mt-1 font-semibold ${
+                      settings.adminNotifications
+                        ? "text-green-200"
+                        : "text-white/50"
+                    }`}
+                  >
+                    {settings.adminNotifications
+                      ? "Enabled"
+                      : "Disabled"}
+                  </p>
+                </div>
               </div>
             </section>
 
             {/* Buttons */}
             <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+
               <button
                 type="submit"
                 className="w-full rounded-2xl bg-gradient-to-r from-orange-500 via-red-500 to-fuchsia-500 px-10 py-3.5 font-bold text-white shadow-lg shadow-orange-950/30 transition hover:scale-[1.01] sm:w-auto"
