@@ -1,46 +1,46 @@
 ```tsx
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  FormEvent,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 type Lang = "it" | "en" | "bn";
 
 type MenuItem = {
-  id?: string | number;
+  id: string;
   name?: string;
   title?: string;
   description?: string;
   price?: string | number;
   category?: string;
   image?: string;
-  imageUrl?: string;
   available?: boolean;
 };
 
 type GalleryItem = {
-  id?: string | number;
-  image?: string;
-  imageUrl?: string;
-  url?: string;
+  id: string;
+  image: string;
   title?: string;
 };
 
 type Promotion = {
-  id?: string | number;
+  id: string;
   title?: string;
   description?: string;
   image?: string;
-  imageUrl?: string;
-  discount?: string;
+  active?: boolean;
 };
 
 type Review = {
-  id?: string | number;
+  id: string;
   name?: string;
-  author?: string;
-  comment?: string;
   text?: string;
   rating?: number;
+  active?: boolean;
 };
 
 type Settings = {
@@ -51,70 +51,42 @@ type Settings = {
   heroImage?: string;
   breakingNews?: string;
   openingHours?: string;
-  [key: string]: unknown;
 };
 
 const FALLBACK_HERO =
-  "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=2000&q=85";
-
-const FALLBACK_ABOUT =
-  "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1200&q=85";
-
-const FALLBACK_MENU =
-  "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=1000&q=85";
+  "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=1800&q=85";
 
 const FALLBACK_GALLERY = [
-  "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=1000&q=85",
-  "https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=1000&q=85",
-  "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1000&q=85",
   "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1000&q=85",
-  "https://images.unsplash.com/photo-1544148103-0773bf10d330?auto=format&fit=crop&w=1000&q=85",
-  "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1000&q=85",
+  "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1000&q=85",
+  "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1000&q=85",
+  "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=1000&q=85",
 ];
 
-const FALLBACK_MENU_ITEMS: MenuItem[] = [
+const FALLBACK_MENU: MenuItem[] = [
   {
-    id: "1",
-    name: "Chicken Tikka",
+    id: "fallback-1",
+    name: "Nababi Special",
     description:
-      "Tender chicken marinated with aromatic spices and grilled to perfection.",
-    price: "€12",
-    category: "Starters",
-    image: FALLBACK_MENU,
-    available: true,
+      "A signature selection prepared with care.",
+    price: "€18",
+    category: "Specialità",
   },
   {
-    id: "2",
-    name: "Biryani Nababi",
+    id: "fallback-2",
+    name: "Pasta della Casa",
     description:
-      "Fragrant basmati rice, tender meat and traditional aromatic spices.",
+      "Fresh pasta with a rich homemade sauce.",
+    price: "€14",
+    category: "Primi",
+  },
+  {
+    id: "fallback-3",
+    name: "Pollo Tandoori",
+    description:
+      "Tender chicken marinated with aromatic spices.",
     price: "€16",
-    category: "Main Course",
-    image:
-      "https://images.unsplash.com/photo-1563379091339-03246963d51a?auto=format&fit=crop&w=1000&q=85",
-    available: true,
-  },
-  {
-    id: "3",
-    name: "Butter Chicken",
-    description:
-      "Classic creamy tomato curry with tender chicken and Indian spices.",
-    price: "€15",
-    category: "Main Course",
-    image:
-      "https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&w=1000&q=85",
-    available: true,
-  },
-  {
-    id: "4",
-    name: "Lamb Curry",
-    description:
-      "Slow-cooked lamb in a rich and aromatic traditional curry.",
-    price: "€17",
-    category: "Main Course",
-    image:
-      "https://images.unsplash.com/photo-1601050690117-94f5f6fa8bd7?auto=format&fit=crop&w=1000&q=85",
-    available: true,
+    category: "Secondi",
   },
 ];
 
@@ -122,158 +94,161 @@ const translations = {
   it: {
     home: "Home",
     about: "Chi Siamo",
-    promotions: "Promozioni",
     menu: "Menu",
-    gallery: "Galleria",
     booking: "Prenota",
-    reviews: "Recensioni",
     contact: "Contatti",
-    heroEyebrow: "Benvenuti da",
-    heroTitle: "Nababi Ristorante",
+    reserve: "Prenota il Tavolo",
+    heroEyebrow: "Esperienza Gastronomica Autentica",
+    heroTitle: "Benvenuti da Nababi Ristorante",
     heroDescription:
-      "Tradizione italiana, sapori indiani e autentica ospitalità nel cuore di Roma.",
-    bookTable: "Prenota un Tavolo",
-    viewMenu: "Scopri il Menu",
-    aboutTitle: "Una tavola, tante tradizioni",
+      "Autentica cucina italiana e sapori internazionali nel cuore di Roma.",
+    discover: "Scopri il Menu",
+    aboutEyebrow: "Nababi Ristorante",
+    aboutTitle: "La Nostra Storia",
     aboutText:
-      "Nababi Ristorante nasce dall'incontro tra l'eleganza della cucina italiana, i profumi dell'India e la calorosa ospitalità romana.",
-    aboutText2:
-      "Ogni piatto viene preparato con ingredienti selezionati e grande attenzione ai dettagli, per offrirti un'esperienza autentica e speciale.",
-    discover: "Scopri di più",
-    latestOffers: "Le Nostre Promozioni",
+      "Benvenuti da Nababi Ristorante. Gustate ottimo cibo, calorosa ospitalità e un'esperienza indimenticabile nel cuore di Roma.",
+    menuEyebrow: "Menu",
     menuTitle: "Il Nostro Menu",
+    galleryEyebrow: "Nababi Ristorante",
     galleryTitle: "La Nostra Galleria",
-    bookingTitle: "Prenota il Tuo Tavolo",
-    bookingText:
-      "Scegli data, ora e numero di persone. Ti aspettiamo da Nababi Ristorante.",
+    bookingEyebrow: "Prenotazioni",
+    bookingTitle: "Prenota il Tavolo",
     name: "Nome",
     email: "Email",
-    phone: "Telefono",
     date: "Data",
     time: "Ora",
     guests: "Ospiti",
     message: "Messaggio",
-    sendBooking: "Invia Prenotazione",
-    bookingSuccess: "La tua richiesta di prenotazione è stata inviata.",
-    hoursTitle: "Orari di Apertura",
+    send: "Invia Prenotazione",
+    bookingSaved:
+      "Richiesta di prenotazione inviata.",
+    reviewsEyebrow: "Recensioni",
+    reviewsTitle: "Cosa Dicono i Nostri Ospiti",
+    hoursEyebrow: "Orari",
+    hoursTitle: "Opening Hours",
     contactTitle: "Contatti",
     address: "Indirizzo",
-    call: "Chiama",
+    phone: "Telefono",
     whatsapp: "WhatsApp",
+    call: "Chiama",
     follow: "Seguici",
     footerText:
-      "Tradizione, sapore e ospitalità nel cuore di Roma.",
+      "Italian tradition, international flavours and Roman hospitality.",
     allRights: "Tutti i diritti riservati.",
-    noPromotions: "Nessuna promozione disponibile al momento.",
-    noReviews: "Presto condivideremo qui le recensioni dei nostri ospiti.",
+    noMenu: "Nessun piatto disponibile.",
+    noReviews: "Nessuna recensione disponibile.",
+    noPromotions: "Nessuna promozione disponibile.",
   },
 
   en: {
     home: "Home",
-    about: "About",
-    promotions: "Promotions",
+    about: "About Us",
     menu: "Menu",
-    gallery: "Gallery",
-    booking: "Book",
-    reviews: "Reviews",
+    booking: "Booking",
     contact: "Contact",
-    heroEyebrow: "Welcome to",
-    heroTitle: "Nababi Ristorante",
+    reserve: "Book a Table",
+    heroEyebrow: "Authentic Dining Experience",
+    heroTitle: "Welcome to Nababi Ristorante",
     heroDescription:
-      "Italian tradition, Indian flavours and authentic Roman hospitality in the heart of Rome.",
-    bookTable: "Book a Table",
-    viewMenu: "View Menu",
-    aboutTitle: "One table, many traditions",
+      "Authentic Italian cuisine and international flavours in the heart of Rome.",
+    discover: "Discover the Menu",
+    aboutEyebrow: "Nababi Ristorante",
+    aboutTitle: "Our Story",
     aboutText:
-      "Nababi Ristorante brings together the elegance of Italian cuisine, the aromas of India and the warm hospitality of Rome.",
-    aboutText2:
-      "Every dish is prepared with selected ingredients and careful attention to detail, creating an authentic and memorable dining experience.",
-    discover: "Discover More",
-    latestOffers: "Our Promotions",
+      "Welcome to Nababi Ristorante. Enjoy delicious food, warm hospitality and a memorable dining experience in the heart of Rome.",
+    menuEyebrow: "Menu",
     menuTitle: "Our Menu",
+    galleryEyebrow: "Nababi Ristorante",
     galleryTitle: "Our Gallery",
+    bookingEyebrow: "Reservations",
     bookingTitle: "Book Your Table",
-    bookingText:
-      "Choose your date, time and number of guests. We look forward to welcoming you at Nababi Ristorante.",
     name: "Name",
     email: "Email",
-    phone: "Phone",
     date: "Date",
     time: "Time",
     guests: "Guests",
     message: "Message",
-    sendBooking: "Send Booking",
-    bookingSuccess: "Your booking request has been sent.",
+    send: "Send Reservation",
+    bookingSaved:
+      "Your reservation request has been sent.",
+    reviewsEyebrow: "Reviews",
+    reviewsTitle: "What Our Guests Say",
+    hoursEyebrow: "Hours",
     hoursTitle: "Opening Hours",
     contactTitle: "Contact",
     address: "Address",
-    call: "Call",
+    phone: "Phone",
     whatsapp: "WhatsApp",
+    call: "Call",
     follow: "Follow Us",
     footerText:
-      "Tradition, flavour and hospitality in the heart of Rome.",
+      "Italian tradition, international flavours and Roman hospitality.",
     allRights: "All rights reserved.",
-    noPromotions: "No promotions are available at the moment.",
-    noReviews: "Guest reviews will be shared here soon.",
+    noMenu: "No menu items available.",
+    noReviews: "No reviews available.",
+    noPromotions: "No promotions available.",
   },
 
   bn: {
     home: "হোম",
     about: "আমাদের সম্পর্কে",
-    promotions: "প্রমোশন",
     menu: "মেনু",
-    gallery: "গ্যালারি",
     booking: "বুকিং",
-    reviews: "রিভিউ",
     contact: "যোগাযোগ",
-    heroEyebrow: "স্বাগতম",
-    heroTitle: "নবাবি রিস্টোরান্তে",
+    reserve: "টেবিল বুক করুন",
+    heroEyebrow: "অথেন্টিক ডাইনিং এক্সপেরিয়েন্স",
+    heroTitle: "নাবাবি রিস্টোরান্তেতে স্বাগতম",
     heroDescription:
-      "রোমের হৃদয়ে ইতালিয়ান ঐতিহ্য, ভারতীয় স্বাদ এবং আন্তরিক আতিথেয়তার মিলন।",
-    bookTable: "টেবিল বুক করুন",
-    viewMenu: "মেনু দেখুন",
-    aboutTitle: "এক টেবিলে অনেক ঐতিহ্য",
+      "রোমের হৃদয়ে ইতালিয়ান ঐতিহ্য ও আন্তর্জাতিক স্বাদের অনন্য সমন্বয়।",
+    discover: "মেনু দেখুন",
+    aboutEyebrow: "Nababi Ristorante",
+    aboutTitle: "আমাদের গল্প",
     aboutText:
-      "Nababi Ristorante-এ ইতালিয়ান রান্নার সৌন্দর্য, ভারতের সুগন্ধি মসলা এবং রোমের উষ্ণ আতিথেয়তা একসাথে মিলিত হয়েছে।",
-    aboutText2:
-      "নির্বাচিত উপকরণ ও যত্নের সাথে প্রতিটি খাবার তৈরি করা হয়, যাতে আপনার জন্য একটি স্মরণীয় খাবারের অভিজ্ঞতা তৈরি হয়।",
-    discover: "আরও জানুন",
-    latestOffers: "আমাদের প্রমোশন",
+      "Nababi Ristorante-এ আপনাকে স্বাগতম। সুস্বাদু খাবার, আন্তরিক আতিথেয়তা এবং রোমের প্রাণকেন্দ্রে একটি স্মরণীয় ডাইনিং অভিজ্ঞতা উপভোগ করুন।",
+    menuEyebrow: "মেনু",
     menuTitle: "আমাদের মেনু",
+    galleryEyebrow: "Nababi Ristorante",
     galleryTitle: "আমাদের গ্যালারি",
-    bookingTitle: "আপনার টেবিল বুক করুন",
-    bookingText:
-      "তারিখ, সময় এবং অতিথির সংখ্যা নির্বাচন করুন। Nababi Ristorante-এ আপনাকে স্বাগত জানাতে আমরা অপেক্ষায় আছি।",
+    bookingEyebrow: "রিজার্ভেশন",
+    bookingTitle: "টেবিল বুক করুন",
     name: "নাম",
     email: "ইমেইল",
-    phone: "ফোন",
     date: "তারিখ",
     time: "সময়",
     guests: "অতিথি",
-    message: "মেসেজ",
-    sendBooking: "বুকিং পাঠান",
-    bookingSuccess: "আপনার বুকিং অনুরোধ পাঠানো হয়েছে।",
+    message: "বার্তা",
+    send: "বুকিং পাঠান",
+    bookingSaved:
+      "আপনার বুকিং অনুরোধ পাঠানো হয়েছে।",
+    reviewsEyebrow: "রিভিউ",
+    reviewsTitle: "আমাদের অতিথিরা কী বলেন",
+    hoursEyebrow: "সময়সূচি",
     hoursTitle: "খোলার সময়",
     contactTitle: "যোগাযোগ",
     address: "ঠিকানা",
-    call: "কল করুন",
+    phone: "ফোন",
     whatsapp: "WhatsApp",
+    call: "কল করুন",
     follow: "আমাদের অনুসরণ করুন",
     footerText:
-      "রোমের হৃদয়ে ঐতিহ্য, স্বাদ এবং আন্তরিক আতিথেয়তা।",
+      "ইতালিয়ান ঐতিহ্য, আন্তর্জাতিক স্বাদ এবং রোমান আতিথেয়তা।",
     allRights: "সর্বস্বত্ব সংরক্ষিত।",
-    noPromotions: "এই মুহূর্তে কোনো প্রমোশন নেই।",
-    noReviews: "শীঘ্রই আমাদের অতিথিদের রিভিউ এখানে প্রকাশ করা হবে।",
+    noMenu: "কোনো মেনু আইটেম পাওয়া যায়নি।",
+    noReviews: "কোনো রিভিউ পাওয়া যায়নি।",
+    noPromotions: "কোনো প্রমোশন পাওয়া যায়নি।",
   },
 };
 
-function readStorage<T>(key: string, fallback: T): T {
+function readStorage<T>(
+  key: string,
+  fallback: T
+): T {
   if (typeof window === "undefined") {
     return fallback;
   }
 
   try {
-    const value = localStorage.getItem(key);
+    const value = window.localStorage.getItem(key);
 
     if (!value) {
       return fallback;
@@ -285,26 +260,49 @@ function readStorage<T>(key: string, fallback: T): T {
   }
 }
 
-function getImage(item?: {
-  image?: string;
-  imageUrl?: string;
-  url?: string;
-}): string {
-  return item?.image || item?.imageUrl || item?.url || FALLBACK_MENU;
-}
-
 function getWhatsappUrl(phone: string): string {
   const cleanPhone = phone.replace(/[^\d]/g, "");
   return "https://wa.me/" + cleanPhone;
 }
 
-export default function HomePage() {
-  const [lang, setLang] = useState<Lang>("it");
+function getImage(
+  image: string | undefined,
+  fallback: string
+): string {
+  return image && image.trim() ? image : fallback;
+}
 
-  const [menuItems, setMenuItems] =
-    useState<MenuItem[]>(FALLBACK_MENU_ITEMS);
+function normalizeMenuItems(
+  items: MenuItem[]
+): MenuItem[] {
+  return items
+    .filter((item) => item && item.available !== false)
+    .map((item, index) => ({
+      ...item,
+      id: item.id || "menu-" + String(index),
+      name: item.name || item.title || "Nababi Special",
+    }));
+}
 
-  const [galleryItems, setGalleryItems] =
+function normalizeGallery(
+  items: GalleryItem[]
+): GalleryItem[] {
+  return items
+    .filter((item) => item && item.image)
+    .map((item, index) => ({
+      ...item,
+      id: item.id || "gallery-" + String(index),
+    }));
+}
+
+export default function Home() {
+  const [lang, setLang] =
+    useState<Lang>("it");
+
+  const [menu, setMenu] =
+    useState<MenuItem[]>([]);
+
+  const [gallery, setGallery] =
     useState<GalleryItem[]>([]);
 
   const [promotions, setPromotions] =
@@ -316,16 +314,12 @@ export default function HomePage() {
   const [settings, setSettings] =
     useState<Settings>({});
 
-  const [bookingSent, setBookingSent] =
-    useState(false);
-
-  const [bookingError, setBookingError] =
+  const [bookingMessage, setBookingMessage] =
     useState("");
 
   const [booking, setBooking] = useState({
     name: "",
     email: "",
-    phone: "",
     date: "",
     time: "",
     guests: "2",
@@ -335,94 +329,81 @@ export default function HomePage() {
   const t = translations[lang];
 
   useEffect(() => {
-    const loadData = () => {
-      const savedMenu = readStorage<MenuItem[]>(
+    function loadData() {
+      const storedMenu = readStorage<MenuItem[]>(
         "nababi-menu",
-        FALLBACK_MENU_ITEMS
-      );
-
-      const savedGallery = readStorage<GalleryItem[]>(
-        "nababi-gallery",
         []
       );
 
-      const savedSettings = readStorage<Settings>(
-        "nababi-settings",
-        {}
-      );
+      const storedGallery =
+        readStorage<GalleryItem[]>(
+          "nababi-gallery",
+          []
+        );
 
-      const savedPromotions = readStorage<Promotion[]>(
-        "nababi-promotions",
-        []
-      );
+      const storedSettings =
+        readStorage<Settings>(
+          "nababi-settings",
+          {}
+        );
 
-      const savedPromotionsAlt = readStorage<Promotion[]>(
-        "nababi-promotion",
-        []
-      );
+      const storedPromotions =
+        readStorage<Promotion[]>(
+          "nababi-promotions",
+          readStorage<Promotion[]>(
+            "nababi-promotion",
+            []
+          )
+        );
 
-      const savedReviews = readStorage<Review[]>(
-        "nababi-reviews",
-        []
-      );
+      const storedReviews =
+        readStorage<Review[]>(
+          "nababi-reviews",
+          readStorage<Review[]>(
+            "nababi-review",
+            []
+          )
+        );
 
-      const savedReviewsAlt = readStorage<Review[]>(
-        "nababi-review",
-        []
-      );
-
-      if (Array.isArray(savedMenu) && savedMenu.length > 0) {
-        setMenuItems(savedMenu);
-      }
-
-      if (Array.isArray(savedGallery)) {
-        setGalleryItems(savedGallery);
-      }
-
-      if (savedSettings && typeof savedSettings === "object") {
-        setSettings(savedSettings);
-      }
-
-      if (Array.isArray(savedPromotions) && savedPromotions.length > 0) {
-        setPromotions(savedPromotions);
-      } else if (
-        Array.isArray(savedPromotionsAlt) &&
-        savedPromotionsAlt.length > 0
-      ) {
-        setPromotions(savedPromotionsAlt);
-      }
-
-      if (Array.isArray(savedReviews) && savedReviews.length > 0) {
-        setReviews(savedReviews);
-      } else if (
-        Array.isArray(savedReviewsAlt) &&
-        savedReviewsAlt.length > 0
-      ) {
-        setReviews(savedReviewsAlt);
-      }
-    };
+      setMenu(normalizeMenuItems(storedMenu));
+      setGallery(normalizeGallery(storedGallery));
+      setSettings(storedSettings);
+      setPromotions(storedPromotions);
+      setReviews(storedReviews);
+    }
 
     loadData();
 
-    const handleStorage = () => {
+    function handleStorage() {
       loadData();
-    };
+    }
 
-    const handleFocus = () => {
-      loadData();
-    };
+    window.addEventListener(
+      "storage",
+      handleStorage
+    );
 
-    window.addEventListener("storage", handleStorage);
-    window.addEventListener("focus", handleFocus);
+    window.addEventListener(
+      "focus",
+      handleStorage
+    );
 
     return () => {
-      window.removeEventListener("storage", handleStorage);
-      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener(
+        "storage",
+        handleStorage
+      );
+
+      window.removeEventListener(
+        "focus",
+        handleStorage
+      );
     };
   }, []);
 
   const restaurantName =
-    settings.restaurantName || "Nababi Ristorante";
+    settings.restaurantName ||
+    "Nababi Ristorante";
 
   const address =
     settings.address ||
@@ -436,119 +417,97 @@ export default function HomePage() {
     settings.whatsapp ||
     "+39 333 7687319";
 
-  const heroImage =
-    settings.heroImage || FALLBACK_HERO;
+  const heroImage = getImage(
+    settings.heroImage,
+    FALLBACK_HERO
+  );
 
   const breakingNews =
     settings.breakingNews ||
-    "Benvenuti da Nababi Ristorante — Italian tradition, Indian flavours & Roman hospitality.";
+    "Benvenuti da Nababi Ristorante • Roma";
 
   const openingHours =
     settings.openingHours ||
-    "Lun - Dom: 12:00 - 23:30";
+    "Monday — 12:00 – 23:00\nTuesday — 12:00 – 23:00\nWednesday — 12:00 – 23:00\nThursday — 12:00 – 23:00\nFriday — 12:00 – 23:00\nSaturday — 12:00 – 23:00\nSunday — 12:00 – 23:00";
 
-  const availableMenuItems = useMemo(() => {
-    return menuItems.filter(
-      (item) => item.available !== false
-    );
-  }, [menuItems]);
+  const visiblePromotions = useMemo(
+    () =>
+      promotions.filter(
+        (promotion) =>
+          promotion && promotion.active !== false
+      ),
+    [promotions]
+  );
 
-  const displayGallery = useMemo(() => {
-    if (galleryItems.length > 0) {
-      return galleryItems;
-    }
+  const visibleReviews = useMemo(
+    () =>
+      reviews.filter(
+        (review) =>
+          review && review.active !== false
+      ),
+    [reviews]
+  );
 
-   return FALLBACK_GALLERY.map((image, index) => ({
-  id: `fallback-${index}`,
-  image,
-  title: "Nababi Ristorante",
-}));
-  }, [galleryItems]);
+  const displayMenu =
+    menu.length > 0
+      ? menu
+      : FALLBACK_MENU;
 
-  function updateBooking(
-    field: keyof typeof booking,
-    value: string
-  ) {
-    setBooking((current) => ({
-      ...current,
-      [field]: value,
-    }));
-  }
+  const displayGallery =
+    gallery.length > 0
+      ? gallery
+      : FALLBACK_GALLERY.map(
+          (image, index) => ({
+            id: "fallback-" + String(index),
+            image,
+            title: restaurantName,
+          })
+        );
 
   function handleBookingSubmit(
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
-    setBookingSent(false);
-    setBookingError("");
-
-    if (
-      !booking.name.trim() ||
-      !booking.phone.trim() ||
-      !booking.date ||
-      !booking.time
-    ) {
-      setBookingError(
-        lang === "it"
-          ? "Compila tutti i campi obbligatori."
-          : lang === "bn"
-          ? "অনুগ্রহ করে সব প্রয়োজনীয় তথ্য পূরণ করুন।"
-          : "Please complete all required fields."
-      );
-
-      return;
-    }
+    const reservation = {
+      id:
+        "reservation-" +
+        String(Date.now()),
+      ...booking,
+      createdAt:
+        new Date().toISOString(),
+    };
 
     try {
-      const existing = readStorage<unknown[]>(
-        "nababi-reservations",
-        []
-      );
+      const current =
+        readStorage<any[]>(
+          "nababi-reservations",
+          []
+        );
 
-      const reservations = Array.isArray(existing)
-        ? existing
-        : [];
-
-      const newReservation = {
-        id: Date.now(),
-        name: booking.name,
-        email: booking.email,
-        phone: booking.phone,
-        date: booking.date,
-        time: booking.time,
-        guests: booking.guests,
-        message: booking.message,
-        createdAt: new Date().toISOString(),
-        status: "pending",
-      };
-
-      localStorage.setItem(
+      window.localStorage.setItem(
         "nababi-reservations",
         JSON.stringify([
-          ...reservations,
-          newReservation,
+          ...current,
+          reservation,
         ])
       );
 
-      setBookingSent(true);
+      setBookingMessage(
+        t.bookingSaved
+      );
 
       setBooking({
         name: "",
         email: "",
-        phone: "",
         date: "",
         time: "",
         guests: "2",
         message: "",
       });
     } catch {
-      setBookingError(
-        lang === "it"
-          ? "Si è verificato un errore. Riprova."
-          : lang === "bn"
-          ? "একটি সমস্যা হয়েছে। আবার চেষ্টা করুন।"
-          : "Something went wrong. Please try again."
+      setBookingMessage(
+        "Unable to save the reservation."
       );
     }
   }
@@ -557,39 +516,99 @@ export default function HomePage() {
     <main className="nababi-site">
       <header className="site-header">
         <div className="container header-inner">
-          <a href="#home" className="brand">
-            <span className="brand-mark">N</span>
+          <a
+            href="#home"
+            className="brand"
+          >
+            <span className="brand-mark">
+              N
+            </span>
 
             <span>
-              <strong>{restaurantName}</strong>
-              <small>RISTORANTE</small>
+              <strong>
+                {restaurantName}
+              </strong>
+
+              <small>
+                Roma • Ristorante
+              </small>
             </span>
           </a>
 
           <nav className="desktop-nav">
-            <a href="#home">{t.home}</a>
-            <a href="#about">{t.about}</a>
-            <a href="#promotions">{t.promotions}</a>
-            <a href="#menu">{t.menu}</a>
-            <a href="#gallery">{t.gallery}</a>
-            <a href="#booking">{t.booking}</a>
-            <a href="#reviews">{t.reviews}</a>
-            <a href="#contact">{t.contact}</a>
+            <a href="#home">
+              {t.home}
+            </a>
+
+            <a href="#about">
+              {t.about}
+            </a>
+
+            <a href="#menu">
+              {t.menu}
+            </a>
+
+            <a href="#booking">
+              {t.booking}
+            </a>
+
+            <a href="#contact">
+              {t.contact}
+            </a>
           </nav>
 
           <div className="language-switcher">
-            {(["it", "en", "bn"] as Lang[]).map((item) => (
-              <button
-                key={item}
-                type="button"
-                className={lang === item ? "active" : ""}
-                onClick={() => setLang(item)}
-                aria-label={"Switch language to " + item}
-              >
-                {item.toUpperCase()}
-              </button>
-            ))}
+            <button
+              type="button"
+              onClick={() => setLang("it")}
+              className={
+                lang === "it"
+                  ? "active"
+                  : ""
+              }
+            >
+              🇮🇹 Italiano
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setLang("en")}
+              className={
+                lang === "en"
+                  ? "active"
+                  : ""
+              }
+            >
+              🇬🇧 English
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setLang("bn")}
+              className={
+                lang === "bn"
+                  ? "active"
+                  : ""
+              }
+            >
+              🇧🇩 বাংলা
+            </button>
           </div>
+
+          <a
+            href="#booking"
+            className="btn btn-primary header-booking"
+          >
+            {t.reserve}
+          </a>
+
+          <button
+            type="button"
+            className="mobile-menu"
+            aria-label="Menu"
+          >
+            ☰
+          </button>
         </div>
       </header>
 
@@ -597,20 +616,21 @@ export default function HomePage() {
         id="home"
         className="hero"
         style={{
-          backgroundImage: `url("${heroImage}")`,
+          backgroundImage:
+            "url(\"" +
+            heroImage +
+            "\")",
         }}
       >
         <div className="hero-overlay" />
 
         <div className="container hero-content">
           <p className="eyebrow">
-            {t.heroEyebrow}
+            ✦ {t.heroEyebrow}
           </p>
 
           <h1>
-            {lang === "bn"
-              ? "নবাবি রিস্টোরান্তে"
-              : restaurantName}
+            {t.heroTitle}
           </h1>
 
           <div className="gold-line" />
@@ -619,120 +639,137 @@ export default function HomePage() {
             {t.heroDescription}
           </p>
 
-          <div className="hero-buttons">
+          <div className="hero-actions">
             <a
               href="#booking"
               className="btn btn-primary"
             >
-              {t.bookTable}
+              {t.reserve}
             </a>
 
             <a
               href="#menu"
               className="btn btn-outline"
             >
-              {t.viewMenu}
+              {t.discover}
             </a>
+          </div>
+
+          <div className="hero-meta">
+            <span>✦ Rome</span>
+            <span>
+              ✦ Via Vespasiano
+            </span>
+            <span>
+              ✦ Fine Dining
+            </span>
           </div>
         </div>
       </section>
 
       <div className="news-bar">
         <div className="container">
-          <span className="news-label">
-            NEWS
-          </span>
-
-          <span>{breakingNews}</span>
+          <span>✦</span>
+          <p>{breakingNews}</p>
         </div>
       </div>
 
-      <section id="about" className="about section">
+      <section
+        id="about"
+        className="about section"
+      >
         <div className="container about-grid">
           <div className="about-image">
             <img
-              src={FALLBACK_ABOUT}
-              alt="Nababi Ristorante"
+              src={getImage(
+                displayGallery[0]?.image,
+                FALLBACK_GALLERY[0]
+              )}
+              alt={restaurantName}
             />
 
             <div className="about-badge">
-              <strong>NB</strong>
-              <span>ROMA</span>
+              <strong>N</strong>
+              <span>
+                {restaurantName}
+              </span>
             </div>
           </div>
 
-          <div className="about-content">
+          <div className="section-copy">
             <p className="eyebrow">
-              NABABI RISTORANTE
+              ✦ {t.aboutEyebrow}
             </p>
 
-            <h2>{t.aboutTitle}</h2>
+            <h2>
+              {t.aboutTitle}
+            </h2>
 
             <div className="gold-line" />
 
-            <p>{t.aboutText}</p>
+            <p>
+              {t.aboutText}
+            </p>
 
-            <p>{t.aboutText2}</p>
+            <p>
+              Italian tradition, international
+              flavours and Roman hospitality
+              come together at our table.
+            </p>
 
             <a
-              href="#contact"
-              className="text-link"
+              href="#booking"
+              className="btn btn-primary"
             >
-              {t.discover}
+              {t.reserve}
             </a>
           </div>
         </div>
       </section>
 
       <section
-        id="promotions"
         className="promotions section"
       >
         <div className="container">
           <div className="section-heading">
             <p className="eyebrow">
-              NABABI SPECIAL
+              ✦ Nababi Ristorante
             </p>
 
-            <h2>{t.latestOffers}</h2>
+            <h2>
+              Promotions
+            </h2>
 
             <div className="gold-line" />
           </div>
 
-          {promotions.length > 0 ? (
-            <div className="promotions-grid">
-              {promotions.map(
-                (promotion, index) => (
+          {visiblePromotions.length > 0 ? (
+            <div className="promotion-grid">
+              {visiblePromotions.map(
+                (promotion) => (
                   <article
                     className="promotion-card"
-                    key={
-                      promotion.id ??
-                      `promotion-${index}`
-                    }
+                    key={promotion.id}
                   >
-                    <img
-                      src={getImage(promotion)}
-                      alt={
-                        promotion.title ||
-                        "Promotion"
-                      }
-                    />
+                    {promotion.image && (
+                      <img
+                        src={promotion.image}
+                        alt={
+                          promotion.title ||
+                          "Promotion"
+                        }
+                      />
+                    )}
 
-                    <div className="promotion-content">
-                      {promotion.discount && (
-                        <span className="promotion-discount">
-                          {promotion.discount}
-                        </span>
-                      )}
-
+                    <div>
                       <h3>
-                        {promotion.title ||
-                          "Nababi Special"}
+                        {promotion.title}
                       </h3>
 
                       <p>
-                        {promotion.description ||
-                          ""}
+                        {
+                          promotion.description
+                        }
                       </p>
                     </div>
                   </article>
@@ -740,115 +777,115 @@ export default function HomePage() {
               )}
             </div>
           ) : (
-            <div className="empty-state">
+            <p className="empty-state">
               {t.noPromotions}
-            </div>
+            </p>
           )}
         </div>
       </section>
 
-      <section id="menu" className="menu section">
+      <section
+        id="menu"
+        className="menu section"
+      >
         <div className="container">
           <div className="section-heading">
             <p className="eyebrow">
-              SAPORI AUTENTICI
+              ✦ {t.menuEyebrow}
             </p>
 
-            <h2>{t.menuTitle}</h2>
+            <h2>
+              {t.menuTitle}
+            </h2>
 
             <div className="gold-line" />
           </div>
 
           <div className="menu-grid">
-            {availableMenuItems.map(
-              (item, index) => (
+            {displayMenu.map(
+              (item) => (
                 <article
                   className="menu-card"
-                  key={
-                    item.id ??
-                    `menu-${index}`
-                  }
+                  key={item.id}
                 >
-                  <div className="menu-card-image">
+                  {item.image && (
                     <img
-                      src={getImage(item)}
+                      src={item.image}
                       alt={
                         item.name ||
-                        item.title ||
                         "Menu item"
                       }
                     />
-                  </div>
+                  )}
 
                   <div className="menu-card-content">
-                    <div className="menu-card-title">
+                    <div className="menu-card-top">
                       <h3>
                         {item.name ||
-                          item.title ||
-                          "Nababi Special"}
+                          item.title}
                       </h3>
 
                       {item.price && (
-                        <span>
-                          {String(
-                            item.price
-                          ).includes("€")
-                            ? String(item.price)
-                            : `€${item.price}`}
-                        </span>
+                        <strong>
+                          {item.price}
+                        </strong>
                       )}
                     </div>
 
                     {item.category && (
-                      <small className="menu-category">
+                      <span className="menu-category">
                         {item.category}
-                      </small>
+                      </span>
                     )}
 
                     {item.description && (
-                      <p>{item.description}</p>
+                      <p>
+                        {item.description}
+                      </p>
                     )}
                   </div>
                 </article>
               )
             )}
           </div>
+
+          {menu.length === 0 && (
+            <p className="menu-note">
+              {t.noMenu}
+            </p>
+          )}
         </div>
       </section>
 
-      <section
-        id="gallery"
-        className="gallery section"
-      >
+      <section className="gallery section">
         <div className="container">
           <div className="section-heading">
             <p className="eyebrow">
-              MOMENTI NABABI
+              ✦ {t.galleryEyebrow}
             </p>
 
-            <h2>{t.galleryTitle}</h2>
+            <h2>
+              {t.galleryTitle}
+            </h2>
 
             <div className="gold-line" />
           </div>
 
           <div className="gallery-grid">
             {displayGallery.map(
-              (item, index) => (
-                <div
+              (item) => (
+                <figure
                   className="gallery-item"
-                  key={
-                    item.id ??
-                    `gallery-${index}`
-                  }
+                  key={item.id}
                 >
                   <img
-                    src={getImage(item)}
+                    src={item.image}
                     alt={
                       item.title ||
-                      "Nababi Ristorante"
+                      restaurantName
                     }
                   />
-                </div>
+                </figure>
               )
             )}
           </div>
@@ -860,243 +897,202 @@ export default function HomePage() {
         className="booking section"
       >
         <div className="container booking-grid">
-          <div className="booking-content">
+          <div className="section-copy">
             <p className="eyebrow">
-              PRENOTAZIONE
+              ✦ {t.bookingEyebrow}
             </p>
 
-            <h2>{t.bookingTitle}</h2>
+            <h2>
+              {t.bookingTitle}
+            </h2>
 
             <div className="gold-line" />
 
-            <p>{t.bookingText}</p>
-
-            <div className="booking-contact">
-              <a href={`tel:${phone}`}>
-                {phone}
-              </a>
-
-              <a
-                href={getWhatsappUrl(
-                  whatsapp
-                )}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {t.whatsapp}
-              </a>
-            </div>
+            <p>
+              Reserve your table and enjoy
+              an unforgettable dining
+              experience in Rome.
+            </p>
           </div>
 
           <form
             className="booking-form"
-            onSubmit={handleBookingSubmit}
+            onSubmit={
+              handleBookingSubmit
+            }
           >
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="booking-name">
-                  {t.name} *
-                </label>
+            <label>
+              {t.name}
 
-                <input
-                  id="booking-name"
-                  type="text"
-                  value={booking.name}
-                  onChange={(event) =>
-                    updateBooking(
-                      "name",
-                      event.target.value
-                    )
-                  }
-                  required
-                />
-              </div>
+              <input
+                type="text"
+                required
+                value={booking.name}
+                onChange={(event) =>
+                  setBooking({
+                    ...booking,
+                    name:
+                      event.target.value,
+                  })
+                }
+              />
+            </label>
 
-              <div className="form-group">
-                <label htmlFor="booking-phone">
-                  {t.phone} *
-                </label>
+            <label>
+              {t.email}
 
-                <input
-                  id="booking-phone"
-                  type="tel"
-                  value={booking.phone}
-                  onChange={(event) =>
-                    updateBooking(
-                      "phone",
-                      event.target.value
-                    )
-                  }
-                  required
-                />
-              </div>
-            </div>
+              <input
+                type="email"
+                required
+                value={booking.email}
+                onChange={(event) =>
+                  setBooking({
+                    ...booking,
+                    email:
+                      event.target.value,
+                  })
+                }
+              />
+            </label>
 
             <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="booking-email">
-                  {t.email}
-                </label>
+              <label>
+                {t.date}
 
                 <input
-                  id="booking-email"
-                  type="email"
-                  value={booking.email}
-                  onChange={(event) =>
-                    updateBooking(
-                      "email",
-                      event.target.value
-                    )
-                  }
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="booking-guests">
-                  {t.guests} *
-                </label>
-
-                <select
-                  id="booking-guests"
-                  value={booking.guests}
-                  onChange={(event) =>
-                    updateBooking(
-                      "guests",
-                      event.target.value
-                    )
-                  }
-                >
-                  {Array.from(
-                    { length: 12 },
-                    (_, index) => index + 1
-                  ).map((number) => (
-                    <option
-                      key={number}
-                      value={number}
-                    >
-                      {number}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="booking-date">
-                  {t.date} *
-                </label>
-
-                <input
-                  id="booking-date"
                   type="date"
+                  required
                   value={booking.date}
                   onChange={(event) =>
-                    updateBooking(
-                      "date",
-                      event.target.value
-                    )
+                    setBooking({
+                      ...booking,
+                      date:
+                        event.target.value,
+                    })
                   }
-                  required
                 />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="booking-time">
-                  {t.time} *
-                </label>
-
-                <input
-                  id="booking-time"
-                  type="time"
-                  value={booking.time}
-                  onChange={(event) =>
-                    updateBooking(
-                      "time",
-                      event.target.value
-                    )
-                  }
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="booking-message">
-                {t.message}
               </label>
 
+              <label>
+                {t.time}
+
+                <input
+                  type="time"
+                  required
+                  value={booking.time}
+                  onChange={(event) =>
+                    setBooking({
+                      ...booking,
+                      time:
+                        event.target.value,
+                    })
+                  }
+                />
+              </label>
+            </div>
+
+            <label>
+              {t.guests}
+
+              <select
+                value={booking.guests}
+                onChange={(event) =>
+                  setBooking({
+                    ...booking,
+                    guests:
+                      event.target.value,
+                  })
+                }
+              >
+                <option value="1">
+                  1
+                </option>
+                <option value="2">
+                  2
+                </option>
+                <option value="3">
+                  3
+                </option>
+                <option value="4">
+                  4
+                </option>
+                <option value="5">
+                  5
+                </option>
+                <option value="6">
+                  6
+                </option>
+                <option value="7">
+                  7
+                </option>
+                <option value="8">
+                  8+
+                </option>
+              </select>
+            </label>
+
+            <label>
+              {t.message}
+
               <textarea
-                id="booking-message"
                 rows={4}
                 value={booking.message}
                 onChange={(event) =>
-                  updateBooking(
-                    "message",
-                    event.target.value
-                  )
+                  setBooking({
+                    ...booking,
+                    message:
+                      event.target.value,
+                  })
                 }
               />
-            </div>
-
-            {bookingError && (
-              <div className="form-message error">
-                {bookingError}
-              </div>
-            )}
-
-            {bookingSent && (
-              <div className="form-message success">
-                {t.bookingSuccess}
-              </div>
-            )}
+            </label>
 
             <button
               type="submit"
               className="btn btn-primary"
             >
-              {t.sendBooking}
+              {t.send}
             </button>
+
+            {bookingMessage && (
+              <p className="form-success">
+                {bookingMessage}
+              </p>
+            )}
           </form>
         </div>
       </section>
 
-      <section
-        id="reviews"
-        className="reviews section"
-      >
+      <section className="reviews section">
         <div className="container">
           <div className="section-heading">
             <p className="eyebrow">
-              ESPERIENZE
+              ✦ {t.reviewsEyebrow}
             </p>
 
-            <h2>{t.reviewsTitle}</h2>
+            <h2>
+              {t.reviewsTitle}
+            </h2>
 
             <div className="gold-line" />
           </div>
 
-          {reviews.length > 0 ? (
+          {visibleReviews.length > 0 ? (
             <div className="reviews-grid">
-              {reviews.map(
-                (review, index) => (
+              {visibleReviews.map(
+                (review) => (
                   <article
                     className="review-card"
-                    key={
-                      review.id ??
-                      `review-${index}`
-                    }
+                    key={review.id}
                   >
                     <div className="review-stars">
                       {"★".repeat(
-                        Math.min(
-                          5,
-                          Math.max(
-                            1,
-                            Number(
-                              review.rating ||
-                                5
-                            )
+                        Math.max(
+                          0,
+                          Math.min(
+                            5,
+                            review.rating ||
+                              5
                           )
                         )
                       )}
@@ -1104,15 +1100,12 @@ export default function HomePage() {
 
                     <p>
                       “
-                      {review.comment ||
-                        review.text ||
-                        ""}
+                      {review.text}
                       ”
                     </p>
 
                     <strong>
                       {review.name ||
-                        review.author ||
                         "Guest"}
                     </strong>
                   </article>
@@ -1120,28 +1113,42 @@ export default function HomePage() {
               )}
             </div>
           ) : (
-            <div className="empty-state">
+            <p className="empty-state">
               {t.noReviews}
-            </div>
+            </p>
           )}
         </div>
       </section>
 
-      <section
-        id="hours"
-        className="hours section"
-      >
-        <div className="container hours-inner">
-          <div>
+      <section className="hours section">
+        <div className="container hours-grid">
+          <div className="section-heading">
             <p className="eyebrow">
-              NABABI RISTORANTE
+              ✦ NABABI RISTORANTE
             </p>
 
-            <h2>{t.hoursTitle}</h2>
+            <h2>
+              {t.hoursTitle}
+            </h2>
+
+            <div className="gold-line" />
           </div>
 
           <div className="hours-content">
-            <p>{openingHours}</p>
+            {openingHours
+              .split("\n")
+              .map(
+                (line, index) => (
+                  <p
+                    key={
+                      "hour-" +
+                      String(index)
+                    }
+                  >
+                    {line}
+                  </p>
+                )
+              )}
           </div>
         </div>
       </section>
@@ -1156,28 +1163,42 @@ export default function HomePage() {
               ROMA
             </p>
 
-            <h2>{t.contactTitle}</h2>
+            <h2>
+              {t.contactTitle}
+            </h2>
 
             <div className="gold-line" />
 
             <div className="contact-details">
               <div>
-                <span>{t.address}</span>
+                <span>
+                  {t.address}
+                </span>
+
                 <p>{address}</p>
               </div>
 
               <div>
-                <span>{t.phone}</span>
+                <span>
+                  {t.phone}
+                </span>
 
                 <p>
-                  <a href={`tel:${phone}`}>
+                  <a
+                    href={
+                      "tel:" +
+                      phone
+                    }
+                  >
                     {phone}
                   </a>
                 </p>
               </div>
 
               <div>
-                <span>{t.whatsapp}</span>
+                <span>
+                  {t.whatsapp}
+                </span>
 
                 <p>
                   <a
@@ -1195,7 +1216,9 @@ export default function HomePage() {
 
             <div className="contact-buttons">
               <a
-                href={`tel:${phone}`}
+                href={
+                  "tel:" + phone
+                }
                 className="btn btn-primary"
               >
                 {t.call}
@@ -1219,7 +1242,9 @@ export default function HomePage() {
               title="Nababi Ristorante location"
               src={
                 "https://www.google.com/maps?q=" +
-                encodeURIComponent(address) +
+                encodeURIComponent(
+                  address
+                ) +
                 "&output=embed"
               }
               loading="lazy"
@@ -1241,23 +1266,34 @@ export default function HomePage() {
                 {restaurantName}
               </strong>
 
-              <p>{t.footerText}</p>
+              <p>
+                {t.footerText}
+              </p>
             </div>
           </div>
 
           <div className="footer-links">
-            <a href="#home">{t.home}</a>
-            <a href="#menu">{t.menu}</a>
+            <a href="#home">
+              {t.home}
+            </a>
+
+            <a href="#menu">
+              {t.menu}
+            </a>
+
             <a href="#booking">
               {t.booking}
             </a>
+
             <a href="#contact">
               {t.contact}
             </a>
           </div>
 
           <div className="footer-social">
-            <span>{t.follow}</span>
+            <span>
+              {t.follow}
+            </span>
 
             <div>
               <a
@@ -1291,7 +1327,8 @@ export default function HomePage() {
 
         <div className="footer-bottom">
           <div className="container">
-            © {new Date().getFullYear()}{" "}
+            ©{" "}
+            {new Date().getFullYear()}{" "}
             {restaurantName}.{" "}
             {t.allRights}
           </div>
@@ -1300,7 +1337,9 @@ export default function HomePage() {
 
       <a
         className="floating-whatsapp"
-        href={getWhatsappUrl(whatsapp)}
+        href={getWhatsappUrl(
+          whatsapp
+        )}
         target="_blank"
         rel="noreferrer"
         aria-label="WhatsApp"
