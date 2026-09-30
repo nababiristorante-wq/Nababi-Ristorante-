@@ -2,1758 +2,606 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
-type Language = "it" | "en" | "bn";
-
-type MenuItem = {
-  id: string;
-  name: string;
-  description?: string;
-  price: string;
-  category: string;
-  image?: string;
-  available?: boolean;
-  visible?: boolean;
-};
-
-type GalleryItem = {
-  id: string;
-  image: string;
-  category?: string;
-  visible?: boolean;
-  displayOrder?: number;
-};
-
-type Promotion = {
-  id: string;
-  title: string;
-  description?: string;
-  offer?: string;
-  image?: string;
-  startDate?: string;
-  endDate?: string;
-  visible?: boolean;
-};
-
-type Review = {
-  id: string;
-  customerName: string;
-  rating: number;
-  review: string;
-  image?: string;
-  date?: string;
-  visible?: boolean;
-};
+type AnyData = Record<string, any>;
 
 type Reservation = {
   id: string;
   name: string;
   phone: string;
-  email?: string;
   date: string;
   time: string;
   guests: string;
-  message?: string;
+  message: string;
   createdAt: string;
-  status?: string;
-};
-
-type OpeningDay = {
-  day: string;
-  open: boolean;
-  opening?: string;
-  closing?: string;
-  breakEnabled?: boolean;
-  breakStart?: string;
-  breakEnd?: string;
 };
 
 const FALLBACK_HERO =
-  "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=1800&q=90";
+  "https://images.unsplash.com/photo-1563379926898-05f4575a45d8?auto=format&fit=crop&w=2200&q=90";
+
+const FALLBACK_ABOUT =
+  "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1600&q=90";
 
 const FALLBACK_FOOD =
-  "https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&w=1000&q=85";
+  "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1400&q=90";
 
-const FALLBACK_FOOD_2 =
-  "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=1000&q=85";
-
-const FALLBACK_FOOD_3 =
-  "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=1000&q=85";
-
-const FALLBACK_RESTAURANT =
-  "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1400&q=85";
-
-const fallbackMenu: MenuItem[] = [
-  {
-    id: "demo-1",
-    name: "Signature Biryani",
-    description: "Fragrant basmati rice with aromatic spices and tender meat.",
-    price: "€16",
-    category: "Biryani",
-    image: FALLBACK_FOOD,
-    available: true,
-    visible: true,
-  },
-  {
-    id: "demo-2",
-    name: "Royal Mutton Curry",
-    description: "Slow-cooked mutton in a rich traditional sauce.",
-    price: "€18",
-    category: "Mutton",
-    image: FALLBACK_FOOD_2,
-    available: true,
-    visible: true,
-  },
-  {
-    id: "demo-3",
-    name: "Tandoori Chicken",
-    description: "Char-grilled chicken with traditional spices.",
-    price: "€15",
-    category: "Chicken",
-    image: FALLBACK_FOOD_3,
-    available: true,
-    visible: true,
-  },
-  {
-    id: "demo-4",
-    name: "Fresh Garden Salad",
-    description: "Fresh seasonal vegetables and herbs.",
-    price: "€9",
-    category: "Vegetarian",
-    image:
-      "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1000&q=85",
-    available: true,
-    visible: true,
-  },
+const FALLBACK_GALLERY = [
+  "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=1000&q=85",
+  "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=1000&q=85",
+  "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1000&q=85",
+  "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1000&q=85",
 ];
 
-const defaultHours: OpeningDay[] = [
-  { day: "Monday", open: true, opening: "12:00", closing: "23:00" },
-  { day: "Tuesday", open: true, opening: "12:00", closing: "23:00" },
-  { day: "Wednesday", open: true, opening: "12:00", closing: "23:00" },
-  { day: "Thursday", open: true, opening: "12:00", closing: "23:00" },
-  { day: "Friday", open: true, opening: "12:00", closing: "23:30" },
-  { day: "Saturday", open: true, opening: "12:00", closing: "23:30" },
-  { day: "Sunday", open: true, opening: "12:00", closing: "22:30" },
-];
+const readStorage = <T,>(key: string, fallback: T): T => {
+  if (typeof window === "undefined") return fallback;
 
-const translations = {
-  it: {
-    home: "Home",
-    about: "Chi Siamo",
-    menu: "Menu",
-    gallery: "Galleria",
-    reviews: "Recensioni",
-    contact: "Contatti",
-    reserve: "Prenota un Tavolo",
-    explore: "Scopri il Menu",
-    welcome: "BENVENUTI DA NABABI RISTORANTE",
-    popular: "I Nostri Piatti",
-    story: "La Nostra Storia",
-    booking: "Prenota il tuo Tavolo",
-    bookText: "Regala a te stesso un'esperienza gastronomica indimenticabile.",
-    name: "Nome",
-    phone: "Telefono",
-    email: "Email",
-    date: "Data",
-    time: "Ora",
-    guests: "Ospiti",
-    message: "Messaggio",
-    send: "Invia Prenotazione",
-    galleryTitle: "La Nostra Galleria",
-    contactTitle: "Contattaci",
-    address: "Indirizzo",
-    opening: "Orari di Apertura",
-    available: "Disponibile",
-    unavailable: "Non disponibile",
-    viewAll: "Vedi Tutto",
-    special: "SPECIALITÀ DELLA CASA",
-  },
-  en: {
-    home: "Home",
-    about: "About",
-    menu: "Menu",
-    gallery: "Gallery",
-    reviews: "Reviews",
-    contact: "Contact",
-    reserve: "Reserve a Table",
-    explore: "Explore Menu",
-    welcome: "WELCOME TO NABABI RISTORANTE",
-    popular: "Our Signature Dishes",
-    story: "Our Story",
-    booking: "Reserve Your Table",
-    bookText: "Give yourself an unforgettable dining experience.",
-    name: "Name",
-    phone: "Phone",
-    email: "Email",
-    date: "Date",
-    time: "Time",
-    guests: "Guests",
-    message: "Message",
-    send: "Send Reservation",
-    galleryTitle: "Our Gallery",
-    contactTitle: "Get In Touch",
-    address: "Address",
-    opening: "Opening Hours",
-    available: "Available",
-    unavailable: "Unavailable",
-    viewAll: "View All",
-    special: "HOUSE SPECIALTIES",
-  },
-  bn: {
-    home: "হোম",
-    about: "আমাদের সম্পর্কে",
-    menu: "মেনু",
-    gallery: "গ্যালারি",
-    reviews: "রিভিউ",
-    contact: "যোগাযোগ",
-    reserve: "টেবিল বুক করুন",
-    explore: "মেনু দেখুন",
-    welcome: "NABABI RISTORANTE-এ স্বাগতম",
-    popular: "আমাদের বিশেষ খাবার",
-    story: "আমাদের গল্প",
-    booking: "টেবিল রিজার্ভ করুন",
-    bookText: "আপনার জন্য তৈরি হোক একটি স্মরণীয় dining experience।",
-    name: "নাম",
-    phone: "ফোন",
-    email: "ইমেইল",
-    date: "তারিখ",
-    time: "সময়",
-    guests: "অতিথি",
-    message: "মেসেজ",
-    send: "রিজার্ভেশন পাঠান",
-    galleryTitle: "আমাদের গ্যালারি",
-    contactTitle: "যোগাযোগ করুন",
-    address: "ঠিকানা",
-    opening: "খোলার সময়",
-    available: "উপলব্ধ",
-    unavailable: "অনুপলব্ধ",
-    viewAll: "সব দেখুন",
-    special: "আমাদের বিশেষ আয়োজন",
-  },
-};
-
-function readStorage<T>(key: string, fallback: T): T {
   try {
-    if (typeof window === "undefined") return fallback;
-    const value = window.localStorage.getItem(key);
-    if (!value) return fallback;
-    return JSON.parse(value) as T;
+    const value = localStorage.getItem(key);
+    return value ? JSON.parse(value) : fallback;
   } catch {
     return fallback;
   }
-}
+};
 
-function getTodayString() {
+const isActiveDate = (item: AnyData) => {
   const now = new Date();
-  return now.toISOString().split("T")[0];
-}
 
-function isDateActive(start?: string, end?: string) {
-  const today = getTodayString();
+  if (item.startDate) {
+    const start = new Date(item.startDate);
+    if (now < start) return false;
+  }
 
-  if (start && today < start) return false;
-  if (end && today > end) return false;
+  if (item.endDate) {
+    const end = new Date(item.endDate);
+    end.setHours(23, 59, 59, 999);
+    if (now > end) return false;
+  }
 
   return true;
-}
+};
 
-function getWhatsAppUrl(phone: string) {
-  const cleaned = phone.replace(/[^\d]/g, "");
-  return cleaned ? `https://wa.me/${cleaned}` : "#";
-}
+const getImage = (value: any, fallback: string) =>
+  typeof value === "string" && value.trim() ? value : fallback;
 
 export default function Home() {
-  const [language, setLanguage] = useState<Language>("it");
-  const [mobileMenu, setMobileMenu] = useState(false);
-  const [menuCategory, setMenuCategory] = useState("All");
-  const [bookingMessage, setBookingMessage] = useState("");
-  const [bookingLoading, setBookingLoading] = useState(false);
-
-  const [settings, setSettings] = useState<any>({});
-  const [languages, setLanguages] = useState<any>({});
-  const [websiteStatus, setWebsiteStatus] = useState<any>({});
-  const [homeSettings, setHomeSettings] = useState<any>({});
-  const [about, setAbout] = useState<any>({});
-  const [menu, setMenu] = useState<MenuItem[]>([]);
+  const [settings, setSettings] = useState<AnyData>({});
+  const [home, setHome] = useState<AnyData>({});
+  const [about, setAbout] = useState<AnyData>({});
+  const [menu, setMenu] = useState<AnyData[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
-  const [menuBackground, setMenuBackground] = useState("");
-  const [breakingNews, setBreakingNews] = useState<any[]>([]);
-  const [promotions, setPromotions] = useState<Promotion[]>([]);
-  const [gallery, setGallery] = useState<GalleryItem[]>([]);
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [contact, setContact] = useState<any>({});
-  const [openingHours, setOpeningHours] = useState<OpeningDay[]>(defaultHours);
-  const [social, setSocial] = useState<any>({});
+  const [gallery, setGallery] = useState<AnyData[]>([]);
+  const [promotions, setPromotions] = useState<AnyData[]>([]);
+  const [reviews, setReviews] = useState<AnyData[]>([]);
+  const [contact, setContact] = useState<AnyData>({});
+  const [hours, setHours] = useState<AnyData>({});
+  const [social, setSocial] = useState<AnyData>({});
+  const [languages, setLanguages] = useState<AnyData>({});
+  const [breakingNews, setBreakingNews] = useState<AnyData[]>([]);
+  const [websiteStatus, setWebsiteStatus] = useState<AnyData>({});
+
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [language, setLanguage] = useState("en");
+  const [mobileMenu, setMobileMenu] = useState(false);
+  const [bookingSent, setBookingSent] = useState(false);
 
   const [booking, setBooking] = useState({
     name: "",
     phone: "",
-    email: "",
     date: "",
     time: "",
     guests: "2",
     message: "",
   });
 
-  const t = translations[language];
-
   const loadAllData = () => {
     const storedSettings = readStorage("nababi-settings", {});
-    const storedLanguages = readStorage("nababi-languages", {});
-    const storedStatus = readStorage("nababi-website-status", {});
     const storedHome = readStorage("nababi-home-settings", {});
     const storedAbout = readStorage("nababi-about", {});
-    const storedMenu = readStorage<MenuItem[]>("nababi-menu", []);
-    const storedCategories = readStorage<string[]>("nababi-categories", []);
-    const storedBackground = readStorage("nababi-menu-background", "");
-    const storedNews = readStorage<any[]>("nababi-breaking-news", []);
-    const storedPromotions = readStorage<Promotion[]>("nababi-promotions", []);
-    const storedGallery = readStorage<GalleryItem[]>("nababi-gallery", []);
-    const storedReviews = readStorage<Review[]>("nababi-reviews", []);
+    const storedMenu = readStorage("nababi-menu", []);
+    const storedCategories = readStorage("nababi-categories", []);
+    const storedGallery = readStorage("nababi-gallery", []);
+    const storedPromotions = readStorage("nababi-promotions", []);
+    const storedReviews = readStorage("nababi-reviews", []);
     const storedContact = readStorage("nababi-contact", {});
-    const storedHours = readStorage<OpeningDay[]>(
-      "nababi-opening-hours",
-      defaultHours
-    );
+    const storedHours = readStorage("nababi-opening-hours", {});
     const storedSocial = readStorage("nababi-social-media", {});
+    const storedLanguages = readStorage("nababi-languages", {});
+    const storedNews = readStorage("nababi-breaking-news", []);
+    const storedStatus = readStorage("nababi-website-status", {});
 
     setSettings(storedSettings);
-    setLanguages(storedLanguages);
-    setWebsiteStatus(storedStatus);
-    setHomeSettings(storedHome);
+    setHome(storedHome);
     setAbout(storedAbout);
-    setMenu(storedMenu);
-    setCategories(storedCategories);
-    setMenuBackground(storedBackground);
-    setBreakingNews(storedNews);
-    setPromotions(storedPromotions);
-    setGallery(storedGallery);
-    setReviews(storedReviews);
+    setMenu(Array.isArray(storedMenu) ? storedMenu : []);
+    setCategories(
+      Array.isArray(storedCategories) ? storedCategories : []
+    );
+    setGallery(Array.isArray(storedGallery) ? storedGallery : []);
+    setPromotions(Array.isArray(storedPromotions) ? storedPromotions : []);
+    setReviews(Array.isArray(storedReviews) ? storedReviews : []);
     setContact(storedContact);
-    setOpeningHours(storedHours?.length ? storedHours : defaultHours);
+    setHours(storedHours);
     setSocial(storedSocial);
+    setLanguages(storedLanguages);
+    setBreakingNews(Array.isArray(storedNews) ? storedNews : []);
+    setWebsiteStatus(storedStatus);
 
-    const defaultLanguage =
-      storedLanguages?.defaultLanguage === "en" ||
-      storedLanguages?.defaultLanguage === "bn" ||
-      storedLanguages?.defaultLanguage === "it"
-        ? storedLanguages.defaultLanguage
-        : "it";
-
-    if (!storedLanguages?.switcherVisible) {
-      setLanguage(defaultLanguage);
+    if (storedLanguages?.defaultLanguage) {
+      setLanguage(storedLanguages.defaultLanguage);
     }
   };
 
   useEffect(() => {
     loadAllData();
 
-    const handleStorage = () => loadAllData();
+    const timer = window.setInterval(loadAllData, 1000);
 
+    const handleStorage = () => loadAllData();
     window.addEventListener("storage", handleStorage);
 
-    const timer = window.setInterval(loadAllData, 1200);
-
     return () => {
-      window.removeEventListener("storage", handleStorage);
       window.clearInterval(timer);
+      window.removeEventListener("storage", handleStorage);
     };
   }, []);
 
-  const enabledLanguages = useMemo(() => {
-    const result: Language[] = [];
-
-    if (languages?.italian !== false) result.push("it");
-    if (languages?.english !== false) result.push("en");
-    if (languages?.bengali !== false) result.push("bn");
-
-    return result.length ? result : ["it"];
-  }, [languages]);
-
-  const visibleNews = useMemo(() => {
-    return breakingNews.filter(
-      (item) =>
-        item.visible !== false &&
-        isDateActive(item.startDate, item.endDate)
-    );
-  }, [breakingNews]);
-
-  const visiblePromotions = useMemo(() => {
-    return promotions.filter(
-      (item) =>
-        item.visible !== false &&
-        isDateActive(item.startDate, item.endDate)
-    );
-  }, [promotions]);
-
-  const visibleMenu = useMemo(() => {
-    const source = menu.length ? menu : fallbackMenu;
-
-    return source.filter(
-      (item) => item.visible !== false && item.available !== false
-    );
-  }, [menu]);
-
-  const filteredMenu = useMemo(() => {
-    if (menuCategory === "All") return visibleMenu;
-
-    return visibleMenu.filter(
-      (item) =>
-        item.category?.toLowerCase() === menuCategory.toLowerCase()
-    );
-  }, [visibleMenu, menuCategory]);
-
-  const visibleGallery = useMemo(() => {
-    return [...gallery]
-      .filter((item) => item.visible !== false)
-      .sort(
-        (a, b) =>
-          Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
-      );
-  }, [gallery]);
-
-  const visibleReviews = useMemo(() => {
-    return reviews.filter((item) => item.visible !== false);
-  }, [reviews]);
-
-  const activeHeroImage = homeSettings?.heroImage || FALLBACK_HERO;
-
   const restaurantName =
-    settings?.restaurantName ||
-    contact?.restaurantName ||
-    "Nababi Ristorante";
+    settings.restaurantName ||
+    contact.restaurantName ||
+    "NABABI RISTORANTE";
 
-  const phone = contact?.phone || "+39 000 000 0000";
-
-  const whatsapp =
-    contact?.whatsapp ||
-    contact?.phone ||
-    "+39 000 000 0000";
+  const currency = settings.currency || "€";
 
   const heroTitle =
-    homeSettings?.heroTitle ||
+    home.heroTitle ||
     "A Taste of Tradition";
 
   const heroSubtitle =
-    homeSettings?.heroSubtitle ||
-    "Authentic flavours, warm hospitality and unforgettable moments in Rome.";
+    home.heroSubtitle ||
+    "Authentic Italian & Asian cuisine, crafted with passion and served with warmth.";
 
   const welcomeText =
-    homeSettings?.welcomeText ||
-    "Experience authentic flavours, carefully selected ingredients and warm Italian hospitality.";
+    home.welcomeText ||
+    "Experience rich flavours, exquisite ingredients and warm hospitality at Nababi Ristorante.";
 
-  const aboutText =
-    about?.content ||
-    "At Nababi Ristorante, every dish is created to bring together authentic flavours, carefully selected ingredients and the warmth of genuine hospitality.";
+  const heroImage = getImage(home.heroImage, FALLBACK_HERO);
+  const aboutImage = getImage(about.image, FALLBACK_ABOUT);
 
-  const aboutImage = about?.image || FALLBACK_RESTAURANT;
+  const activeNews = useMemo(
+    () =>
+      breakingNews.filter(
+        (item) => item.visible !== false && isActiveDate(item)
+      ),
+    [breakingNews]
+  );
 
-  const contactAddress =
-    contact?.address || "Rome, Italy";
+  const activePromotions = useMemo(
+    () =>
+      promotions.filter(
+        (item) => item.visible !== false && isActiveDate(item)
+      ),
+    [promotions]
+  );
 
-  const socialFacebook = social?.facebook || "";
-  const socialInstagram = social?.instagram || "";
-  const socialTikTok = social?.tiktok || "";
-  const socialYoutube = social?.youtube || "";
+  const visibleMenu = useMemo(
+    () => menu.filter((item) => item.available !== false && item.visible !== false),
+    [menu]
+  );
 
-  const isMaintenance =
-    websiteStatus?.maintenanceMode === true ||
-    settings?.maintenanceMode === true;
+  const filteredMenu = useMemo(() => {
+    if (selectedCategory === "All") return visibleMenu;
+
+    return visibleMenu.filter(
+      (item) =>
+        String(item.category || "").toLowerCase() ===
+        selectedCategory.toLowerCase()
+    );
+  }, [visibleMenu, selectedCategory]);
+
+  const visibleGallery = useMemo(
+    () =>
+      gallery
+        .filter((item) => item.visible !== false)
+        .sort(
+          (a, b) =>
+            Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
+        ),
+    [gallery]
+  );
+
+  const visibleReviews = useMemo(
+    () => reviews.filter((item) => item.visible !== false),
+    [reviews]
+  );
 
   const menuCategories = useMemo(() => {
-    const fromAdmin =
-      categories?.filter(Boolean).length > 0
-        ? categories.filter(Boolean)
-        : [];
-
     const fromProducts = visibleMenu
       .map((item) => item.category)
       .filter(Boolean);
 
-    return Array.from(new Set([...fromAdmin, ...fromProducts]));
+    const all = [...categories, ...fromProducts].filter(Boolean);
+
+    return Array.from(new Set(all));
   }, [categories, visibleMenu]);
 
-  const handleBooking = (event: FormEvent) => {
-    event.preventDefault();
+  const enabledLanguages = useMemo(() => {
+    const result: string[] = [];
 
-    if (
-      !booking.name ||
-      !booking.phone ||
-      !booking.date ||
-      !booking.time ||
-      !booking.guests
-    ) {
-      setBookingMessage(
-        language === "bn"
-          ? "দয়া করে প্রয়োজনীয় সব তথ্য পূরণ করুন।"
-          : language === "en"
-          ? "Please complete all required fields."
-          : "Compila tutti i campi obbligatori."
-      );
-      return;
-    }
+    if (languages.italian !== false) result.push("it");
+    if (languages.english !== false) result.push("en");
+    if (languages.bengali !== false) result.push("bn");
 
-    setBookingLoading(true);
+    return result.length ? result : ["it", "en", "bn"];
+  }, [languages]);
 
-    const reservations = readStorage<Reservation[]>(
-      "nababi-reservations",
-      []
+  const averageRating = useMemo(() => {
+    if (!visibleReviews.length) return 5;
+
+    const total = visibleReviews.reduce(
+      (sum, item) => sum + Number(item.rating || 5),
+      0
     );
 
-    const newReservation: Reservation = {
-      id: `reservation-${Date.now()}`,
-      name: booking.name,
-      phone: booking.phone,
-      email: booking.email,
-      date: booking.date,
-      time: booking.time,
-      guests: booking.guests,
-      message: booking.message,
+    return total / visibleReviews.length;
+  }, [visibleReviews]);
+
+  const submitBooking = (e: FormEvent) => {
+    e.preventDefault();
+
+    const existing = readStorage<Reservation[]>("nababi-reservations", []);
+
+    const reservation: Reservation = {
+      id: Date.now().toString(),
+      ...booking,
       createdAt: new Date().toISOString(),
-      status: "pending",
     };
 
-    window.localStorage.setItem(
+    localStorage.setItem(
       "nababi-reservations",
-      JSON.stringify([newReservation, ...reservations])
+      JSON.stringify([reservation, ...existing])
     );
 
     setBooking({
       name: "",
       phone: "",
-      email: "",
       date: "",
       time: "",
       guests: "2",
       message: "",
     });
 
-    setBookingLoading(false);
+    setBookingSent(true);
 
-    setBookingMessage(
-      language === "bn"
-        ? "আপনার রিজার্ভেশন সফলভাবে পাঠানো হয়েছে।"
-        : language === "en"
-        ? "Your reservation has been sent successfully."
-        : "La tua prenotazione è stata inviata con successo."
-    );
+    window.setTimeout(() => {
+      setBookingSent(false);
+    }, 5000);
   };
 
-  if (isMaintenance) {
-    return (
-      <main className="maintenance-screen">
-        <div className="maintenance-card">
-          <div className="brand-mark">N</div>
-          <span className="eyebrow">NABABI RISTORANTE</span>
-          <h1>We&apos;ll be back shortly.</h1>
-          <p>
-            Our website is currently being updated. Please check back
-            soon.
-          </p>
-          <a href={`tel:${phone}`} className="gold-button">
-            {phone}
-          </a>
-        </div>
+  const scrollTo = (id: string) => {
+    setMobileMenu(false);
+    document.getElementById(id)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
 
-        <style jsx>{`
-          .maintenance-screen {
-            min-height: 100vh;
-            display: grid;
-            place-items: center;
-            padding: 24px;
-            color: #f8f1df;
-            background:
-              radial-gradient(circle at top, #3d2411 0%, transparent 40%),
-              #050505;
-            font-family: Arial, sans-serif;
-          }
+  const formatPrice = (price: any) => {
+    if (price === undefined || price === null || price === "") return "";
 
-          .maintenance-card {
-            width: min(620px, 100%);
-            padding: 60px 34px;
-            text-align: center;
-            border: 1px solid rgba(214, 163, 76, 0.25);
-            border-radius: 28px;
-            background: rgba(17, 17, 17, 0.88);
-            box-shadow: 0 30px 100px rgba(0, 0, 0, 0.55);
-          }
+    const value = String(price);
 
-          .brand-mark {
-            width: 62px;
-            height: 62px;
-            margin: 0 auto 22px;
-            display: grid;
-            place-items: center;
-            border: 1px solid #d6a34c;
-            border-radius: 50%;
-            color: #e9bd68;
-            font-family: Georgia, serif;
-            font-size: 32px;
-          }
+    if (value.includes(currency)) return value;
 
-          .eyebrow {
-            color: #d6a34c;
-            font-size: 11px;
-            letter-spacing: 0.28em;
-          }
+    return `${currency}${value}`;
+  };
 
-          h1 {
-            margin: 18px 0;
-            font: 400 clamp(38px, 7vw, 68px) Georgia, serif;
-          }
+  const dayNames = [
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+  ];
 
-          p {
-            max-width: 480px;
-            margin: 0 auto 30px;
-            color: #bdb6a8;
-            line-height: 1.8;
-          }
+  const getDayLabel = (day: string) => {
+    const labels: Record<string, string> = {
+      monday: "Monday",
+      tuesday: "Tuesday",
+      wednesday: "Wednesday",
+      thursday: "Thursday",
+      friday: "Friday",
+      saturday: "Saturday",
+      sunday: "Sunday",
+    };
 
-          .gold-button {
-            display: inline-flex;
-            padding: 13px 24px;
-            border-radius: 999px;
-            color: #090909;
-            background: linear-gradient(135deg, #f5d48b, #c68c32);
-            text-decoration: none;
-            font-weight: 800;
-          }
-        `}</style>
-      </main>
-    );
-  }
+    return labels[day] || day;
+  };
+
+  const currentHours = dayNames.map((day) => {
+    const data = hours?.[day] || {};
+
+    return {
+      day,
+      ...data,
+    };
+  });
+
+  const maintenance =
+    websiteStatus?.maintenanceMode === true ||
+    websiteStatus?.status === "maintenance";
 
   return (
     <main className="site">
-      {visibleNews.length > 0 && (
-        <div className="breaking-bar">
-          <div className="breaking-inner">
-            <span className="breaking-label">BREAKING NEWS</span>
-            <span className="breaking-dot" />
-            <div className="breaking-track">
-              {visibleNews.map((item) => (
-                <span key={item.id}>{item.text}</span>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      <header className="header">
-        <div className="header-inner">
-          <a href="#home" className="logo">
-            <span className="logo-main">
-              {restaurantName.split(" ")[0] || "Nababi"}
-            </span>
-            <span className="logo-sub">RISTORANTE</span>
-          </a>
-
-          <nav className={`desktop-nav ${mobileMenu ? "mobile-open" : ""}`}>
-            <a href="#home">{t.home}</a>
-            <a href="#about">{t.about}</a>
-            <a href="#menu">{t.menu}</a>
-            <a href="#gallery">{t.gallery}</a>
-            <a href="#reviews">{t.reviews}</a>
-            <a href="#contact">{t.contact}</a>
-          </nav>
-
-          <div className="header-actions">
-            {languages?.switcherVisible !== false &&
-              enabledLanguages.length > 1 && (
-                <div className="language-switcher">
-                  {enabledLanguages.map((lang) => (
-                    <button
-                      key={lang}
-                      className={language === lang ? "active" : ""}
-                      onClick={() => setLanguage(lang)}
-                    >
-                      {lang.toUpperCase()}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-            <a href="#booking" className="reserve-button">
-              {t.reserve}
-            </a>
-
-            <button
-              className="menu-toggle"
-              onClick={() => setMobileMenu(!mobileMenu)}
-              aria-label="Menu"
-            >
-              <span />
-              <span />
-              <span />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <section
-        id="home"
-        className="hero"
-        style={{ backgroundImage: `url("${activeHeroImage}")` }}
-      >
-        <div className="hero-overlay" />
-
-        <div className="hero-content">
-          <div className="hero-copy">
-            <span className="eyebrow">{t.welcome}</span>
-
-            <div className="gold-line" />
-
-            <h1>
-              {heroTitle.includes(" ") ? (
-                <>
-                  {heroTitle.split(" ").slice(0, -1).join(" ")}{" "}
-                  <em>{heroTitle.split(" ").slice(-1)}</em>
-                </>
-              ) : (
-                <em>{heroTitle}</em>
-              )}
-            </h1>
-
-            <p>{heroSubtitle}</p>
-
-            <div className="hero-actions">
-              <a href="#booking" className="gold-button">
-                {t.reserve}
-                <span>↗</span>
-              </a>
-
-              <a href="#menu" className="outline-button">
-                {t.explore}
-                <span>→</span>
-              </a>
-            </div>
-
-            <div className="hero-location">
-              <span className="location-icon">⌖</span>
-              <span>{contactAddress}</span>
-            </div>
-          </div>
-
-          <div className="hero-dish-card">
-            <div className="dish-image">
-              <img
-                src={visibleMenu[0]?.image || FALLBACK_FOOD}
-                alt={visibleMenu[0]?.name || "Nababi signature dish"}
-              />
-            </div>
-            <div className="dish-info">
-              <span>{t.special}</span>
-              <strong>
-                {visibleMenu[0]?.name || "Signature Dish"}
-              </strong>
-              <small>
-                {visibleMenu[0]?.description ||
-                  "Authentic flavours prepared with passion."}
-              </small>
-            </div>
-          </div>
-        </div>
-
-        <div className="hero-bottom">
-          <div className="hero-feature">
-            <span className="feature-icon">✦</span>
-            <div>
-              <strong>Authentic Taste</strong>
-              <small>Traditional recipes</small>
-            </div>
-          </div>
-
-          <div className="hero-feature">
-            <span className="feature-icon">◇</span>
-            <div>
-              <strong>Fresh Ingredients</strong>
-              <small>Carefully sourced</small>
-            </div>
-          </div>
-
-          <div className="hero-feature">
-            <span className="feature-icon">♢</span>
-            <div>
-              <strong>Warm Hospitality</strong>
-              <small>Family atmosphere</small>
-            </div>
-          </div>
-
-          <div className="hero-feature">
-            <span className="feature-icon">★</span>
-            <div>
-              <strong>Best Experience</strong>
-              <small>Dine with pleasure</small>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {visiblePromotions.length > 0 && (
-        <section className="promotions-section">
-          <div className="section-container">
-            <div className="section-heading compact">
-              <div>
-                <span className="eyebrow">SPECIAL OFFERS</span>
-                <h2>Exclusive Promotions</h2>
-              </div>
-            </div>
-
-            <div className="promotion-grid">
-              {visiblePromotions.slice(0, 3).map((promotion) => (
-                <article className="promotion-card" key={promotion.id}>
-                  {promotion.image && (
-                    <img src={promotion.image} alt={promotion.title} />
-                  )}
-
-                  <div className="promotion-overlay" />
-
-                  <div className="promotion-content">
-                    {promotion.offer && (
-                      <span className="offer-badge">
-                        {promotion.offer}
-                      </span>
-                    )}
-                    <h3>{promotion.title}</h3>
-                    <p>{promotion.description}</p>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      <section id="menu" className="menu-section">
-        <div
-          className="menu-bg"
-          style={
-            menuBackground
-              ? { backgroundImage: `url("${menuBackground}")` }
-              : undefined
-          }
-        />
-
-        <div className="menu-bg-overlay" />
-
-        <div className="section-container relative">
-          <div className="section-heading">
-            <div>
-              <span className="eyebrow">{t.special}</span>
-              <h2>{t.popular}</h2>
-              <p>
-                {language === "bn"
-                  ? "আমাদের নির্বাচিত signature dishes উপভোগ করুন।"
-                  : language === "en"
-                  ? "Discover our carefully selected signature dishes."
-                  : "Scopri la nostra selezione di piatti speciali."}
-              </p>
-            </div>
-
-            <a href="#booking" className="text-link">
-              {t.reserve} →
-            </a>
-          </div>
-
-          <div className="category-row">
-            <button
-              className={menuCategory === "All" ? "active" : ""}
-              onClick={() => setMenuCategory("All")}
-            >
-              All
-            </button>
-
-            {menuCategories.map((category) => (
-              <button
-                key={category}
-                className={
-                  menuCategory.toLowerCase() === category.toLowerCase()
-                    ? "active"
-                    : ""
-                }
-                onClick={() => setMenuCategory(category)}
-              >
-                {category}
-              </button>
-            ))}
-          </div>
-
-          <div className="menu-grid">
-            {filteredMenu.slice(0, 8).map((item) => (
-              <article className="food-card" key={item.id}>
-                <div className="food-image">
-                  <img
-                    src={item.image || FALLBACK_FOOD}
-                    alt={item.name}
-                  />
-
-                  <span className="food-category">
-                    {item.category}
-                  </span>
-
-                  <span className="food-price">{item.price}</span>
-                </div>
-
-                <div className="food-body">
-                  <h3>{item.name}</h3>
-
-                  {item.description && (
-                    <p>{item.description}</p>
-                  )}
-
-                  <div className="food-footer">
-                    <span>
-                      <i /> {t.available}
-                    </span>
-                    <a href="#booking">Order →</a>
-                  </div>
-                </div>
-              </article>
-            ))}
-
-            {filteredMenu.length === 0 && (
-              <div className="empty-state">
-                <span>✦</span>
-                <p>
-                  {language === "bn"
-                    ? "এই category-তে বর্তমানে কোনো dish নেই।"
-                    : "No dishes available in this category."}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section id="about" className="about-section">
-        <div className="section-container about-grid">
-          <div className="about-images">
-            <div className="about-main-image">
-              <img src={aboutImage} alt="Nababi Ristorante" />
-            </div>
-
-            <div className="about-small-image">
-              <img
-                src={visibleMenu[1]?.image || FALLBACK_FOOD_2}
-                alt="Nababi food"
-              />
-            </div>
-
-            <div className="experience-badge">
-              <strong>25+</strong>
-              <span>Years of<br />Passion</span>
-            </div>
-          </div>
-
-          <div className="about-copy">
-            <span className="eyebrow">{t.story}</span>
-            <h2>
-              More Than
-              <br />
-              <em>Just Food</em>
-            </h2>
-
-            <div className="gold-line" />
-
-            <p>{aboutText}</p>
-
-            <p className="muted">
-              {welcomeText}
-            </p>
-
-            <a href="#contact" className="outline-button dark">
-              {t.contact}
-              <span>→</span>
-            </a>
-          </div>
-        </div>
-      </section>
-
-      <section id="gallery" className="gallery-section">
-        <div className="section-container">
-          <div className="section-heading">
-            <div>
-              <span className="eyebrow">A GLIMPSE OF NABABI</span>
-              <h2>{t.galleryTitle}</h2>
-            </div>
-
-            <span className="gallery-count">
-              {visibleGallery.length || 0} Photos
-            </span>
-          </div>
-
-          {visibleGallery.length > 0 ? (
-            <div className="gallery-grid">
-              {visibleGallery.slice(0, 8).map((item, index) => (
-                <div
-                  className={`gallery-item gallery-${index + 1}`}
-                  key={item.id}
-                >
-                  <img src={item.image} alt="Nababi gallery" />
-
-                  <div className="gallery-hover">
-                    <span>View</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="gallery-placeholder">
-              <div>
-                <span>✦</span>
-                <h3>Our Restaurant</h3>
-                <p>
-                  Add your restaurant photos from Admin → Gallery.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section id="booking" className="booking-section">
-        <div className="booking-image">
-          <img
-            src={visibleMenu[2]?.image || FALLBACK_RESTAURANT}
-            alt="Dining at Nababi"
-          />
-          <div className="booking-image-overlay" />
-        </div>
-
-        <div className="booking-panel">
-          <span className="eyebrow">RESERVATION</span>
-
-          <h2>
-            {homeSettings?.bookingTitle ||
-              t.booking}
-          </h2>
-
-          <p>
-            {homeSettings?.bookingText ||
-              t.bookText}
-          </p>
-
-          <form onSubmit={handleBooking}>
-            <div className="form-grid">
-              <label>
-                <span>{t.name} *</span>
-                <input
-                  value={booking.name}
-                  onChange={(e) =>
-                    setBooking({
-                      ...booking,
-                      name: e.target.value,
-                    })
-                  }
-                  placeholder={t.name}
-                  required
-                />
-              </label>
-
-              <label>
-                <span>{t.phone} *</span>
-                <input
-                  value={booking.phone}
-                  onChange={(e) =>
-                    setBooking({
-                      ...booking,
-                      phone: e.target.value,
-                    })
-                  }
-                  placeholder="+39 ..."
-                  required
-                />
-              </label>
-
-              <label>
-                <span>{t.email}</span>
-                <input
-                  type="email"
-                  value={booking.email}
-                  onChange={(e) =>
-                    setBooking({
-                      ...booking,
-                      email: e.target.value,
-                    })
-                  }
-                  placeholder="email@example.com"
-                />
-              </label>
-
-              <label>
-                <span>{t.guests} *</span>
-                <select
-                  value={booking.guests}
-                  onChange={(e) =>
-                    setBooking({
-                      ...booking,
-                      guests: e.target.value,
-                    })
-                  }
-                >
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map(
-                    (number) => (
-                      <option value={number} key={number}>
-                        {number} {number === 1 ? "Guest" : "Guests"}
-                      </option>
-                    )
-                  )}
-                </select>
-              </label>
-
-              <label>
-                <span>{t.date} *</span>
-                <input
-                  type="date"
-                  value={booking.date}
-                  min={getTodayString()}
-                  onChange={(e) =>
-                    setBooking({
-                      ...booking,
-                      date: e.target.value,
-                    })
-                  }
-                  required
-                />
-              </label>
-
-              <label>
-                <span>{t.time} *</span>
-                <input
-                  type="time"
-                  value={booking.time}
-                  onChange={(e) =>
-                    setBooking({
-                      ...booking,
-                      time: e.target.value,
-                    })
-                  }
-                  required
-                />
-              </label>
-            </div>
-
-            <label className="message-field">
-              <span>{t.message}</span>
-              <textarea
-                value={booking.message}
-                onChange={(e) =>
-                  setBooking({
-                    ...booking,
-                    message: e.target.value,
-                  })
-                }
-                placeholder={t.message}
-                rows={4}
-              />
-            </label>
-
-            {bookingMessage && (
-              <div className="booking-message">
-                {bookingMessage}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              className="gold-button submit-button"
-              disabled={bookingLoading}
-            >
-              {bookingLoading ? "Sending..." : t.send}
-              <span>→</span>
-            </button>
-          </form>
-        </div>
-      </section>
-
-      {visibleReviews.length > 0 && (
-        <section id="reviews" className="reviews-section">
-          <div className="section-container">
-            <div className="section-heading centered">
-              <span className="eyebrow">WHAT OUR GUESTS SAY</span>
-              <h2>{t.reviews}</h2>
-              <p>
-                Authentic experiences from guests of Nababi Ristorante.
-              </p>
-            </div>
-
-            <div className="reviews-grid">
-              {visibleReviews.slice(0, 6).map((review) => (
-                <article className="review-card" key={review.id}>
-                  <div className="stars">
-                    {Array.from({ length: 5 }, (_, index) => (
-                      <span
-                        key={index}
-                        className={
-                          index < Number(review.rating || 0)
-                            ? "filled"
-                            : ""
-                        }
-                      >
-                        ★
-                      </span>
-                    ))}
-                  </div>
-
-                  <p>&quot;{review.review}&quot;</p>
-
-                  <div className="review-author">
-                    {review.image ? (
-                      <img
-                        src={review.image}
-                        alt={review.customerName}
-                      />
-                    ) : (
-                      <div className="review-avatar">
-                        {review.customerName?.charAt(0) || "N"}
-                      </div>
-                    )}
-
-                    <div>
-                      <strong>{review.customerName}</strong>
-                      <small>{review.date || "Guest"}</small>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      <section className="hours-section">
-        <div className="section-container hours-grid">
-          <div>
-            <span className="eyebrow">{t.opening}</span>
-            <h2>Come &amp; Dine With Us</h2>
-            <p>
-              Experience our cuisine in a warm and elegant atmosphere.
-            </p>
-          </div>
-
-          <div className="hours-card">
-            {openingHours.map((day) => (
-              <div className="hours-row" key={day.day}>
-                <span>{day.day}</span>
-
-                {day.open ? (
-                  <strong>
-                    {day.opening || "12:00"} –{" "}
-                    {day.closing || "23:00"}
-                  </strong>
-                ) : (
-                  <strong className="closed">Closed</strong>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {contact?.visible !== false && (
-        <section id="contact" className="contact-section">
-          <div className="section-container contact-grid">
-            <div className="contact-copy">
-              <span className="eyebrow">{t.contactTitle}</span>
-
-              <h2>
-                Let&apos;s Make
-                <br />
-                <em>Memories Together</em>
-              </h2>
-
-              <p>
-                {contact?.contactText ||
-                  "We would love to welcome you to Nababi Ristorante."}
-              </p>
-
-              <div className="contact-list">
-                <div className="contact-item">
-                  <span>⌖</span>
-                  <div>
-                    <small>{t.address}</small>
-                    <strong>{contactAddress}</strong>
-                  </div>
-                </div>
-
-                <div className="contact-item">
-                  <span>☎</span>
-                  <div>
-                    <small>{t.phone}</small>
-                    <a href={`tel:${phone}`}>{phone}</a>
-                  </div>
-                </div>
-
-                {contact?.email && (
-                  <div className="contact-item">
-                    <span>✉</span>
-                    <div>
-                      <small>{t.email}</small>
-                      <a href={`mailto:${contact.email}`}>
-                        {contact.email}
-                      </a>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="social-links">
-                {socialFacebook && (
-                  <a
-                    href={socialFacebook}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Facebook
-                  </a>
-                )}
-
-                {socialInstagram && (
-                  <a
-                    href={socialInstagram}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Instagram
-                  </a>
-                )}
-
-                {socialTikTok && (
-                  <a
-                    href={socialTikTok}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    TikTok
-                  </a>
-                )}
-
-                {socialYoutube && (
-                  <a
-                    href={socialYoutube}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    YouTube
-                  </a>
-                )}
-              </div>
-            </div>
-
-            <div className="map-card">
-              {contact?.googleMapsUrl ? (
-                <iframe
-                  src={contact.googleMapsUrl}
-                  title="Nababi Ristorante Location"
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                />
-              ) : (
-                <div className="map-placeholder">
-                  <div className="map-pin">⌖</div>
-                  <strong>{restaurantName}</strong>
-                  <span>{contactAddress}</span>
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                      contactAddress
-                    )}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="outline-button"
-                  >
-                    Open Google Maps →
-                  </a>
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
-      )}
-
-      <footer className="footer">
-        <div className="footer-top">
-          <div className="footer-brand">
-            <a href="#home" className="logo">
-              <span className="logo-main">
-                {restaurantName.split(" ")[0] || "Nababi"}
-              </span>
-              <span className="logo-sub">RISTORANTE</span>
-            </a>
-
-            <p>{welcomeText}</p>
-          </div>
-
-          <div className="footer-column">
-            <h4>Explore</h4>
-            <a href="#home">{t.home}</a>
-            <a href="#about">{t.about}</a>
-            <a href="#menu">{t.menu}</a>
-            <a href="#gallery">{t.gallery}</a>
-          </div>
-
-          <div className="footer-column">
-            <h4>Visit</h4>
-            <span>{contactAddress}</span>
-            <a href={`tel:${phone}`}>{phone}</a>
-            <a href={`mailto:${contact?.email || ""}`}>
-              {contact?.email || "Email"}
-            </a>
-          </div>
-
-          <div className="footer-column">
-            <h4>Reservation</h4>
-            <a href="#booking" className="footer-reserve">
-              {t.reserve} →
-            </a>
-
-            <a
-              href={getWhatsAppUrl(whatsapp)}
-              target="_blank"
-              rel="noreferrer"
-            >
-              WhatsApp →
-            </a>
-          </div>
-        </div>
-
-        <div className="footer-bottom">
-          <span>
-            © {new Date().getFullYear()} {restaurantName}. All rights
-            reserved.
-          </span>
-
-          <a href="/admin">Admin Panel</a>
-
-          <span>Rome · Italy</span>
-        </div>
-      </footer>
-
-      <div className="mobile-booking-bar">
-        <a href={`tel:${phone}`}>☎</a>
-        <a href="#menu">{t.menu}</a>
-        <a href="#booking" className="mobile-main-cta">
-          {t.reserve}
-        </a>
-        <a
-          href={getWhatsAppUrl(whatsapp)}
-          target="_blank"
-          rel="noreferrer"
-        >
-          WA
-        </a>
-      </div>
-
-      <style jsx>{`
-        @import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap");
-
-        :global(*) {
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+        :root {
+          --gold: #d7a84b;
+          --gold-light: #f4d486;
+          --gold-dark: #8f6720;
+          --black: #050606;
+          --black2: #0a0c0c;
+          --glass: rgba(10, 12, 12, .72);
+          --line: rgba(215,168,75,.28);
+          --text: #f4f1e8;
+          --muted: #aaa79f;
+        }
+
+        * {
           box-sizing: border-box;
+        }
+
+        html {
           scroll-behavior: smooth;
         }
 
-        :global(html) {
-          background: #050505;
-        }
-
-        :global(body) {
+        body {
           margin: 0;
-          background: #050505;
-          color: #f6f0e4;
-          font-family: "Inter", Arial, sans-serif;
+          background: var(--black);
+          color: var(--text);
+          font-family: Inter, sans-serif;
         }
 
-        :global(a) {
+        a {
           color: inherit;
           text-decoration: none;
         }
 
+        button,
+        input,
+        textarea,
+        select {
+          font: inherit;
+        }
+
+        button {
+          cursor: pointer;
+        }
+
         .site {
-          overflow: hidden;
-          background: #050505;
+          background:
+            radial-gradient(circle at 10% 10%, rgba(190,130,30,.12), transparent 30%),
+            radial-gradient(circle at 90% 50%, rgba(190,130,30,.08), transparent 35%),
+            #050606;
+          overflow-x: hidden;
         }
 
-        .breaking-bar {
-          height: 34px;
+        .top-news {
+          min-height: 34px;
           display: flex;
+          justify-content: center;
           align-items: center;
-          background: #0d0d0d;
-          border-bottom: 1px solid rgba(212, 163, 76, 0.16);
-          position: relative;
-          z-index: 100;
-        }
-
-        .breaking-inner {
-          width: min(1400px, calc(100% - 40px));
-          margin: auto;
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          overflow: hidden;
-          white-space: nowrap;
-        }
-
-        .breaking-label {
-          color: #e4b65e;
-          font-size: 9px;
-          font-weight: 800;
-          letter-spacing: 0.18em;
-        }
-
-        .breaking-dot {
-          width: 5px;
-          height: 5px;
-          border-radius: 50%;
-          background: #dca84c;
-          flex: 0 0 auto;
-        }
-
-        .breaking-track {
-          color: #aaa397;
+          padding: 8px 20px;
+          background: linear-gradient(90deg, #5e3d0c, #c08b2f, #5e3d0c);
+          color: #fff;
           font-size: 11px;
-          overflow: hidden;
-          text-overflow: ellipsis;
+          letter-spacing: 1.5px;
+          text-transform: uppercase;
+          text-align: center;
         }
 
-        .header {
-          position: absolute;
-          z-index: 50;
-          top: 34px;
+        .navbar {
+          position: fixed;
+          top: 0;
           left: 0;
-          width: 100%;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-          background: linear-gradient(
-            to bottom,
-            rgba(0, 0, 0, 0.75),
-            rgba(0, 0, 0, 0)
-          );
-        }
-
-        .header-inner {
-          width: min(1400px, calc(100% - 48px));
-          min-height: 88px;
-          margin: auto;
+          right: 0;
+          z-index: 100;
+          height: 82px;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 30px;
+          padding: 0 5vw;
+          background: linear-gradient(
+            to bottom,
+            rgba(0,0,0,.92),
+            rgba(0,0,0,.35)
+          );
+          backdrop-filter: blur(12px);
+          border-bottom: 1px solid rgba(255,255,255,.08);
         }
 
         .logo {
           display: flex;
           flex-direction: column;
           align-items: center;
-          line-height: 1;
-          min-width: 130px;
+          line-height: .9;
+          min-width: 150px;
+        }
+
+        .logo-crown {
+          color: var(--gold);
+          font-size: 17px;
+          margin-bottom: 3px;
         }
 
         .logo-main {
-          color: #edc777;
-          font-family: "Cormorant Garamond", Georgia, serif;
-          font-size: 34px;
-          font-weight: 600;
-          letter-spacing: -0.03em;
+          font-family: "Cormorant Garamond", serif;
+          font-size: 29px;
+          letter-spacing: 2px;
+          color: var(--gold-light);
         }
 
         .logo-sub {
           margin-top: 5px;
-          color: #eee4d2;
+          color: #eee;
           font-size: 7px;
-          letter-spacing: 0.48em;
-          padding-left: 0.48em;
+          letter-spacing: 4px;
         }
 
-        .desktop-nav {
+        .nav-links {
           display: flex;
           align-items: center;
           gap: 28px;
+          font-size: 10px;
+          letter-spacing: 1px;
+          text-transform: uppercase;
         }
 
-        .desktop-nav a {
-          color: #ddd6c8;
-          font-size: 11px;
-          font-weight: 500;
+        .nav-links button {
+          border: 0;
+          background: transparent;
+          color: #e9e6de;
           position: relative;
-          transition: color 0.2s ease;
+          padding: 10px 0;
         }
 
-        .desktop-nav a:hover {
-          color: #e8bb68;
+        .nav-links button:hover {
+          color: var(--gold-light);
         }
 
-        .desktop-nav a:first-child {
-          color: #e8bb68;
-        }
-
-        .desktop-nav a:first-child::after {
+        .nav-links button::after {
           content: "";
           position: absolute;
           left: 0;
-          right: 0;
-          bottom: -11px;
+          bottom: 2px;
+          width: 0;
           height: 1px;
-          background: #d9a84f;
+          background: var(--gold);
+          transition: .25s;
         }
 
-        .header-actions {
+        .nav-links button:hover::after {
+          width: 100%;
+        }
+
+        .nav-right {
           display: flex;
           align-items: center;
-          gap: 14px;
+          gap: 10px;
         }
 
-        .language-switcher {
-          display: flex;
-          gap: 2px;
-          padding: 3px;
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          border-radius: 999px;
-          background: rgba(0, 0, 0, 0.35);
-        }
-
-        .language-switcher button {
+        .language-btn {
           border: 0;
-          border-radius: 999px;
           background: transparent;
-          color: #8e887d;
-          padding: 5px 7px;
-          font-size: 8px;
-          cursor: pointer;
-        }
-
-        .language-switcher button.active {
-          color: #080808;
-          background: #e2b45c;
-        }
-
-        .reserve-button,
-        .gold-button {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 14px;
-          border: 0;
-          border-radius: 999px;
-          padding: 13px 22px;
-          background: linear-gradient(135deg, #f1cf85, #c48b32);
-          color: #080706;
+          color: #aaa;
           font-size: 10px;
-          font-weight: 800;
-          letter-spacing: 0.03em;
-          box-shadow: 0 10px 30px rgba(209, 157, 64, 0.2);
-          transition:
-            transform 0.2s ease,
-            box-shadow 0.2s ease;
+          text-transform: uppercase;
         }
 
-        .reserve-button:hover,
-        .gold-button:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 15px 40px rgba(209, 157, 64, 0.32);
+        .language-btn.active {
+          color: var(--gold-light);
+        }
+
+        .gold-btn {
+          border: 1px solid var(--gold);
+          border-radius: 999px;
+          padding: 12px 20px;
+          background: linear-gradient(135deg, #f2c867, #c58d27);
+          color: #17120a;
+          font-weight: 700;
+          font-size: 10px;
+          letter-spacing: 1px;
+          text-transform: uppercase;
+          box-shadow: 0 8px 35px rgba(214,164,60,.2);
+        }
+
+        .gold-btn:hover {
+          transform: translateY(-1px);
+          filter: brightness(1.06);
+        }
+
+        .outline-btn {
+          border: 1px solid var(--gold);
+          border-radius: 999px;
+          padding: 12px 20px;
+          background: transparent;
+          color: var(--gold-light);
+          font-size: 10px;
+          letter-spacing: 1px;
+          text-transform: uppercase;
+        }
+
+        .outline-btn:hover {
+          background: rgba(215,168,75,.12);
         }
 
         .menu-toggle {
           display: none;
-          width: 40px;
-          height: 40px;
-          border: 1px solid rgba(255, 255, 255, 0.16);
-          border-radius: 50%;
-          background: rgba(0, 0, 0, 0.4);
-          padding: 10px;
-          cursor: pointer;
-        }
-
-        .menu-toggle span {
-          display: block;
-          height: 1px;
-          margin: 4px 0;
-          background: #e5c37f;
+          border: 1px solid var(--line);
+          background: rgba(0,0,0,.6);
+          color: white;
+          border-radius: 8px;
+          padding: 9px 12px;
         }
 
         .hero {
-          min-height: 800px;
-          height: 100vh;
-          max-height: 980px;
+          min-height: 100vh;
           position: relative;
           display: flex;
           align-items: center;
-          background-position: center;
+          background-image:
+            linear-gradient(90deg, rgba(0,0,0,.88) 0%, rgba(0,0,0,.52) 45%, rgba(0,0,0,.1) 100%),
+            linear-gradient(0deg, rgba(0,0,0,.78), transparent 40%),
+            url("${heroImage}");
           background-size: cover;
-          background-repeat: no-repeat;
+          background-position: center;
+          padding: 130px 8vw 80px;
         }
 
-        .hero-overlay {
+        .hero::before {
+          content: "";
           position: absolute;
           inset: 0;
           background:
-            linear-gradient(
-              90deg,
-              rgba(3, 3, 3, 0.96) 0%,
-              rgba(3, 3, 3, 0.83) 35%,
-              rgba(3, 3, 3, 0.3) 75%,
-              rgba(3, 3, 3, 0.5) 100%
-            ),
-            linear-gradient(
-              0deg,
-              rgba(3, 3, 3, 0.9),
-              transparent 40%,
-              rgba(0, 0, 0, 0.55)
-            );
+            radial-gradient(circle at 70% 50%, transparent, rgba(0,0,0,.38) 65%),
+            linear-gradient(to right, rgba(0,0,0,.2), transparent);
         }
 
         .hero-content {
           position: relative;
           z-index: 2;
-          width: min(1400px, calc(100% - 48px));
-          margin: 90px auto 0;
-          display: grid;
-          grid-template-columns: minmax(0, 1fr) 380px;
-          align-items: center;
-          gap: 70px;
-        }
-
-        .hero-copy {
-          max-width: 760px;
+          max-width: 650px;
         }
 
         .eyebrow {
-          display: inline-block;
-          color: #dfb25b;
+          color: var(--gold-light);
           font-size: 10px;
-          font-weight: 700;
-          letter-spacing: 0.3em;
-        }
-
-        .gold-line {
-          width: 58px;
-          height: 1px;
-          margin: 18px 0 22px;
-          background: linear-gradient(
-            90deg,
-            #e6b85d,
-            transparent
-          );
+          letter-spacing: 4px;
+          text-transform: uppercase;
+          margin-bottom: 20px;
         }
 
         .hero h1 {
-          max-width: 760px;
-          margin: 0;
-          color: #fff9eb;
-          font: 500 clamp(65px, 8vw, 118px) / 0.83
-            "Cormorant Garamond", Georgia, serif;
-          letter-spacing: -0.055em;
-        }
-
-        .hero h1 em,
-        .about-copy h2 em,
-        .contact-copy h2 em {
-          color: #e8ba65;
-          font-style: italic;
+          font-family: "Cormorant Garamond", serif;
+          font-size: clamp(62px, 8vw, 116px);
+          line-height: .78;
           font-weight: 500;
+          margin: 0;
+          letter-spacing: -3px;
         }
 
-        .hero-copy p {
-          max-width: 520px;
+        .hero h1 span {
+          color: var(--gold-light);
+          font-style: italic;
+          display: block;
+          margin-top: 12px;
+        }
+
+        .hero-text {
+          max-width: 490px;
           margin: 30px 0;
-          color: #d1cabe;
+          color: #d0cec7;
           font-size: 14px;
           line-height: 1.8;
         }
@@ -1761,1224 +609,656 @@ export default function Home() {
         .hero-actions {
           display: flex;
           align-items: center;
-          gap: 12px;
-          margin-top: 28px;
+          gap: 15px;
+          flex-wrap: wrap;
         }
 
-        .outline-button {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 14px;
-          padding: 12px 21px;
-          border: 1px solid rgba(226, 181, 94, 0.5);
-          border-radius: 999px;
-          color: #eadcc2;
-          background: rgba(0, 0, 0, 0.22);
-          font-size: 10px;
-          font-weight: 700;
-          transition: 0.2s ease;
+        .hero-side {
+          position: absolute;
+          right: 4vw;
+          bottom: 70px;
+          z-index: 2;
+          writing-mode: vertical-rl;
+          font-size: 9px;
+          letter-spacing: 3px;
+          color: #bbb;
+          text-transform: uppercase;
         }
 
-        .outline-button:hover {
-          background: rgba(222, 174, 81, 0.1);
-          border-color: #e0af52;
-        }
-
-        .outline-button.dark {
-          border-color: rgba(125, 87, 38, 0.5);
-          color: #5e421f;
-          background: transparent;
-        }
-
-        .hero-location {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          margin-top: 34px;
-          color: #928c82;
-          font-size: 10px;
-          letter-spacing: 0.04em;
-        }
-
-        .location-icon {
-          color: #dcae57;
-          font-size: 17px;
-        }
-
-        .hero-dish-card {
-          position: relative;
-          align-self: end;
-          margin-bottom: 100px;
-          border: 1px solid rgba(232, 186, 98, 0.35);
-          background: rgba(8, 8, 8, 0.55);
-          backdrop-filter: blur(12px);
-          box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
-        }
-
-        .dish-image {
-          height: 250px;
-          overflow: hidden;
-        }
-
-        .dish-image img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
+        .hero-side::before {
+          content: "";
+          width: 1px;
+          height: 65px;
+          background: var(--gold);
           display: block;
+          margin-bottom: 12px;
         }
 
-        .dish-info {
-          padding: 20px;
+        .section {
+          position: relative;
+          padding: 100px 7vw;
+          border-top: 1px solid rgba(255,255,255,.07);
+        }
+
+        .section-label {
+          color: var(--gold);
+          font-size: 10px;
+          letter-spacing: 4px;
+          text-transform: uppercase;
+          margin-bottom: 15px;
+        }
+
+        .section-title {
+          font-family: "Cormorant Garamond", serif;
+          font-size: clamp(45px, 5vw, 70px);
+          font-weight: 500;
+          line-height: .9;
+          margin: 0;
+        }
+
+        .section-title span {
+          color: var(--gold-light);
+          font-style: italic;
+        }
+
+        .story {
+          min-height: 620px;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          align-items: stretch;
+          padding: 0;
+        }
+
+        .story-image {
+          min-height: 620px;
+          background:
+            linear-gradient(90deg, transparent 50%, #050606 100%),
+            url("${aboutImage}") center/cover;
+        }
+
+        .story-content {
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          justify-content: center;
+          padding: 70px 8vw 70px 3vw;
+          background:
+            radial-gradient(circle at 0 50%, rgba(215,168,75,.1), transparent 35%),
+            #050606;
         }
 
-        .dish-info span {
-          color: #d7a84f;
-          font-size: 8px;
-          font-weight: 800;
-          letter-spacing: 0.2em;
+        .story-text {
+          color: #aaa9a2;
+          line-height: 1.9;
+          max-width: 570px;
+          font-size: 14px;
+          margin: 25px 0;
         }
 
-        .dish-info strong {
-          font: 500 29px "Cormorant Garamond", Georgia, serif;
-          color: #fff7e7;
-        }
-
-        .dish-info small {
-          color: #a8a197;
-          line-height: 1.6;
-          font-size: 10px;
-        }
-
-        .hero-bottom {
-          position: absolute;
-          z-index: 4;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          min-height: 105px;
+        .feature-list {
+          margin-top: 35px;
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          padding: 20px max(24px, calc((100vw - 1400px) / 2));
-          border-top: 1px solid rgba(255, 255, 255, 0.08);
-          background: rgba(4, 4, 4, 0.65);
-          backdrop-filter: blur(14px);
+          gap: 0;
+          max-width: 430px;
         }
 
-        .hero-feature {
+        .feature {
           display: flex;
           align-items: center;
-          justify-content: center;
-          gap: 15px;
-          border-right: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .hero-feature:last-child {
-          border-right: 0;
+          gap: 18px;
+          padding: 18px 0;
+          border-bottom: 1px solid var(--line);
         }
 
         .feature-icon {
           width: 38px;
           height: 38px;
+          border: 1px solid var(--gold);
+          border-radius: 50%;
           display: grid;
           place-items: center;
-          border: 1px solid rgba(222, 172, 77, 0.45);
-          border-radius: 50%;
-          color: #e1b35a;
+          color: var(--gold);
         }
 
-        .hero-feature strong,
-        .hero-feature small {
-          display: block;
-        }
-
-        .hero-feature strong {
-          color: #e5dfd1;
-          font-size: 10px;
-          margin-bottom: 5px;
-        }
-
-        .hero-feature small {
-          color: #78736b;
-          font-size: 8px;
-        }
-
-        .promotions-section {
-          padding: 90px 0 30px;
-          background: #080808;
-        }
-
-        .section-container {
-          width: min(1300px, calc(100% - 48px));
-          margin: auto;
-        }
-
-        .section-heading {
-          display: flex;
-          align-items: end;
-          justify-content: space-between;
-          gap: 30px;
-          margin-bottom: 36px;
-        }
-
-        .section-heading.compact {
-          margin-bottom: 28px;
-        }
-
-        .section-heading.centered {
-          display: block;
-          text-align: center;
-        }
-
-        .section-heading h2 {
-          margin: 10px 0 0;
-          color: #f7efdf;
-          font: 500 clamp(42px, 5vw, 68px) / 0.9
-            "Cormorant Garamond", Georgia, serif;
-          letter-spacing: -0.04em;
-        }
-
-        .section-heading p {
-          max-width: 520px;
-          margin: 14px 0 0;
-          color: #817c73;
-          font-size: 12px;
-          line-height: 1.7;
-        }
-
-        .text-link {
-          color: #dfb35d;
-          font-size: 10px;
-          font-weight: 700;
-          white-space: nowrap;
-        }
-
-        .promotion-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 18px;
-        }
-
-        .promotion-card {
-          min-height: 270px;
-          position: relative;
-          overflow: hidden;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .promotion-card img {
-          position: absolute;
-          inset: 0;
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-
-        .promotion-overlay {
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(
-            to top,
-            rgba(0, 0, 0, 0.94),
-            rgba(0, 0, 0, 0.05)
-          );
-        }
-
-        .promotion-content {
-          position: absolute;
-          z-index: 2;
-          left: 24px;
-          right: 24px;
-          bottom: 24px;
-        }
-
-        .offer-badge {
-          display: inline-block;
-          margin-bottom: 10px;
-          padding: 5px 9px;
-          border: 1px solid #d7a84f;
-          color: #e5b85e;
-          font-size: 8px;
-          letter-spacing: 0.08em;
-        }
-
-        .promotion-content h3 {
-          margin: 0 0 6px;
-          font: 500 29px "Cormorant Garamond", Georgia, serif;
-        }
-
-        .promotion-content p {
-          margin: 0;
-          color: #b6aea0;
-          font-size: 10px;
-          line-height: 1.5;
+        .feature-text {
+          font-family: "Cormorant Garamond", serif;
+          font-size: 20px;
         }
 
         .menu-section {
-          position: relative;
-          padding: 105px 0;
-          background: #0b0b0b;
-          overflow: hidden;
-        }
-
-        .menu-bg {
-          position: absolute;
-          inset: 0;
-          background-position: center;
-          background-size: cover;
-          opacity: 0.13;
-          filter: saturate(0.5);
-        }
-
-        .menu-bg-overlay {
-          position: absolute;
-          inset: 0;
           background:
-            radial-gradient(
-              circle at 20% 20%,
-              rgba(110, 64, 21, 0.22),
-              transparent 35%
-            ),
-            linear-gradient(
-              180deg,
-              #0b0b0b,
-              rgba(11, 11, 11, 0.91),
-              #0b0b0b
-            );
+            linear-gradient(90deg, rgba(0,0,0,.92), rgba(0,0,0,.72)),
+            url("${FALLBACK_FOOD}") center/cover fixed;
         }
 
-        .relative {
-          position: relative;
-          z-index: 2;
+        .menu-head {
+          display: flex;
+          justify-content: space-between;
+          gap: 30px;
+          align-items: end;
+          margin-bottom: 45px;
         }
 
         .category-row {
           display: flex;
-          flex-wrap: wrap;
           gap: 8px;
-          margin-bottom: 32px;
+          flex-wrap: wrap;
+          margin-bottom: 35px;
         }
 
-        .category-row button {
-          padding: 9px 15px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
+        .category {
+          border: 1px solid rgba(215,168,75,.35);
+          background: rgba(0,0,0,.5);
+          color: #aaa;
           border-radius: 999px;
-          color: #999187;
-          background: rgba(255, 255, 255, 0.025);
-          font-size: 9px;
-          cursor: pointer;
-          transition: 0.2s ease;
+          padding: 9px 16px;
+          font-size: 10px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
         }
 
-        .category-row button:hover,
-        .category-row button.active {
-          border-color: rgba(222, 175, 81, 0.65);
-          color: #0a0a0a;
-          background: #dcae55;
+        .category.active,
+        .category:hover {
+          background: rgba(215,168,75,.14);
+          border-color: var(--gold);
+          color: var(--gold-light);
         }
 
         .menu-grid {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
-          gap: 18px;
+          gap: 16px;
         }
 
-        .food-card {
+        .menu-card {
+          background: rgba(5,7,7,.75);
+          border: 1px solid rgba(215,168,75,.38);
+          border-radius: 4px;
           overflow: hidden;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          background: rgba(18, 18, 18, 0.9);
-          transition:
-            transform 0.25s ease,
-            border-color 0.25s ease;
+          transition: .3s;
+          backdrop-filter: blur(10px);
         }
 
-        .food-card:hover {
+        .menu-card:hover {
           transform: translateY(-6px);
-          border-color: rgba(222, 174, 80, 0.38);
+          border-color: var(--gold);
+          box-shadow: 0 18px 50px rgba(0,0,0,.45);
         }
 
-        .food-image {
+        .menu-image {
           height: 220px;
-          position: relative;
-          overflow: hidden;
+          background-size: cover;
+          background-position: center;
         }
 
-        .food-image img {
-          width: 100%;
-          height: 100%;
-          display: block;
-          object-fit: cover;
-          transition: transform 0.5s ease;
+        .menu-info {
+          padding: 20px;
         }
 
-        .food-card:hover .food-image img {
-          transform: scale(1.05);
-        }
-
-        .food-category {
-          position: absolute;
-          left: 12px;
-          top: 12px;
-          padding: 5px 8px;
-          color: #e9bd6a;
-          border: 1px solid rgba(225, 177, 81, 0.5);
-          background: rgba(0, 0, 0, 0.65);
-          font-size: 7px;
-          font-weight: 800;
-          letter-spacing: 0.12em;
+        .menu-category {
+          color: var(--gold);
+          font-size: 9px;
+          letter-spacing: 2px;
           text-transform: uppercase;
         }
 
-        .food-price {
-          position: absolute;
-          right: 12px;
-          bottom: 12px;
-          padding: 6px 10px;
-          color: #080808;
-          background: #e1b35d;
-          font-size: 10px;
-          font-weight: 800;
+        .menu-name {
+          font-family: "Cormorant Garamond", serif;
+          font-size: 27px;
+          margin: 8px 0;
         }
 
-        .food-body {
-          padding: 19px;
+        .menu-desc {
+          color: #92928d;
+          font-size: 12px;
+          line-height: 1.7;
+          min-height: 40px;
         }
 
-        .food-body h3 {
-          margin: 0 0 8px;
-          color: #f4ecdd;
-          font: 600 25px "Cormorant Garamond", Georgia, serif;
+        .menu-price {
+          color: var(--gold-light);
+          margin-top: 15px;
+          font-size: 15px;
+          font-weight: 600;
         }
 
-        .food-body p {
-          min-height: 35px;
-          margin: 0;
-          color: #8f8a81;
-          font-size: 9px;
-          line-height: 1.55;
-        }
-
-        .food-footer {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-top: 18px;
-          padding-top: 12px;
-          border-top: 1px solid rgba(255, 255, 255, 0.07);
-        }
-
-        .food-footer span {
-          color: #77736d;
-          font-size: 8px;
-        }
-
-        .food-footer span i {
-          width: 5px;
-          height: 5px;
-          display: inline-block;
-          margin-right: 5px;
-          border-radius: 50%;
-          background: #86a65b;
-        }
-
-        .food-footer a {
-          color: #dfb158;
-          font-size: 8px;
-          font-weight: 700;
-        }
-
-        .empty-state {
-          grid-column: 1 / -1;
-          min-height: 200px;
-          display: grid;
-          place-items: center;
-          border: 1px dashed rgba(255, 255, 255, 0.12);
-          color: #777;
+        .empty {
+          padding: 50px;
+          border: 1px dashed rgba(215,168,75,.35);
+          color: #999;
           text-align: center;
-        }
-
-        .empty-state span {
-          display: block;
-          color: #dcae55;
-          font-size: 28px;
-        }
-
-        .empty-state p {
-          font-size: 11px;
-        }
-
-        .about-section {
-          padding: 120px 0;
-          background:
-            radial-gradient(
-              circle at 80% 50%,
-              rgba(95, 55, 18, 0.18),
-              transparent 38%
-            ),
-            #0d0d0d;
-        }
-
-        .about-grid {
-          display: grid;
-          grid-template-columns: 1.05fr 0.95fr;
-          align-items: center;
-          gap: 90px;
-        }
-
-        .about-images {
-          min-height: 600px;
-          position: relative;
-        }
-
-        .about-main-image {
-          position: absolute;
-          left: 0;
-          top: 0;
-          width: 78%;
-          height: 510px;
-          overflow: hidden;
-          border: 1px solid rgba(223, 176, 82, 0.2);
-        }
-
-        .about-main-image img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-
-        .about-small-image {
-          position: absolute;
-          right: 0;
-          bottom: 0;
-          width: 48%;
-          height: 280px;
-          padding: 7px;
-          background: #0d0d0d;
-          border: 1px solid rgba(222, 176, 83, 0.3);
-        }
-
-        .about-small-image img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-
-        .experience-badge {
-          position: absolute;
-          left: 58%;
-          top: 45%;
-          width: 105px;
-          height: 105px;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          align-items: center;
-          border: 1px solid #c99b49;
-          border-radius: 50%;
-          background: #0b0b0b;
-          box-shadow: 0 15px 50px rgba(0, 0, 0, 0.55);
-        }
-
-        .experience-badge strong {
-          color: #e7b961;
-          font: 500 33px "Cormorant Garamond", Georgia, serif;
-        }
-
-        .experience-badge span {
-          color: #a7a097;
-          font-size: 7px;
-          text-align: center;
-          line-height: 1.3;
-        }
-
-        .about-copy h2,
-        .contact-copy h2 {
-          margin: 14px 0 20px;
-          color: #f5eddd;
-          font: 500 clamp(50px, 6vw, 76px) / 0.84
-            "Cormorant Garamond", Georgia, serif;
-          letter-spacing: -0.045em;
-        }
-
-        .about-copy p {
-          color: #a19a8e;
-          font-size: 13px;
-          line-height: 1.9;
-        }
-
-        .about-copy .muted {
-          color: #6e6a63;
-          font-size: 11px;
+          grid-column: 1/-1;
         }
 
         .gallery-section {
-          padding: 110px 0;
-          background: #070707;
+          background: #080909;
         }
 
-        .gallery-count {
-          color: #6f6a62;
-          font-size: 9px;
-          letter-spacing: 0.08em;
+        .gallery-layout {
+          display: grid;
+          grid-template-columns: 280px 1fr;
+          gap: 50px;
+          align-items: center;
         }
 
         .gallery-grid {
           display: grid;
-          grid-template-columns: 1.25fr 0.8fr 0.8fr;
-          grid-template-rows: 230px 230px;
+          grid-template-columns: repeat(4, 1fr);
           gap: 10px;
         }
 
         .gallery-item {
-          position: relative;
+          height: 260px;
+          border: 1px solid rgba(255,255,255,.08);
           overflow: hidden;
+          position: relative;
           background: #111;
         }
 
-        .gallery-1 {
-          grid-row: 1 / 3;
+        .gallery-item:first-child {
+          height: 360px;
         }
 
-        .gallery-4 {
-          grid-column: 2 / 4;
+        .gallery-item:nth-child(2) {
+          height: 300px;
+          margin-top: 60px;
+        }
+
+        .gallery-item:nth-child(3) {
+          height: 330px;
+          margin-top: 25px;
+        }
+
+        .gallery-item:nth-child(4) {
+          height: 280px;
+          margin-top: 75px;
         }
 
         .gallery-item img {
           width: 100%;
           height: 100%;
           object-fit: cover;
-          display: block;
-          transition: transform 0.5s ease;
-        }
-
-        .gallery-hover {
-          position: absolute;
-          inset: 0;
-          display: grid;
-          place-items: center;
-          background: rgba(0, 0, 0, 0.5);
-          opacity: 0;
-          transition: opacity 0.25s ease;
-        }
-
-        .gallery-hover span {
-          padding: 10px 17px;
-          border: 1px solid #e0b15b;
-          border-radius: 999px;
-          color: #e0b15b;
-          font-size: 9px;
+          transition: .6s;
         }
 
         .gallery-item:hover img {
-          transform: scale(1.06);
+          transform: scale(1.07);
         }
 
-        .gallery-item:hover .gallery-hover {
-          opacity: 1;
-        }
-
-        .gallery-placeholder {
-          min-height: 440px;
-          display: grid;
-          place-items: center;
-          text-align: center;
-          border: 1px dashed rgba(255, 255, 255, 0.1);
+        .promotion-section {
+          padding-top: 80px;
+          padding-bottom: 80px;
           background:
-            linear-gradient(
-              135deg,
-              rgba(214, 165, 75, 0.06),
-              transparent
-            );
+            radial-gradient(circle at 50% 0%, rgba(215,168,75,.13), transparent 40%),
+            #060707;
         }
 
-        .gallery-placeholder span {
-          color: #d9a94f;
-          font-size: 32px;
-        }
-
-        .gallery-placeholder h3 {
-          margin: 15px 0 5px;
-          font: 500 38px "Cormorant Garamond", Georgia, serif;
-        }
-
-        .gallery-placeholder p {
-          color: #6d6962;
-          font-size: 10px;
-        }
-
-        .booking-section {
-          min-height: 720px;
+        .promo-grid {
           display: grid;
-          grid-template-columns: 0.95fr 1.05fr;
-          background: #101010;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 20px;
+          margin-top: 45px;
         }
 
-        .booking-image {
+        .promo-card {
+          min-height: 360px;
           position: relative;
-          min-height: 700px;
+          overflow: hidden;
+          border: 1px solid var(--line);
+          background: #101111;
         }
 
-        .booking-image img {
+        .promo-card img {
+          position: absolute;
+          inset: 0;
           width: 100%;
           height: 100%;
           object-fit: cover;
-          display: block;
+          opacity: .55;
         }
 
-        .booking-image-overlay {
+        .promo-overlay {
           position: absolute;
           inset: 0;
-          background:
-            linear-gradient(
-              90deg,
-              rgba(0, 0, 0, 0.15),
-              rgba(0, 0, 0, 0.72)
-            ),
-            linear-gradient(
-              0deg,
-              rgba(0, 0, 0, 0.55),
-              transparent 50%
-            );
-        }
-
-        .booking-panel {
+          padding: 30px;
           display: flex;
           flex-direction: column;
-          justify-content: center;
-          padding: 80px clamp(28px, 7vw, 110px);
-          background:
-            radial-gradient(
-              circle at 90% 10%,
-              rgba(115, 65, 18, 0.22),
-              transparent 35%
-            ),
-            #101010;
+          justify-content: end;
+          background: linear-gradient(transparent, rgba(0,0,0,.95));
         }
 
-        .booking-panel h2 {
-          margin: 12px 0 10px;
-          color: #f4eddf;
-          font: 500 clamp(45px, 5vw, 70px) / 0.9
-            "Cormorant Garamond", Georgia, serif;
-          letter-spacing: -0.04em;
-        }
-
-        .booking-panel > p {
-          max-width: 500px;
-          margin: 0 0 30px;
-          color: #8e887e;
+        .promo-offer {
+          color: var(--gold-light);
           font-size: 11px;
-          line-height: 1.7;
+          letter-spacing: 2px;
+          text-transform: uppercase;
         }
 
-        .form-grid {
+        .promo-title {
+          font-family: "Cormorant Garamond", serif;
+          font-size: 35px;
+          margin: 8px 0;
+        }
+
+        .booking-section {
+          min-height: 650px;
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 15px;
+          align-items: center;
+          background:
+            linear-gradient(90deg, rgba(0,0,0,.9), rgba(0,0,0,.45)),
+            url("https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=2200&q=90")
+            center/cover;
         }
 
-        label {
+        .booking-copy {
+          padding-right: 8vw;
+        }
+
+        .booking-copy p {
+          color: #aaa;
+          max-width: 450px;
+          line-height: 1.8;
+        }
+
+        .booking-card {
+          background: rgba(4,6,6,.78);
+          border: 1px solid rgba(215,168,75,.55);
+          padding: 30px;
+          backdrop-filter: blur(14px);
+          box-shadow: 0 25px 80px rgba(0,0,0,.4);
+        }
+
+        .booking-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 14px;
+        }
+
+        .field {
           display: flex;
           flex-direction: column;
           gap: 7px;
         }
 
-        label span {
-          color: #817a70;
-          font-size: 8px;
-          font-weight: 700;
-          letter-spacing: 0.1em;
+        .field.full {
+          grid-column: 1/-1;
+        }
+
+        .field label {
+          color: #aaa;
+          font-size: 9px;
           text-transform: uppercase;
+          letter-spacing: 1px;
         }
 
-        input,
-        select,
-        textarea {
+        .field input,
+        .field textarea,
+        .field select {
           width: 100%;
-          border: 1px solid rgba(255, 255, 255, 0.11);
+          background: rgba(255,255,255,.035);
+          border: 1px solid rgba(255,255,255,.16);
+          color: #eee;
+          padding: 13px;
+          border-radius: 4px;
           outline: none;
-          border-radius: 0;
-          color: #e8e0d2;
-          background: rgba(255, 255, 255, 0.035);
-          padding: 13px 14px;
-          font: 400 11px "Inter", sans-serif;
-          transition: border-color 0.2s ease;
         }
 
-        input:focus,
-        select:focus,
-        textarea:focus {
-          border-color: rgba(220, 170, 78, 0.7);
+        .field select option {
+          background: #111;
         }
 
-        input::placeholder,
-        textarea::placeholder {
-          color: #57534d;
+        .field input:focus,
+        .field textarea:focus,
+        .field select:focus {
+          border-color: var(--gold);
         }
 
-        select {
-          color-scheme: dark;
-        }
-
-        .message-field {
-          margin-top: 15px;
-        }
-
-        textarea {
+        .field textarea {
+          min-height: 90px;
           resize: vertical;
         }
 
         .booking-message {
           margin-top: 14px;
           padding: 12px;
-          border: 1px solid rgba(220, 172, 79, 0.35);
-          color: #dfb45f;
-          background: rgba(220, 172, 79, 0.06);
-          font-size: 10px;
-        }
-
-        .submit-button {
-          margin-top: 18px;
-          cursor: pointer;
-        }
-
-        .submit-button:disabled {
-          opacity: 0.55;
-          cursor: wait;
+          border: 1px solid rgba(100,190,120,.4);
+          background: rgba(60,130,70,.12);
+          color: #b9e9c0;
+          font-size: 12px;
         }
 
         .reviews-section {
-          padding: 110px 0;
-          background: #090909;
+          background:
+            linear-gradient(90deg, rgba(0,0,0,.94), rgba(0,0,0,.8)),
+            url("${FALLBACK_FOOD}") center/cover;
+        }
+
+        .reviews-head {
+          display: flex;
+          justify-content: space-between;
+          align-items: end;
+          gap: 30px;
+          margin-bottom: 45px;
+        }
+
+        .rating {
+          color: var(--gold-light);
+          letter-spacing: 4px;
+          font-size: 14px;
+        }
+
+        .rating-number {
+          color: #aaa;
+          letter-spacing: 0;
+          margin-left: 10px;
+          font-size: 12px;
         }
 
         .reviews-grid {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
-          gap: 16px;
-          margin-top: 50px;
+          gap: 18px;
         }
 
         .review-card {
-          min-height: 250px;
-          padding: 28px;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          background:
-            linear-gradient(
-              145deg,
-              rgba(255, 255, 255, 0.035),
-              rgba(255, 255, 255, 0.01)
-            );
-          backdrop-filter: blur(8px);
+          border: 1px solid rgba(255,255,255,.17);
+          background: rgba(5,7,7,.72);
+          padding: 25px;
+          min-height: 230px;
+          backdrop-filter: blur(10px);
         }
 
-        .stars {
-          display: flex;
-          gap: 3px;
+        .review-stars {
+          color: var(--gold-light);
+          letter-spacing: 3px;
         }
 
-        .stars span {
-          color: #403b33;
-          font-size: 12px;
-        }
-
-        .stars span.filled {
-          color: #dfb05a;
-        }
-
-        .review-card > p {
-          min-height: 90px;
-          margin: 20px 0;
-          color: #b5aea1;
-          font: italic 400 17px / 1.55 "Cormorant Garamond", Georgia, serif;
-        }
-
-        .review-author {
-          display: flex;
-          align-items: center;
-          gap: 11px;
-          padding-top: 16px;
-          border-top: 1px solid rgba(255, 255, 255, 0.07);
-        }
-
-        .review-author img,
-        .review-avatar {
-          width: 39px;
-          height: 39px;
-          border-radius: 50%;
-          object-fit: cover;
-        }
-
-        .review-avatar {
-          display: grid;
-          place-items: center;
-          color: #e2b35b;
-          border: 1px solid #775a2e;
-          background: #17130d;
-          font: 500 19px "Cormorant Garamond", Georgia, serif;
-        }
-
-        .review-author strong,
-        .review-author small {
-          display: block;
-        }
-
-        .review-author strong {
-          color: #ddd5c6;
-          font-size: 9px;
-        }
-
-        .review-author small {
-          margin-top: 4px;
-          color: #625e57;
-          font-size: 7px;
-        }
-
-        .hours-section {
-          padding: 100px 0;
-          background:
-            radial-gradient(
-              circle at 10% 50%,
-              rgba(114, 63, 19, 0.17),
-              transparent 35%
-            ),
-            #0d0d0d;
-          border-top: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .hours-grid {
-          display: grid;
-          grid-template-columns: 0.8fr 1.2fr;
-          gap: 90px;
-          align-items: center;
-        }
-
-        .hours-grid h2 {
-          margin: 12px 0;
-          color: #f4eddf;
-          font: 500 57px / 0.95 "Cormorant Garamond", Georgia, serif;
-        }
-
-        .hours-grid > div:first-child p {
-          max-width: 420px;
-          color: #7e786f;
-          font-size: 11px;
+        .review-text {
+          color: #bbb;
           line-height: 1.8;
+          font-size: 13px;
+          margin: 20px 0;
         }
 
-        .hours-card {
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          background: rgba(255, 255, 255, 0.025);
+        .review-name {
+          font-family: "Cormorant Garamond", serif;
+          font-size: 20px;
         }
 
-        .hours-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 20px;
-          padding: 15px 20px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-        }
-
-        .hours-row:last-child {
-          border-bottom: 0;
-        }
-
-        .hours-row span {
-          color: #a7a097;
-          font-size: 10px;
-        }
-
-        .hours-row strong {
-          color: #ddb15b;
+        .review-date {
+          color: #777;
           font-size: 9px;
-          font-weight: 600;
-        }
-
-        .hours-row strong.closed {
-          color: #635e56;
+          text-transform: uppercase;
+          letter-spacing: 1px;
         }
 
         .contact-section {
-          padding: 120px 0;
-          background: #080808;
+          padding: 75px 7vw 40px;
+          background:
+            linear-gradient(0deg, rgba(0,0,0,.93), rgba(0,0,0,.2)),
+            url("https://images.unsplash.com/photo-1529260830199-42c24126f198?auto=format&fit=crop&w=2200&q=85")
+            center/cover;
         }
 
-        .contact-grid {
+        .contact-top {
           display: grid;
-          grid-template-columns: 0.85fr 1.15fr;
-          gap: 70px;
-          align-items: stretch;
+          grid-template-columns: 1.5fr repeat(3, 1fr);
+          gap: 30px;
+          align-items: center;
         }
 
-        .contact-copy h2 {
-          margin-bottom: 20px;
+        .contact-big {
+          font-family: "Cormorant Garamond", serif;
+          font-size: clamp(42px, 5vw, 70px);
+          line-height: .85;
         }
 
-        .contact-copy > p {
-          max-width: 480px;
-          color: #8c857a;
-          font-size: 12px;
-          line-height: 1.8;
-        }
-
-        .contact-list {
-          margin-top: 35px;
+        .contact-big span {
+          color: var(--gold-light);
+          font-style: italic;
         }
 
         .contact-item {
           display: flex;
-          gap: 15px;
-          align-items: flex-start;
-          margin-bottom: 20px;
+          gap: 13px;
+          align-items: start;
         }
 
-        .contact-item > span {
-          width: 32px;
-          height: 32px;
-          display: grid;
-          place-items: center;
-          border: 1px solid rgba(222, 175, 81, 0.4);
-          border-radius: 50%;
-          color: #dbae58;
-          font-size: 12px;
+        .contact-icon {
+          color: var(--gold);
+          font-size: 20px;
         }
 
-        .contact-item small,
-        .contact-item strong,
-        .contact-item a {
-          display: block;
-        }
-
-        .contact-item small {
-          margin-bottom: 5px;
-          color: #5e5952;
-          font-size: 7px;
+        .contact-label {
+          color: #777;
+          font-size: 9px;
+          letter-spacing: 1px;
           text-transform: uppercase;
-          letter-spacing: 0.12em;
+          margin-bottom: 5px;
         }
 
-        .contact-item strong,
-        .contact-item a {
-          color: #c8c0b3;
-          font-size: 10px;
-          font-weight: 500;
-          line-height: 1.5;
+        .contact-value {
+          color: #ddd;
+          font-size: 12px;
+          line-height: 1.6;
+          word-break: break-word;
         }
 
-        .social-links {
+        .socials {
           display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
-          margin-top: 30px;
+          gap: 9px;
+          margin-top: 25px;
         }
 
-        .social-links a {
-          padding: 8px 12px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          color: #938d82;
-          font-size: 8px;
-          transition: 0.2s ease;
-        }
-
-        .social-links a:hover {
-          color: #e2b45c;
-          border-color: #8d682e;
-        }
-
-        .map-card {
-          min-height: 480px;
-          overflow: hidden;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          background: #111;
-        }
-
-        .map-card iframe {
-          width: 100%;
-          height: 100%;
-          min-height: 480px;
-          display: block;
-          border: 0;
-          filter: grayscale(0.85) contrast(1.05);
-        }
-
-        .map-placeholder {
-          min-height: 480px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          text-align: center;
-          background:
-            radial-gradient(
-              circle at center,
-              rgba(145, 88, 27, 0.22),
-              transparent 45%
-            ),
-            #111;
-        }
-
-        .map-pin {
-          width: 65px;
-          height: 65px;
+        .social {
+          width: 35px;
+          height: 35px;
+          border: 1px solid var(--line);
+          border-radius: 50%;
           display: grid;
           place-items: center;
-          margin-bottom: 10px;
-          border: 1px solid #9a6e2d;
-          border-radius: 50%;
-          color: #e1b35a;
-          font-size: 25px;
-        }
-
-        .map-placeholder strong {
-          color: #ede5d7;
-          font: 500 29px "Cormorant Garamond", Georgia, serif;
-        }
-
-        .map-placeholder span {
-          margin-bottom: 15px;
-          color: #777169;
+          color: var(--gold-light);
           font-size: 10px;
         }
 
         .footer {
-          background: #040404;
-          border-top: 1px solid rgba(255, 255, 255, 0.07);
-        }
-
-        .footer-top {
-          width: min(1300px, calc(100% - 48px));
-          margin: auto;
-          padding: 75px 0;
-          display: grid;
-          grid-template-columns: 1.5fr 0.7fr 1fr 0.8fr;
-          gap: 55px;
-        }
-
-        .footer-brand {
-          max-width: 320px;
-        }
-
-        .footer-brand .logo {
-          align-items: flex-start;
-        }
-
-        .footer-brand p {
-          margin-top: 22px;
-          color: #666159;
-          font-size: 10px;
-          line-height: 1.8;
-        }
-
-        .footer-column {
+          min-height: 90px;
+          border-top: 1px solid rgba(255,255,255,.1);
           display: flex;
-          flex-direction: column;
-          gap: 10px;
-        }
-
-        .footer-column h4 {
-          margin: 0 0 10px;
-          color: #e3b660;
-          font-size: 9px;
-          letter-spacing: 0.14em;
-          text-transform: uppercase;
-        }
-
-        .footer-column a,
-        .footer-column span {
-          color: #747068;
-          font-size: 9px;
-          line-height: 1.6;
-        }
-
-        .footer-column a:hover {
-          color: #dcae55;
-        }
-
-        .footer-reserve {
-          color: #e0b158 !important;
-        }
-
-        .footer-bottom {
-          width: min(1300px, calc(100% - 48px));
-          margin: auto;
-          padding: 20px 0 28px;
-          display: flex;
+          align-items: center;
           justify-content: space-between;
           gap: 20px;
-          border-top: 1px solid rgba(255, 255, 255, 0.06);
-          color: #4e4a44;
-          font-size: 8px;
+          padding: 20px 7vw;
+          background: #030404;
+          color: #777;
+          font-size: 10px;
         }
 
-        .footer-bottom a {
-          color: #80622f;
+        .footer-logo {
+          color: var(--gold);
+          font-family: "Cormorant Garamond", serif;
+          font-size: 25px;
         }
 
-        .mobile-booking-bar {
+        .maintenance {
+          min-height: 100vh;
+          display: grid;
+          place-items: center;
+          text-align: center;
+          padding: 30px;
+          background:
+            radial-gradient(circle, rgba(215,168,75,.13), transparent 40%),
+            #050606;
+        }
+
+        .maintenance-box {
+          max-width: 600px;
+          border: 1px solid var(--line);
+          padding: 55px;
+          background: rgba(255,255,255,.025);
+        }
+
+        .mobile-bottom {
           display: none;
         }
 
         @media (max-width: 1100px) {
-          .desktop-nav {
-            gap: 17px;
-          }
-
-          .hero-content {
-            grid-template-columns: 1fr 300px;
-            gap: 35px;
-          }
-
-          .hero-dish-card {
-            margin-bottom: 90px;
+          .nav-links {
+            gap: 15px;
           }
 
           .menu-grid {
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(2, 1fr);
           }
 
-          .about-grid {
-            gap: 45px;
+          .gallery-grid {
+            grid-template-columns: repeat(2, 1fr);
           }
 
-          .footer-top {
-            gap: 30px;
+          .gallery-item,
+          .gallery-item:first-child,
+          .gallery-item:nth-child(2),
+          .gallery-item:nth-child(3),
+          .gallery-item:nth-child(4) {
+            height: 280px;
+            margin-top: 0;
+          }
+
+          .contact-top {
+            grid-template-columns: 1fr 1fr;
           }
         }
 
-        @media (max-width: 850px) {
-          .header-inner {
-            min-height: 74px;
+        @media (max-width: 820px) {
+          .navbar {
+            height: 70px;
+            padding: 0 20px;
           }
 
-          .desktop-nav {
+          .nav-links {
             display: none;
             position: absolute;
-            top: 74px;
-            left: 0;
-            right: 0;
-            padding: 20px 24px;
+            top: 70px;
+            left: 15px;
+            right: 15px;
+            padding: 18px;
             flex-direction: column;
             align-items: stretch;
-            gap: 0;
-            background: rgba(5, 5, 5, 0.98);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(5,6,6,.97);
+            border: 1px solid var(--line);
+            border-radius: 12px;
           }
 
-          .desktop-nav.mobile-open {
+          .nav-links.open {
             display: flex;
           }
 
-          .desktop-nav a {
-            padding: 15px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+          .nav-links button {
+            text-align: left;
+            padding: 12px;
           }
 
-          .desktop-nav a:first-child::after {
+          .nav-right {
             display: none;
           }
 
@@ -2986,98 +1266,133 @@ export default function Home() {
             display: block;
           }
 
-          .header-actions .reserve-button {
-            display: none;
-          }
-
-          .hero {
-            min-height: 900px;
-            height: auto;
-            padding: 130px 0 120px;
-          }
-
-          .hero-content {
-            grid-template-columns: 1fr;
-            margin-top: 40px;
-          }
-
-          .hero-dish-card {
-            display: none;
-          }
-
-          .hero h1 {
-            font-size: clamp(62px, 15vw, 95px);
-          }
-
-          .hero-bottom {
-            grid-template-columns: repeat(2, 1fr);
-          }
-
-          .hero-feature:nth-child(2) {
-            border-right: 0;
-          }
-
-          .hero-feature:nth-child(-n + 2) {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-          }
-
-          .promotion-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .menu-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
-
-          .about-grid,
-          .hours-grid,
-          .contact-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .about-images {
-            min-height: 550px;
-          }
-
-          .reviews-grid {
-            grid-template-columns: 1fr 1fr;
-          }
-
-          .footer-top {
-            grid-template-columns: 1fr 1fr;
-          }
-        }
-
-        @media (max-width: 600px) {
-          .breaking-inner,
-          .header-inner,
-          .section-container,
-          .footer-top,
-          .footer-bottom {
-            width: min(100% - 28px, 1300px);
+          .logo {
+            min-width: 120px;
+            align-items: flex-start;
           }
 
           .logo-main {
-            font-size: 29px;
-          }
-
-          .language-switcher {
-            display: none;
+            font-size: 24px;
           }
 
           .hero {
-            min-height: 800px;
-          }
-
-          .hero-content {
-            margin-top: 20px;
+            min-height: 92vh;
+            padding: 120px 25px 70px;
+            background-position: 60% center;
           }
 
           .hero h1 {
-            font-size: 65px;
+            font-size: clamp(58px, 17vw, 95px);
           }
 
-          .hero-copy p {
+          .hero-side {
+            display: none;
+          }
+
+          .section {
+            padding: 75px 22px;
+          }
+
+          .story {
+            grid-template-columns: 1fr;
+          }
+
+          .story-image {
+            min-height: 400px;
+          }
+
+          .story-content {
+            padding: 65px 25px;
+          }
+
+          .menu-head {
+            display: block;
+          }
+
+          .menu-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .menu-image {
+            height: 250px;
+          }
+
+          .gallery-layout {
+            grid-template-columns: 1fr;
+          }
+
+          .gallery-grid {
+            grid-template-columns: 1fr 1fr;
+          }
+
+          .promo-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .booking-section {
+            grid-template-columns: 1fr;
+            padding: 80px 22px;
+            gap: 35px;
+          }
+
+          .booking-copy {
+            padding-right: 0;
+          }
+
+          .reviews-head {
+            display: block;
+          }
+
+          .reviews-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .contact-top {
+            grid-template-columns: 1fr;
+          }
+
+          .footer {
+            flex-direction: column;
+            text-align: center;
+          }
+
+          .mobile-bottom {
+            position: fixed;
+            z-index: 120;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            background: rgba(4,5,5,.96);
+            backdrop-filter: blur(15px);
+            border-top: 1px solid var(--line);
+            padding: 8px;
+          }
+
+          .mobile-bottom button {
+            border: 0;
+            padding: 13px;
+            background: transparent;
+            color: #ccc;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+          }
+
+          .mobile-bottom button:last-child {
+            background: linear-gradient(135deg, #f2c867, #c58d27);
+            color: #17120a;
+            border-radius: 5px;
+          }
+        }
+
+        @media (max-width: 520px) {
+          .top-news {
+            font-size: 8px;
+          }
+
+          .hero-text {
             font-size: 12px;
           }
 
@@ -3086,183 +1401,753 @@ export default function Home() {
             align-items: stretch;
           }
 
-          .hero-actions .gold-button,
-          .hero-actions .outline-button {
+          .hero-actions button {
             width: 100%;
           }
 
-          .hero-bottom {
-            padding: 12px 14px;
-          }
-
-          .hero-feature {
-            justify-content: flex-start;
-            gap: 9px;
-          }
-
-          .hero-feature strong {
-            font-size: 8px;
-          }
-
-          .hero-feature small {
-            font-size: 6px;
-          }
-
-          .feature-icon {
-            width: 29px;
-            height: 29px;
-            font-size: 10px;
-          }
-
-          .section-heading {
-            align-items: flex-start;
-            flex-direction: column;
-            gap: 15px;
-          }
-
-          .section-heading h2 {
-            font-size: 50px;
-          }
-
-          .menu-grid {
+          .gallery-grid {
             grid-template-columns: 1fr;
           }
 
-          .food-image {
-            height: 245px;
+          .gallery-item,
+          .gallery-item:first-child,
+          .gallery-item:nth-child(2),
+          .gallery-item:nth-child(3),
+          .gallery-item:nth-child(4) {
+            height: 270px;
           }
 
-          .about-section,
-          .gallery-section,
-          .reviews-section,
-          .contact-section {
-            padding: 80px 0;
+          .booking-grid {
+            grid-template-columns: 1fr;
           }
 
-          .about-images {
-            min-height: 430px;
-          }
-
-          .about-main-image {
-            width: 84%;
-            height: 350px;
-          }
-
-          .about-small-image {
-            width: 53%;
-            height: 190px;
-          }
-
-          .experience-badge {
-            width: 85px;
-            height: 85px;
-            left: 55%;
-            top: 39%;
-          }
-
-          .experience-badge strong {
-            font-size: 27px;
-          }
-
-          .gallery-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: 180px 180px 180px;
-          }
-
-          .gallery-1 {
-            grid-row: auto;
-            grid-column: 1 / 3;
-          }
-
-          .gallery-4 {
+          .field.full {
             grid-column: auto;
           }
 
-          .booking-section {
-            grid-template-columns: 1fr;
+          .booking-card {
+            padding: 18px;
           }
 
-          .booking-image {
-            min-height: 330px;
-          }
-
-          .booking-panel {
-            padding: 65px 20px;
-          }
-
-          .form-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .reviews-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .hours-grid {
-            gap: 35px;
-          }
-
-          .hours-grid h2 {
-            font-size: 48px;
-          }
-
-          .contact-grid {
-            gap: 35px;
-          }
-
-          .map-card,
-          .map-card iframe,
-          .map-placeholder {
-            min-height: 350px;
-          }
-
-          .footer-top {
-            grid-template-columns: 1fr 1fr;
-            gap: 40px 20px;
-            padding-bottom: 110px;
-          }
-
-          .footer-brand {
-            grid-column: 1 / -1;
-          }
-
-          .footer-bottom {
-            flex-wrap: wrap;
-            padding-bottom: 90px;
-          }
-
-          .mobile-booking-bar {
-            position: fixed;
-            z-index: 200;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            display: grid;
-            grid-template-columns: 42px 1fr 1.4fr 42px;
-            gap: 1px;
-            padding: 8px;
-            background: rgba(5, 5, 5, 0.94);
-            border-top: 1px solid rgba(221, 174, 80, 0.2);
-            backdrop-filter: blur(15px);
-          }
-
-          .mobile-booking-bar a {
-            min-height: 40px;
-            display: grid;
-            place-items: center;
-            color: #a69e91;
-            font-size: 9px;
-            border: 1px solid rgba(255, 255, 255, 0.06);
-          }
-
-          .mobile-booking-bar .mobile-main-cta {
-            color: #080706;
-            background: linear-gradient(135deg, #f0ca7b, #c48a31);
-            font-weight: 800;
+          .contact-section {
+            padding-left: 22px;
+            padding-right: 22px;
           }
         }
       `}</style>
+
+      {maintenance ? (
+        <section className="maintenance">
+          <div className="maintenance-box">
+            <div className="section-label">NABABI RISTORANTE</div>
+            <h1 className="section-title">
+              Website <span>Maintenance</span>
+            </h1>
+            <p className="story-text" style={{ marginInline: "auto" }}>
+              We are preparing something beautiful for you. Please check back
+              shortly.
+            </p>
+          </div>
+        </section>
+      ) : (
+        <>
+          {activeNews.length > 0 && (
+            <div className="top-news">
+              {activeNews[0].text || activeNews[0].title || ""}
+            </div>
+          )}
+
+          <header className="navbar">
+            <button
+              className="logo"
+              onClick={() => scrollTo("home")}
+              style={{
+                border: 0,
+                background: "transparent",
+                color: "inherit",
+              }}
+            >
+              <span className="logo-crown">♛</span>
+              <span className="logo-main">
+                {restaurantName.split(" ")[0] || "NABABI"}
+              </span>
+              <span className="logo-sub">RISTORANTE</span>
+            </button>
+
+            <nav className={`nav-links ${mobileMenu ? "open" : ""}`}>
+              <button onClick={() => scrollTo("home")}>Home</button>
+              {about.visible !== false && (
+                <button onClick={() => scrollTo("about")}>About</button>
+              )}
+              <button onClick={() => scrollTo("menu")}>Menu</button>
+              <button onClick={() => scrollTo("gallery")}>Gallery</button>
+              <button onClick={() => scrollTo("reviews")}>Reviews</button>
+              <button onClick={() => scrollTo("contact")}>Contact</button>
+            </nav>
+
+            <div className="nav-right">
+              {languages.switcherVisible !== false &&
+                enabledLanguages.map((lang) => (
+                  <button
+                    key={lang}
+                    className={`language-btn ${
+                      language === lang ? "active" : ""
+                    }`}
+                    onClick={() => setLanguage(lang)}
+                  >
+                    {lang}
+                  </button>
+                ))}
+
+              <button
+                className="gold-btn"
+                onClick={() => scrollTo("reservation")}
+              >
+                Reserve a Table
+              </button>
+            </div>
+
+            <button
+              className="menu-toggle"
+              onClick={() => setMobileMenu((v) => !v)}
+              aria-label="Open menu"
+            >
+              ☰
+            </button>
+          </header>
+
+          <section id="home" className="hero">
+            <div className="hero-content">
+              <div className="eyebrow">
+                Authentic Italian & Asian Cuisine
+              </div>
+
+              <h1>
+                {heroTitle}
+                <span>Tradition</span>
+              </h1>
+
+              <p className="hero-text">{heroSubtitle || welcomeText}</p>
+
+              <div className="hero-actions">
+                <button
+                  className="gold-btn"
+                  onClick={() => scrollTo("menu")}
+                >
+                  Explore Menu →
+                </button>
+
+                <button
+                  className="outline-btn"
+                  onClick={() => scrollTo("about")}
+                >
+                  Discover Our Story
+                </button>
+              </div>
+            </div>
+
+            <div className="hero-side">Scroll Down</div>
+          </section>
+
+          {about.visible !== false && (
+            <section id="about" className="story">
+              <div className="story-image" />
+
+              <div className="story-content">
+                <div className="section-label">Our Story</div>
+
+                <h2 className="section-title">
+                  More Than
+                  <span> Just Food</span>
+                </h2>
+
+                <p className="story-text">
+                  {about.content ||
+                    welcomeText ||
+                    "At Nababi Ristorante, we believe food brings people together. Our cuisine is a story of passion, tradition and a deep love for authentic flavours."}
+                </p>
+
+                <button
+                  className="outline-btn"
+                  style={{ width: "fit-content" }}
+                  onClick={() => scrollTo("menu")}
+                >
+                  Explore Our Menu →
+                </button>
+
+                <div className="feature-list">
+                  <div className="feature">
+                    <div className="feature-icon">♡</div>
+                    <div className="feature-text">Authentic Recipes</div>
+                  </div>
+
+                  <div className="feature">
+                    <div className="feature-icon">✦</div>
+                    <div className="feature-text">Fresh Ingredients</div>
+                  </div>
+
+                  <div className="feature">
+                    <div className="feature-icon">♢</div>
+                    <div className="feature-text">Warm Hospitality</div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          <section id="menu" className="section menu-section">
+            <div className="menu-head">
+              <div>
+                <div className="section-label">Our Menu</div>
+
+                <h2 className="section-title">
+                  Signature
+                  <span> Dishes</span>
+                </h2>
+              </div>
+
+              <button
+                className="outline-btn"
+                onClick={() => scrollTo("reservation")}
+              >
+                Book Your Table →
+              </button>
+            </div>
+
+            <div className="category-row">
+              <button
+                className={`category ${
+                  selectedCategory === "All" ? "active" : ""
+                }`}
+                onClick={() => setSelectedCategory("All")}
+              >
+                All
+              </button>
+
+              {menuCategories.map((category) => (
+                <button
+                  key={category}
+                  className={`category ${
+                    selectedCategory === category ? "active" : ""
+                  }`}
+                  onClick={() => setSelectedCategory(category)}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+
+            <div className="menu-grid">
+              {filteredMenu.length === 0 ? (
+                <div className="empty">
+                  Menu items will appear here after you add them from the
+                  Admin Menu.
+                </div>
+              ) : (
+                filteredMenu.map((item, index) => (
+                  <article
+                    className="menu-card"
+                    key={item.id || `${item.name}-${index}`}
+                  >
+                    <div
+                      className="menu-image"
+                      style={{
+                        backgroundImage: `url("${getImage(
+                          item.image,
+                          FALLBACK_FOOD
+                        )}")`,
+                      }}
+                    />
+
+                    <div className="menu-info">
+                      <div className="menu-category">
+                        {item.category || "Signature"}
+                      </div>
+
+                      <h3 className="menu-name">
+                        {item.name || "Signature Dish"}
+                      </h3>
+
+                      <p className="menu-desc">
+                        {item.description || "Prepared fresh with care."}
+                      </p>
+
+                      <div className="menu-price">
+                        {formatPrice(item.price)}
+                      </div>
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
+          </section>
+
+          {activePromotions.length > 0 && (
+            <section className="section promotion-section">
+              <div className="section-label">Special Offers</div>
+
+              <h2 className="section-title">
+                Taste Something
+                <span> Special</span>
+              </h2>
+
+              <div className="promo-grid">
+                {activePromotions.map((promo, index) => (
+                  <article
+                    className="promo-card"
+                    key={promo.id || `${promo.title}-${index}`}
+                  >
+                    <img
+                      src={getImage(promo.image, FALLBACK_FOOD)}
+                      alt={promo.title || "Nababi promotion"}
+                    />
+
+                    <div className="promo-overlay">
+                      <div className="promo-offer">
+                        {promo.offer || "Special Offer"}
+                      </div>
+
+                      <h3 className="promo-title">
+                        {promo.title || "Nababi Special"}
+                      </h3>
+
+                      <p className="story-text" style={{ margin: 0 }}>
+                        {promo.description || ""}
+                      </p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <section id="gallery" className="section gallery-section">
+            <div className="gallery-layout">
+              <div>
+                <div className="section-label">Our Gallery</div>
+
+                <h2 className="section-title">
+                  A Glimpse of
+                  <span> Nababi</span>
+                </h2>
+
+                <p className="story-text">
+                  A visual taste of our restaurant, dishes and dining
+                  atmosphere.
+                </p>
+
+                <button
+                  className="outline-btn"
+                  onClick={() => scrollTo("reservation")}
+                >
+                  Reserve a Table →
+                </button>
+              </div>
+
+              <div className="gallery-grid">
+                {(visibleGallery.length > 0
+                  ? visibleGallery.slice(0, 8)
+                  : FALLBACK_GALLERY.map((image, index) => ({
+                      id: `fallback-${index}`,
+                      image,
+                    }))
+                ).map((item: AnyData, index: number) => (
+                  <div
+                    className="gallery-item"
+                    key={item.id || index}
+                  >
+                    <img
+                      src={getImage(
+                        item.image || item.url,
+                        FALLBACK_GALLERY[index % FALLBACK_GALLERY.length]
+                      )}
+                      alt={item.title || "Nababi Ristorante"}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section id="reservation" className="section booking-section">
+            <div className="booking-copy">
+              <div className="section-label">Reservation</div>
+
+              <h2 className="section-title">
+                Book Your
+                <span> Table</span>
+              </h2>
+
+              <p>
+                {home.bookingText ||
+                  "Give yourself an unforgettable dining experience at Nababi Ristorante."}
+              </p>
+
+              <button
+                className="outline-btn"
+                onClick={() => scrollTo("contact")}
+              >
+                Need Help? Contact Us
+              </button>
+            </div>
+
+            <form className="booking-card" onSubmit={submitBooking}>
+              <div className="booking-grid">
+                <div className="field">
+                  <label>Name *</label>
+                  <input
+                    required
+                    value={booking.name}
+                    onChange={(e) =>
+                      setBooking({
+                        ...booking,
+                        name: e.target.value,
+                      })
+                    }
+                    placeholder="Your name"
+                  />
+                </div>
+
+                <div className="field">
+                  <label>Phone *</label>
+                  <input
+                    required
+                    value={booking.phone}
+                    onChange={(e) =>
+                      setBooking({
+                        ...booking,
+                        phone: e.target.value,
+                      })
+                    }
+                    placeholder="Your phone number"
+                  />
+                </div>
+
+                <div className="field">
+                  <label>Date *</label>
+                  <input
+                    required
+                    type="date"
+                    value={booking.date}
+                    onChange={(e) =>
+                      setBooking({
+                        ...booking,
+                        date: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="field">
+                  <label>Time *</label>
+                  <input
+                    required
+                    type="time"
+                    value={booking.time}
+                    onChange={(e) =>
+                      setBooking({
+                        ...booking,
+                        time: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="field">
+                  <label>Guests *</label>
+                  <select
+                    value={booking.guests}
+                    onChange={(e) =>
+                      setBooking({
+                        ...booking,
+                        guests: e.target.value,
+                      })
+                    }
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((number) => (
+                      <option key={number} value={number}>
+                        {number} {number === 1 ? "Guest" : "Guests"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="field">
+                  <label>Message</label>
+                  <textarea
+                    value={booking.message}
+                    onChange={(e) =>
+                      setBooking({
+                        ...booking,
+                        message: e.target.value,
+                      })
+                    }
+                    placeholder="Special requests..."
+                  />
+                </div>
+
+                <div className="field full">
+                  <button className="gold-btn" type="submit">
+                    Send Reservation →
+                  </button>
+                </div>
+              </div>
+
+              {bookingSent && (
+                <div className="booking-message">
+                  Your reservation request has been received successfully.
+                </div>
+              )}
+            </form>
+          </section>
+
+          <section id="reviews" className="section reviews-section">
+            <div className="reviews-head">
+              <div>
+                <div className="section-label">What Our Guests Say</div>
+
+                <h2 className="section-title">
+                  Guest
+                  <span> Reviews</span>
+                </h2>
+              </div>
+
+              <div>
+                <div className="rating">
+                  {"★★★★★"}
+                  <span className="rating-number">
+                    {averageRating.toFixed(1)} / 5
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="reviews-grid">
+              {visibleReviews.length === 0 ? (
+                <div className="empty">
+                  Reviews will appear here after you add them from Admin.
+                </div>
+              ) : (
+                visibleReviews.slice(0, 6).map((review, index) => (
+                  <article
+                    className="review-card"
+                    key={review.id || `${review.customerName}-${index}`}
+                  >
+                    <div className="review-stars">
+                      {"★".repeat(
+                        Math.max(
+                          1,
+                          Math.min(5, Number(review.rating || 5))
+                        )
+                      )}
+                    </div>
+
+                    <p className="review-text">
+                      “{review.review || "Wonderful dining experience."}”
+                    </p>
+
+                    <div className="review-name">
+                      {review.customerName || "Guest"}
+                    </div>
+
+                    <div className="review-date">
+                      {review.date || "Nababi Guest"}
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
+          </section>
+
+          {Object.keys(hours || {}).length > 0 && (
+            <section className="section" style={{ background: "#070808" }}>
+              <div className="section-label">Opening Hours</div>
+
+              <h2 className="section-title">
+                Visit
+                <span> Nababi</span>
+              </h2>
+
+              <div
+                style={{
+                  marginTop: 40,
+                  display: "grid",
+                  gridTemplateColumns:
+                    "repeat(auto-fit,minmax(220px,1fr))",
+                  gap: 12,
+                }}
+              >
+                {currentHours.map((item) => (
+                  <div
+                    key={item.day}
+                    style={{
+                      border: "1px solid rgba(215,168,75,.25)",
+                      padding: 18,
+                      background: "rgba(255,255,255,.02)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        color: "#d7a84b",
+                        fontSize: 10,
+                        letterSpacing: 2,
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {getDayLabel(item.day)}
+                    </div>
+
+                    <div
+                      style={{
+                        marginTop: 8,
+                        color: "#ddd",
+                        fontFamily: "Cormorant Garamond, serif",
+                        fontSize: 22,
+                      }}
+                    >
+                      {item.open === false || item.closed === true
+                        ? "Closed"
+                        : `${item.opening || "11:00"} — ${
+                            item.closing || "23:00"
+                          }`}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {contact.visible !== false && (
+            <section id="contact" className="contact-section">
+              <div className="contact-top">
+                <div>
+                  <div className="section-label">Get In Touch</div>
+
+                  <h2 className="contact-big">
+                    Let's Make
+                    <span> Memories Together</span>
+                  </h2>
+
+                  <div className="socials">
+                    {social.facebook && (
+                      <a
+                        className="social"
+                        href={social.facebook}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        f
+                      </a>
+                    )}
+
+                    {social.instagram && (
+                      <a
+                        className="social"
+                        href={social.instagram}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        ◎
+                      </a>
+                    )}
+
+                    {social.tiktok && (
+                      <a
+                        className="social"
+                        href={social.tiktok}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        ♪
+                      </a>
+                    )}
+
+                    {social.youtube && (
+                      <a
+                        className="social"
+                        href={social.youtube}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        ▶
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                <div className="contact-item">
+                  <div className="contact-icon">⌖</div>
+                  <div>
+                    <div className="contact-label">Address</div>
+                    <div className="contact-value">
+                      {contact.address || "Rome, Italy"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="contact-item">
+                  <div className="contact-icon">☎</div>
+                  <div>
+                    <div className="contact-label">Phone</div>
+                    <div className="contact-value">
+                      {contact.phone || "+39 06 123 4567"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="contact-item">
+                  <div className="contact-icon">✉</div>
+                  <div>
+                    <div className="contact-label">Email</div>
+                    <div className="contact-value">
+                      {contact.email || "info@nababi.it"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  marginTop: 40,
+                }}
+              >
+                {contact.googleMapsUrl && (
+                  <a
+                    className="gold-btn"
+                    href={contact.googleMapsUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open Google Maps →
+                  </a>
+                )}
+              </div>
+            </section>
+          )}
+
+          <footer className="footer">
+            <div className="footer-logo">
+              {restaurantName.split(" ")[0] || "NABABI"}
+            </div>
+
+            <div>
+              © {new Date().getFullYear()} {restaurantName}. All rights
+              reserved.
+            </div>
+
+            <div>Admin Panel</div>
+          </footer>
+
+          <div className="mobile-bottom">
+            <button onClick={() => scrollTo("menu")}>View Menu</button>
+            <button onClick={() => scrollTo("reservation")}>
+              Reserve Table
+            </button>
+          </div>
+        </>
+      )}
     </main>
   );
 }
