@@ -480,18 +480,18 @@ export default function HomePage() {
         </nav>
 
         <div className="language-switcher">
-          {(["it", "en", "bn"] as Lang[]).map((item) => (
-            <button
-              key={item}
-              type="button"
-              className={lang === item ? "active" : ""}
-              onClick={() => setLang(item)}
-              aria-label={`Switch language to ${item}`}
-            >
-              {item.toUpperCase()}
-            </button>
-          ))}
-        </div>
+  {(["it", "en", "bn"] as Lang[]).map((item) => (
+    <button
+      key={item}
+      type="button"
+      className={lang === item ? "active" : ""}
+      onClick={() => setLang(item)}
+      aria-label={"Switch language to " + item}
+    >
+      {item.toUpperCase()}
+    </button>
+  ))}
+</div>
       </header>
 
       <section
