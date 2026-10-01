@@ -112,11 +112,6 @@ const translations = {
     special: "Special Request",
     confirm: "Confirm Booking",
     cancel: "Cancel",
-    track: "Track Your Booking",
-    trackSub: "Login with your phone or email",
-    phoneLogin: "Phone Login",
-    emailLogin: "Email Login",
-    getOtp: "Get OTP",
     bookingDetails: "Booking Details",
     viewEditCancel: "View, Edit or Cancel",
     bookingCode: "Booking Code",
@@ -125,27 +120,22 @@ const translations = {
     galleryTitle: "Gallery",
     gallerySub: "Our Photo Gallery",
     viewGallery: "View Gallery",
-    report: "Send Us a Report",
-    reportSub: "We'd love to hear from you",
-    sendReport: "Send Report",
     map: "Find Us on Map",
     openMap: "Open Map",
     contactUs: "Contact Us",
-    follow: "Follow Us",
+    socialMedia: "Social Media",
     quick: "Quick Links",
     writeReview: "Write a Review",
     allReviews: "All Reviews",
     reviewDetails: "Review Details",
     submitReview: "Submit Review",
-    reportReview: "Report a Review",
-    reportDetails: "Report Details",
-    submitReport: "Submit Report",
     rating: "Rating",
     name: "Name",
     close: "Close",
     noReviews: "No reviews yet.",
     noGallery: "Gallery images will appear here.",
   },
+
   it: {
     home: "Home",
     about: "Chi siamo",
@@ -190,11 +180,6 @@ const translations = {
     special: "Richiesta speciale",
     confirm: "Conferma Prenotazione",
     cancel: "Annulla",
-    track: "Segui la Prenotazione",
-    trackSub: "Accedi con telefono o email",
-    phoneLogin: "Login Telefono",
-    emailLogin: "Login Email",
-    getOtp: "Ottieni OTP",
     bookingDetails: "Dettagli Prenotazione",
     viewEditCancel: "Visualizza, modifica o annulla",
     bookingCode: "Codice Prenotazione",
@@ -203,27 +188,22 @@ const translations = {
     galleryTitle: "Galleria",
     gallerySub: "La Nostra Galleria",
     viewGallery: "Vedi Galleria",
-    report: "Inviaci una Segnalazione",
-    reportSub: "La tua opinione è importante",
-    sendReport: "Invia Segnalazione",
     map: "Trova sulla Mappa",
     openMap: "Apri Mappa",
     contactUs: "Contatti",
-    follow: "Seguici",
+    socialMedia: "Social Media",
     quick: "Link Rapidi",
     writeReview: "Scrivi una Recensione",
     allReviews: "Tutte le Recensioni",
     reviewDetails: "Dettagli Recensione",
     submitReview: "Invia Recensione",
-    reportReview: "Segnala una Recensione",
-    reportDetails: "Dettagli Segnalazione",
-    submitReport: "Invia Segnalazione",
     rating: "Valutazione",
     name: "Nome",
     close: "Chiudi",
     noReviews: "Nessuna recensione.",
     noGallery: "Le immagini della galleria appariranno qui.",
   },
+
   bn: {
     home: "হোম",
     about: "আমাদের সম্পর্কে",
@@ -268,11 +248,6 @@ const translations = {
     special: "বিশেষ অনুরোধ",
     confirm: "বুকিং নিশ্চিত করুন",
     cancel: "বাতিল",
-    track: "বুকিং ট্র্যাক করুন",
-    trackSub: "ফোন অথবা ইমেইল দিয়ে লগইন",
-    phoneLogin: "ফোন লগইন",
-    emailLogin: "ইমেইল লগইন",
-    getOtp: "OTP নিন",
     bookingDetails: "বুকিং ডিটেইলস",
     viewEditCancel: "দেখুন, পরিবর্তন বা বাতিল করুন",
     bookingCode: "বুকিং কোড",
@@ -281,21 +256,15 @@ const translations = {
     galleryTitle: "গ্যালারি",
     gallerySub: "আমাদের ছবি",
     viewGallery: "গ্যালারি দেখুন",
-    report: "রিপোর্ট পাঠান",
-    reportSub: "আপনার মতামত আমাদের জন্য গুরুত্বপূর্ণ",
-    sendReport: "রিপোর্ট পাঠান",
     map: "ম্যাপে খুঁজুন",
     openMap: "ম্যাপ খুলুন",
     contactUs: "যোগাযোগ",
-    follow: "ফলো করুন",
+    socialMedia: "সোশ্যাল মিডিয়া",
     quick: "কুইক লিংক",
     writeReview: "রিভিউ লিখুন",
     allReviews: "সব রিভিউ",
     reviewDetails: "রিভিউ ডিটেইলস",
     submitReview: "রিভিউ পাঠান",
-    reportReview: "রিভিউ রিপোর্ট করুন",
-    reportDetails: "রিপোর্টের বিস্তারিত",
-    submitReport: "রিপোর্ট পাঠান",
     rating: "রেটিং",
     name: "নাম",
     close: "বন্ধ করুন",
@@ -333,18 +302,17 @@ export default function HomePage() {
   const [settings, setSettings] = useState<any>({});
 
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [categories, setCategories] = useState<string[]>(defaultCategories);
+  const [categories, setCategories] =
+    useState<string[]>(defaultCategories);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
 
-  const [selectedCategory, setSelectedCategory] = useState("Biryani");
+  const [selectedCategory, setSelectedCategory] =
+    useState("Biryani");
+
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [reviewsOpen, setReviewsOpen] = useState(false);
-
-  const [trackValue, setTrackValue] = useState("");
-  const [trackedBooking, setTrackedBooking] =
-    useState<Reservation | null>(null);
 
   const [reviewForm, setReviewForm] = useState({
     name: "",
@@ -352,11 +320,6 @@ export default function HomePage() {
     email: "",
     rating: 5,
     review: "",
-  });
-
-  const [reportForm, setReportForm] = useState({
-    contact: "",
-    details: "",
   });
 
   const [bookingForm, setBookingForm] = useState({
@@ -373,17 +336,22 @@ export default function HomePage() {
 
   const [bookingMessage, setBookingMessage] = useState("");
   const [reviewMessage, setReviewMessage] = useState("");
-  const [reportMessage, setReportMessage] = useState("");
-  const [trackMessage, setTrackMessage] = useState("");
 
   const [breakingNews, setBreakingNews] = useState<any[]>([]);
   const [newsClosed, setNewsClosed] = useState(false);
 
-  const t = (key: keyof typeof translations.en) => getText(lang, key);
+  const t = (key: keyof typeof translations.en) =>
+    getText(lang, key);
 
   useEffect(() => {
-    const savedLang = localStorage.getItem("nababi-language") as Lang | null;
-    if (savedLang === "en" || savedLang === "it" || savedLang === "bn") {
+    const savedLang =
+      localStorage.getItem("nababi-language") as Lang | null;
+
+    if (
+      savedLang === "en" ||
+      savedLang === "it" ||
+      savedLang === "bn"
+    ) {
       setLang(savedLang);
     }
 
@@ -394,6 +362,7 @@ export default function HomePage() {
     setSettings(readStorage("nababi-settings", {}));
 
     const rawMenu = readStorage<any[]>("nababi-menu", []);
+
     const rawCategories = readStorage<any[]>(
       "nababi-categories",
       defaultCategories
@@ -403,7 +372,9 @@ export default function HomePage() {
       new Set(
         rawCategories
           .map((c: any) =>
-            typeof c === "string" ? c : c?.name ?? c?.title ?? ""
+            typeof c === "string"
+              ? c
+              : c?.name ?? c?.title ?? ""
           )
           .filter(Boolean)
           .map(String)
@@ -411,27 +382,57 @@ export default function HomePage() {
     );
 
     setCategories(
-      normalizedCategories.length ? normalizedCategories : defaultCategories
+      normalizedCategories.length
+        ? normalizedCategories
+        : defaultCategories
     );
+
     setMenuItems(Array.isArray(rawMenu) ? rawMenu : []);
 
-    const rawGallery = readStorage<GalleryItem[]>("nababi-gallery", []);
+    const rawGallery = readStorage<GalleryItem[]>(
+      "nababi-gallery",
+      []
+    );
+
     setGallery(
       Array.isArray(rawGallery)
-        ? rawGallery.filter((item) => item.visible !== false)
+        ? rawGallery.filter(
+            (item) => item.visible !== false
+          )
         : []
     );
 
-    const rawReviews = readStorage<Review[]>("nababi-reviews", []);
+    const rawReviews = readStorage<Review[]>(
+      "nababi-reviews",
+      []
+    );
+
     setReviews(
       Array.isArray(rawReviews)
-        ? rawReviews.filter((review) => review.visible !== false)
+        ? rawReviews
+            .filter(
+              (review) => review.visible !== false
+            )
+            .sort(
+              (a, b) =>
+                new Date(b.date).getTime() -
+                new Date(a.date).getTime()
+            )
         : []
     );
 
-    setReservations(readStorage<Reservation[]>("nababi-reservations", []));
+    setReservations(
+      readStorage<Reservation[]>(
+        "nababi-reservations",
+        []
+      )
+    );
 
-    const news = readStorage<any[]>("nababi-breaking-news", []);
+    const news = readStorage<any[]>(
+      "nababi-breaking-news",
+      []
+    );
+
     const now = new Date();
 
     const activeNews = Array.isArray(news)
@@ -469,11 +470,20 @@ export default function HomePage() {
     "Nababi Ristorante";
 
   const address =
-    contact?.address || "Via Vespasiano 73/75/77, Roma";
+    contact?.address ||
+    "Via Vespasiano 73/75/77, Roma";
 
-  const phone = contact?.phone || "+39 393 3805350";
-  const email = contact?.email || "info@nababi.it";
-  const whatsapp = contact?.whatsapp || phone;
+  const phone =
+    contact?.phone ||
+    "+39 393 3805350";
+
+  const email =
+    contact?.email ||
+    "info@nababi.it";
+
+  const whatsapp =
+    contact?.whatsapp ||
+    phone;
 
   const mapUrl =
     contact?.googleMapsUrl ||
@@ -486,8 +496,16 @@ export default function HomePage() {
 
   const currentItems = useMemo(() => {
     return menuItems.filter((item) => {
-      const category = String(item.category || "").trim().toLowerCase();
-      return category === selectedCategory.toLowerCase();
+      const category = String(
+        item.category || ""
+      )
+        .trim()
+        .toLowerCase();
+
+      return (
+        category ===
+        selectedCategory.toLowerCase()
+      );
     });
   }, [menuItems, selectedCategory]);
 
@@ -498,8 +516,11 @@ export default function HomePage() {
   const averageRating =
     totalReviews > 0
       ? (
-          reviews.reduce((sum, item) => sum + Number(item.rating || 0), 0) /
-          totalReviews
+          reviews.reduce(
+            (sum, item) =>
+              sum + Number(item.rating || 0),
+            0
+          ) / totalReviews
         ).toFixed(1)
       : "0.0";
 
@@ -514,13 +535,18 @@ export default function HomePage() {
       !bookingForm.date ||
       !bookingForm.time
     ) {
-      setBookingMessage("Please complete the required booking fields.");
+      setBookingMessage(
+        "Please complete the required booking fields."
+      );
       return;
     }
 
     const code =
       "NAB-" +
-      Math.random().toString(36).substring(2, 8).toUpperCase();
+      Math.random()
+        .toString(36)
+        .substring(2, 8)
+        .toUpperCase();
 
     const reservation: Reservation = {
       id: Date.now().toString(),
@@ -537,12 +563,21 @@ export default function HomePage() {
       status: "Confirmed",
     };
 
-    const next = [...reservations, reservation];
+    const next = [
+      ...reservations,
+      reservation,
+    ];
 
     setReservations(next);
-    localStorage.setItem("nababi-reservations", JSON.stringify(next));
 
-    setBookingMessage(`Booking confirmed. Your code is ${code}.`);
+    localStorage.setItem(
+      "nababi-reservations",
+      JSON.stringify(next)
+    );
+
+    setBookingMessage(
+      `Booking confirmed. Your code is ${code}.`
+    );
 
     setBookingForm({
       name: "",
@@ -557,70 +592,69 @@ export default function HomePage() {
     });
   }
 
-  function findBooking(e: FormEvent) {
-    e.preventDefault();
-
-    const value = trackValue.trim().toLowerCase();
-
-    if (!value) {
-      setTrackMessage("Enter your phone, email or booking code.");
-      return;
-    }
-
-    const found = reservations.find(
-      (booking) =>
-        booking.phone.toLowerCase() === value ||
-        booking.email.toLowerCase() === value ||
-        booking.code.toLowerCase() === value
-    );
-
-    if (!found) {
-      setTrackedBooking(null);
-      setTrackMessage("No booking found.");
-      return;
-    }
-
-    setTrackedBooking(found);
-    setTrackMessage("");
-  }
-
   function submitReview(e: FormEvent) {
     e.preventDefault();
     setReviewMessage("");
 
     if (!reviewForm.name.trim()) {
-      setReviewMessage("Please enter your name.");
+      setReviewMessage(
+        "Please enter your name."
+      );
       return;
     }
 
-    if (!reviewForm.phone.trim() && !reviewForm.email.trim()) {
-      setReviewMessage("Please enter phone number or email.");
+    if (
+      !reviewForm.phone.trim() &&
+      !reviewForm.email.trim()
+    ) {
+      setReviewMessage(
+        "Please enter phone number or email."
+      );
       return;
     }
 
     if (!reviewForm.review.trim()) {
-      setReviewMessage("Please write your review.");
+      setReviewMessage(
+        "Please write your review."
+      );
       return;
     }
 
     const newReview: Review = {
       id: Date.now().toString(),
-      customerName: reviewForm.name.trim(),
-      phone: reviewForm.phone.trim(),
-      email: reviewForm.email.trim(),
+      customerName:
+        reviewForm.name.trim(),
+      phone:
+        reviewForm.phone.trim(),
+      email:
+        reviewForm.email.trim(),
       rating: reviewForm.rating,
-      review: reviewForm.review.trim(),
+      review:
+        reviewForm.review.trim(),
       date: new Date().toISOString(),
       visible: true,
       replies: [],
     };
 
-    const next = [...reviews, newReview];
+    const next = [
+      ...reviews,
+      newReview,
+    ].sort(
+      (a, b) =>
+        new Date(b.date).getTime() -
+        new Date(a.date).getTime()
+    );
 
     setReviews(next);
-    localStorage.setItem("nababi-reviews", JSON.stringify(next));
 
-    setReviewMessage("Thank you. Your review has been submitted.");
+    localStorage.setItem(
+      "nababi-reviews",
+      JSON.stringify(next)
+    );
+
+    setReviewMessage(
+      "Thank you. Your review has been submitted."
+    );
 
     setReviewForm({
       name: "",
@@ -628,72 +662,6 @@ export default function HomePage() {
       email: "",
       rating: 5,
       review: "",
-    });
-  }
-
-  function submitReport(e: FormEvent) {
-    e.preventDefault();
-
-    if (!reportForm.contact || !reportForm.details) {
-      setReportMessage("Please enter your phone/email and report details.");
-      return;
-    }
-
-    const reports = readStorage<any[]>("nababi-review-reports", []);
-
-    reports.push({
-      id: Date.now().toString(),
-      contact: reportForm.contact,
-      details: reportForm.details,
-      date: new Date().toISOString(),
-    });
-
-    localStorage.setItem("nababi-review-reports", JSON.stringify(reports));
-
-    setReportMessage("Your report has been submitted.");
-
-    setReportForm({
-      contact: "",
-      details: "",
-    });
-  }
-
-  function cancelTrackedBooking() {
-    if (!trackedBooking) return;
-
-    const next = reservations.map((item) =>
-      item.id === trackedBooking.id
-        ? { ...item, status: "Cancelled" }
-        : item
-    );
-
-    setReservations(next);
-    localStorage.setItem("nababi-reservations", JSON.stringify(next));
-
-    setTrackedBooking({
-      ...trackedBooking,
-      status: "Cancelled",
-    });
-  }
-
-  function editTrackedBooking() {
-    if (!trackedBooking) return;
-
-    setBookingForm({
-      name: trackedBooking.name,
-      phone: trackedBooking.phone,
-      email: trackedBooking.email,
-      date: trackedBooking.date,
-      time: trackedBooking.time,
-      persons: trackedBooking.persons,
-      category: trackedBooking.category,
-      item: trackedBooking.item,
-      note: trackedBooking.note,
-    });
-
-    window.scrollTo({
-      top: document.getElementById("booking")?.offsetTop || 0,
-      behavior: "smooth",
     });
   }
 
@@ -999,7 +967,11 @@ export default function HomePage() {
           justify-content: center;
           gap: 8px;
           border: 1px solid ${GOLD_LIGHT};
-          background: linear-gradient(135deg, #211700, #6e4b08);
+          background: linear-gradient(
+            135deg,
+            #211700,
+            #6e4b08
+          );
           color: #fff4d5;
           padding: 11px 24px;
           border-radius: 24px;
@@ -1009,7 +981,8 @@ export default function HomePage() {
 
         .goldButton:hover {
           transform: translateY(-1px);
-          box-shadow: 0 0 18px rgba(217, 164, 65, 0.25);
+          box-shadow:
+            0 0 18px rgba(217, 164, 65, 0.25);
         }
 
         .highlights {
@@ -1103,7 +1076,10 @@ export default function HomePage() {
           right: 0;
           bottom: 0;
           padding: 8px;
-          background: linear-gradient(transparent, rgba(0, 0, 0, 0.95));
+          background: linear-gradient(
+            transparent,
+            rgba(0, 0, 0, 0.95)
+          );
           text-align: center;
           color: #fff;
         }
@@ -1136,7 +1112,10 @@ export default function HomePage() {
           flex-direction: column;
           justify-content: center;
           background:
-            linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.8)),
+            linear-gradient(
+              rgba(0, 0, 0, 0.65),
+              rgba(0, 0, 0, 0.8)
+            ),
             url("${heroImage}") center / cover;
         }
 
@@ -1201,7 +1180,8 @@ export default function HomePage() {
         .categoryCard:hover,
         .categoryCard.active {
           border-color: ${GOLD_LIGHT};
-          box-shadow: 0 0 16px rgba(217, 164, 65, 0.2);
+          box-shadow:
+            0 0 16px rgba(217, 164, 65, 0.2);
           transform: translateY(-2px);
         }
 
@@ -1261,7 +1241,7 @@ export default function HomePage() {
         .utilityGrid {
           padding: 17px 36px 20px;
           display: grid;
-          grid-template-columns: 1.35fr 0.9fr 0.95fr 0.75fr;
+          grid-template-columns: 1.45fr 0.85fr 0.85fr;
           gap: 10px;
           border-bottom: 1px solid ${GOLD};
         }
@@ -1314,10 +1294,7 @@ export default function HomePage() {
         .field select,
         .field textarea,
         .reviewForm input,
-        .reviewForm textarea,
-        .reportForm input,
-        .reportForm textarea,
-        .trackInput {
+        .reviewForm textarea {
           width: 100%;
           border: 1px solid #1c566c;
           border-radius: 5px;
@@ -1328,8 +1305,7 @@ export default function HomePage() {
         }
 
         .field textarea,
-        .reviewForm textarea,
-        .reportForm textarea {
+        .reviewForm textarea {
           min-height: 55px;
           resize: vertical;
         }
@@ -1338,10 +1314,7 @@ export default function HomePage() {
         .field select:focus,
         .field textarea:focus,
         .reviewForm input:focus,
-        .reviewForm textarea:focus,
-        .reportForm input:focus,
-        .reportForm textarea:focus,
-        .trackInput:focus {
+        .reviewForm textarea:focus {
           border-color: ${GOLD_LIGHT};
         }
 
@@ -1369,61 +1342,6 @@ export default function HomePage() {
         .blueButton {
           border-color: #00a6e8;
           color: #54c9ff;
-        }
-
-        .trackButtons {
-          display: flex;
-          gap: 7px;
-          margin-bottom: 10px;
-        }
-
-        .trackButtons button {
-          flex: 1;
-        }
-
-        .otpButton {
-          width: 100%;
-          margin-top: 10px;
-          border: 0;
-          border-radius: 5px;
-          padding: 10px;
-          background: linear-gradient(135deg, #f7d36b, #d79b28);
-          color: #16100a;
-          font-weight: 700;
-        }
-
-        .bookingCodeBox {
-          border: 1px solid rgba(217, 164, 65, 0.35);
-          border-radius: 6px;
-          padding: 10px;
-          background: rgba(0, 0, 0, 0.3);
-          margin-bottom: 10px;
-        }
-
-        .code {
-          color: ${GOLD_LIGHT};
-          font-size: 18px;
-          font-weight: 700;
-        }
-
-        .detailRows {
-          display: grid;
-          gap: 5px;
-          font-size: 11px;
-        }
-
-        .detailRow {
-          display: grid;
-          grid-template-columns: 72px 1fr;
-        }
-
-        .status {
-          display: inline-block;
-          width: fit-content;
-          background: #07862d;
-          color: #fff;
-          padding: 2px 7px;
-          border-radius: 4px;
         }
 
         .galleryPreview {
@@ -1514,7 +1432,8 @@ export default function HomePage() {
               transparent 35%
             ),
             #031011;
-          box-shadow: 0 25px 80px rgba(0, 0, 0, 0.8);
+          box-shadow:
+            0 25px 80px rgba(0, 0, 0, 0.8);
           padding: 20px;
         }
 
@@ -1544,12 +1463,11 @@ export default function HomePage() {
 
         .reviewLayout {
           display: grid;
-          grid-template-columns: 0.8fr 1.4fr 0.8fr;
+          grid-template-columns: 0.85fr 1.5fr;
           gap: 12px;
         }
 
         .reviewForm,
-        .reportForm,
         .reviewList {
           border: 1px solid rgba(217, 164, 65, 0.7);
           border-radius: 7px;
@@ -1558,7 +1476,6 @@ export default function HomePage() {
         }
 
         .reviewForm h3,
-        .reportForm h3,
         .reviewList h3 {
           color: ${GOLD_LIGHT};
           margin: 0 0 10px;
@@ -1620,11 +1537,17 @@ export default function HomePage() {
         }
 
         .reply {
-          margin-left: 20px;
+          margin: 7px 0 0 20px;
           padding: 7px 10px;
           border-left: 2px solid ${GOLD};
           color: #cfcfcf;
           font-size: 11px;
+        }
+
+        .replyDate {
+          color: #888;
+          font-size: 9px;
+          margin-top: 3px;
         }
 
         .galleryGrid {
@@ -1645,10 +1568,6 @@ export default function HomePage() {
           margin-top: 8px;
           color: ${GOLD_LIGHT};
           font-size: 11px;
-        }
-
-        .mobileNav {
-          display: none;
         }
 
         @media (max-width: 1050px) {
@@ -1817,7 +1736,9 @@ export default function HomePage() {
 
           <span className="brandText">
             NABABI
-            <span className="brandSub">RISTORANTE</span>
+            <span className="brandSub">
+              RISTORANTE
+            </span>
           </span>
         </a>
 
@@ -1826,12 +1747,18 @@ export default function HomePage() {
             {t("home")}
           </a>
 
-          <a href="#about">{t("about")}</a>
+          <a href="#about">
+            {t("about")}
+          </a>
 
-          <a href="#menu">{t("menu")}</a>
+          <a href="#menu">
+            {t("menu")}
+          </a>
 
           <button
-            onClick={() => setGalleryOpen(true)}
+            onClick={() =>
+              setGalleryOpen(true)
+            }
             style={{
               background: "transparent",
               border: 0,
@@ -1842,7 +1769,9 @@ export default function HomePage() {
           </button>
 
           <button
-            onClick={() => setReviewsOpen(true)}
+            onClick={() =>
+              setReviewsOpen(true)
+            }
             style={{
               background: "transparent",
               border: 0,
@@ -1852,7 +1781,9 @@ export default function HomePage() {
             {t("reviews")}
           </button>
 
-          <a href="#contact">{t("contact")}</a>
+          <a href="#contact">
+            {t("contact")}
+          </a>
         </nav>
 
         <div className="headerActions">
@@ -1860,84 +1791,133 @@ export default function HomePage() {
             className="langButton"
             value={lang}
             onChange={(e) => {
-              const next = e.target.value as Lang;
+              const next =
+                e.target.value as Lang;
+
               setLang(next);
-              localStorage.setItem("nababi-language", next);
+
+              localStorage.setItem(
+                "nababi-language",
+                next
+              );
             }}
           >
-            <option value="en">🇬🇧 EN</option>
-            <option value="it">🇮🇹 IT</option>
-            <option value="bn">🇧🇩 BN</option>
+            <option value="en">
+              🇬🇧 EN
+            </option>
+
+            <option value="it">
+              🇮🇹 IT
+            </option>
+
+            <option value="bn">
+              🇧🇩 BN
+            </option>
           </select>
 
-          <a className="loginLink" href="/login">
+          <a
+            className="loginLink"
+            href="/login"
+          >
             👤 {t("login")}
           </a>
 
-          <button className="adminButton" onClick={openAdmin}>
+          <button
+            className="adminButton"
+            onClick={openAdmin}
+          >
             ⚙ {t("admin")}
           </button>
         </div>
       </header>
 
       {/* HERO */}
-      <section className="hero" id="home">
+      <section
+        className="hero"
+        id="home"
+      >
         <div className="heroOverlay" />
 
         <div className="heroLeft">
-          {!newsClosed && breakingNews.length > 0 && (
-            <div className="breaking">
-              <div className="breakingHeader">
-                <span className="breakingTitle">Breaking News</span>
+          {!newsClosed &&
+            breakingNews.length > 0 && (
+              <div className="breaking">
+                <div className="breakingHeader">
+                  <span className="breakingTitle">
+                    Breaking News
+                  </span>
 
-                <button
-                  className="breakingClose"
-                  onClick={() => setNewsClosed(true)}
-                >
-                  ×
-                </button>
+                  <button
+                    className="breakingClose"
+                    onClick={() =>
+                      setNewsClosed(true)
+                    }
+                  >
+                    ×
+                  </button>
+                </div>
+
+                {breakingNews[0]?.image ? (
+                  <img
+                    src={
+                      breakingNews[0].image
+                    }
+                    className="breakingImage"
+                    alt="Breaking News"
+                  />
+                ) : (
+                  <img
+                    src={heroImage}
+                    className="breakingImage"
+                    alt="Breaking News"
+                  />
+                )}
+
+                <div className="breakingText">
+                  {breakingNews[0]?.text ||
+                    "Special Discount on Biryani!"}
+                </div>
+
+                <div className="breakingTime">
+                  ◷ Live Offer
+                </div>
               </div>
-
-              {breakingNews[0]?.image ? (
-                <img
-                  src={breakingNews[0].image}
-                  className="breakingImage"
-                  alt="Breaking News"
-                />
-              ) : (
-                <img
-                  src={heroImage}
-                  className="breakingImage"
-                  alt="Breaking News"
-                />
-              )}
-
-              <div className="breakingText">
-                {breakingNews[0]?.text || "Special Discount on Biryani!"}
-              </div>
-
-              <div className="breakingTime">◷ Live Offer</div>
-            </div>
-          )}
+            )}
 
           <div className="heroContact">
-            <div>☎ {phone}</div>
-            <div>📍 {address}</div>
+            <div>
+              ☎ {phone}
+            </div>
+
+            <div>
+              📍 {address}
+            </div>
           </div>
         </div>
 
         <div className="heroCenter">
-          <div className="heroCenterSmall">→ {t("welcome")}</div>
+          <div className="heroCenterSmall">
+            → {t("welcome")}
+          </div>
 
-          <h1 className="heroTitle">{restaurantName.toUpperCase()}</h1>
+          <h1 className="heroTitle">
+            {restaurantName.toUpperCase()}
+          </h1>
 
-          <div className="heroSubtitle">{t("subtitle")}</div>
+          <div className="heroSubtitle">
+            {t("subtitle")}
+          </div>
 
           <div className="heroLine" />
 
-          <p className="heroDescription">{t("heroText")}</p>
+          <p className="heroDescription">
+            {t("heroText")}
+          </p>
 
-          <a className="goldButton" href="#menu">
+          <a
+            className="goldButton"
+            href="#menu"
+          >
             {t("explore")} →
           </a>
         </div>
@@ -1948,32 +1928,67 @@ export default function HomePage() {
       {/* HIGHLIGHTS */}
       <section className="highlights">
         <div className="highlight">
-          <div className="roundIcon">🍃</div>
-          <strong>{t("fresh")}</strong>
-          <small>{t("freshSub")}</small>
+          <div className="roundIcon">
+            🍃
+          </div>
+
+          <strong>
+            {t("fresh")}
+          </strong>
+
+          <small>
+            {t("freshSub")}
+          </small>
         </div>
 
         <div className="highlight">
-          <div className="roundIcon">👨‍🍳</div>
-          <strong>{t("chefs")}</strong>
-          <small>{t("chefsSub")}</small>
+          <div className="roundIcon">
+            👨‍🍳
+          </div>
+
+          <strong>
+            {t("chefs")}
+          </strong>
+
+          <small>
+            {t("chefsSub")}
+          </small>
         </div>
 
         <div className="highlight">
-          <div className="roundIcon">⌂</div>
-          <strong>{t("ambience")}</strong>
-          <small>{t("ambienceSub")}</small>
+          <div className="roundIcon">
+            ⌂
+          </div>
+
+          <strong>
+            {t("ambience")}
+          </strong>
+
+          <small>
+            {t("ambienceSub")}
+          </small>
         </div>
 
         <div className="highlight">
-          <div className="roundIcon">⏱</div>
-          <strong>{t("service")}</strong>
-          <small>{t("serviceSub")}</small>
+          <div className="roundIcon">
+            ⏱
+          </div>
+
+          <strong>
+            {t("service")}
+          </strong>
+
+          <small>
+            {t("serviceSub")}
+          </small>
         </div>
       </section>
 
       {/* ABOUT + VIDEO + SMALL REVIEW OPTION */}
-      <section className="aboutSection" id="about">
+      <section
+        className="aboutSection"
+        id="about"
+      >
         <div className="videoCard">
           <img
             className="videoImage"
@@ -1981,7 +1996,9 @@ export default function HomePage() {
             alt="Nababi Restaurant"
           />
 
-          <div className="videoPlay">▶</div>
+          <div className="videoPlay">
+            ▶
+          </div>
 
           <div className="videoLabel">
             {t("watchVideo")}
@@ -1989,26 +2006,37 @@ export default function HomePage() {
         </div>
 
         <div className="aboutContent">
-          <h4>{t("aboutUs")}</h4>
+          <h4>
+            {t("aboutUs")}
+          </h4>
 
-          <h2>{home?.welcomeTitle || t("ourStory")}</h2>
+          <h2>
+            {home?.welcomeTitle ||
+              t("ourStory")}
+          </h2>
 
           <p>
             {home?.welcomeText ||
               "At Nababi Ristorante, we bring the rich culinary traditions of India and Bangladesh to the heart of Rome. Our goal is to serve you the freshest, tastiest and most memorable food with a cozy atmosphere."}
           </p>
 
-          <a className="goldButton" href="#about">
+          <a
+            className="goldButton"
+            href="#about"
+          >
             {t("learnMore")} →
           </a>
         </div>
 
-        {/* SMALL REVIEW OPTION */}
         <div className="reviewMini">
-          <div className="reviewMiniTitle">★ {t("smallReviews")}</div>
+          <div className="reviewMiniTitle">
+            ★ {t("smallReviews")}
+          </div>
 
           <div className="stars">
-            {totalReviews > 0 ? "★★★★★" : "☆☆☆☆☆"}
+            {totalReviews > 0
+              ? "★★★★★"
+              : "☆☆☆☆☆"}
           </div>
 
           <strong>
@@ -2023,7 +2051,9 @@ export default function HomePage() {
 
           <button
             className="goldButton"
-            onClick={() => setReviewsOpen(true)}
+            onClick={() =>
+              setReviewsOpen(true)
+            }
           >
             {t("viewReviews")} →
           </button>
@@ -2031,19 +2061,31 @@ export default function HomePage() {
       </section>
 
       {/* MENU */}
-      <section className="menuSection" id="menu">
+      <section
+        className="menuSection"
+        id="menu"
+      >
         <div className="sectionHeader">
           <div>
-            <h2>{t("ourMenu")}</h2>
-            <p>{t("chooseCategory")}</p>
+            <h2>
+              {t("ourMenu")}
+            </h2>
+
+            <p>
+              {t("chooseCategory")}
+            </p>
           </div>
 
           <button
             className="goldButton"
             onClick={() => {
               document
-                .getElementById("menuItems")
-                ?.scrollIntoView({ behavior: "smooth" });
+                .getElementById(
+                  "menuItems"
+                )
+                ?.scrollIntoView({
+                  behavior: "smooth",
+                });
             }}
           >
             🍴 {t("fullMenu")} →
@@ -2051,103 +2093,152 @@ export default function HomePage() {
         </div>
 
         <div className="categoryRow">
-          {categories.map((category, index) => {
-            const name = String(category);
+          {categories.map(
+            (category, index) => {
+              const name =
+                String(category);
 
-            const categoryItem = menuItems.find(
-              (item) =>
-                String(item.category || "").toLowerCase() ===
-                name.toLowerCase()
-            );
+              const categoryItem =
+                menuItems.find(
+                  (item) =>
+                    String(
+                      item.category || ""
+                    ).toLowerCase() ===
+                    name.toLowerCase()
+                );
 
-            const categoryImage =
-              categoryItem?.image ||
-              [
-                "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=600&q=80",
-                "https://images.unsplash.com/photo-1579751626657-72bc17010498?auto=format&fit=crop&w=600&q=80",
-                "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80",
-                "https://images.unsplash.com/photo-1601050690117-94f5f6fa8bd7?auto=format&fit=crop&w=600&q=80",
-              ][index % 4];
+              const categoryImage =
+                categoryItem?.image ||
+                [
+                  "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=600&q=80",
+                  "https://images.unsplash.com/photo-1579751626657-72bc17010498?auto=format&fit=crop&w=600&q=80",
+                  "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80",
+                  "https://images.unsplash.com/photo-1601050690117-94f5f6fa8bd7?auto=format&fit=crop&w=600&q=80",
+                ][index % 4];
 
-            return (
-              <button
-                key={`${name}-${index}`}
-                className={`categoryCard ${
-                  selectedCategory.toLowerCase() === name.toLowerCase()
-                    ? "active"
-                    : ""
-                }`}
-                onClick={() => {
-                  setSelectedCategory(name);
-                  setBookingForm((prev) => ({
-                    ...prev,
-                    category: name,
-                  }));
-                }}
-              >
-                <img
-                  className="categoryImage"
-                  src={categoryImage}
-                  alt={name}
-                />
+              return (
+                <button
+                  key={`${name}-${index}`}
+                  className={`categoryCard ${
+                    selectedCategory.toLowerCase() ===
+                    name.toLowerCase()
+                      ? "active"
+                      : ""
+                  }`}
+                  onClick={() => {
+                    setSelectedCategory(
+                      name
+                    );
 
-                <div className="categoryName">
-                  {name} →
-                </div>
-              </button>
-            );
-          })}
+                    setBookingForm(
+                      (prev) => ({
+                        ...prev,
+                        category:
+                          name,
+                      })
+                    );
+                  }}
+                >
+                  <img
+                    className="categoryImage"
+                    src={
+                      categoryImage
+                    }
+                    alt={name}
+                  />
+
+                  <div className="categoryName">
+                    {name} →
+                  </div>
+                </button>
+              );
+            }
+          )}
         </div>
 
-        <div className="menuItems" id="menuItems">
+        <div
+          className="menuItems"
+          id="menuItems"
+        >
           {displayItems.length > 0 ? (
-            displayItems.map((item, index) => (
-              <div
-                className="menuItem"
-                key={item.id || `${item.name}-${index}`}
-              >
-                {item.image ? (
-                  <img src={item.image} alt={item.name || "Food"} />
-                ) : (
-                  <img src={heroImage} alt={item.name || "Food"} />
-                )}
+            displayItems.map(
+              (item, index) => (
+                <div
+                  className="menuItem"
+                  key={
+                    item.id ||
+                    `${item.name}-${index}`
+                  }
+                >
+                  {item.image ? (
+                    <img
+                      src={item.image}
+                      alt={
+                        item.name ||
+                        "Food"
+                      }
+                    />
+                  ) : (
+                    <img
+                      src={heroImage}
+                      alt={
+                        item.name ||
+                        "Food"
+                      }
+                    />
+                  )}
 
-                <div className="menuItemBody">
-                  <div className="menuItemName">
-                    {item.name || "Menu Item"}
-                  </div>
+                  <div className="menuItemBody">
+                    <div className="menuItemName">
+                      {item.name ||
+                        "Menu Item"}
+                    </div>
 
-                  <div className="menuItemDescription">
-                    {item.description || ""}
-                  </div>
+                    <div className="menuItemDescription">
+                      {item.description ||
+                        ""}
+                    </div>
 
-                  <div className="menuItemPrice">
-                    {item.price !== undefined && item.price !== ""
-                      ? `${settings?.currency || "€"} ${item.price}`
-                      : ""}
+                    <div className="menuItemPrice">
+                      {item.price !==
+                        undefined &&
+                      item.price !== ""
+                        ? `${
+                            settings?.currency ||
+                            "€"
+                          } ${item.price}`
+                        : ""}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              )
+            )
           ) : (
             <div
               style={{
-                gridColumn: "1 / -1",
+                gridColumn:
+                  "1 / -1",
                 padding: "25px",
-                textAlign: "center",
+                textAlign:
+                  "center",
                 border: `1px solid ${GOLD}`,
-                borderRadius: "8px",
+                borderRadius:
+                  "8px",
               }}
             >
-              {selectedCategory} items will appear here after adding them
-              from Admin Menu.
+              {selectedCategory} items
+              will appear here after
+              adding them from Admin Menu.
             </div>
           )}
         </div>
       </section>
 
-      {/* BOOKING / TRACKING / DETAILS / GALLERY */}
-      <section className="utilityGrid" id="booking">
+      {/* BOOKING + BOOKING DETAILS + GALLERY + REVIEWS */}
+      <section
+        className="utilityGrid"
+        id="booking"
+      >
         {/* BOOKING */}
         <div className="utilityCard">
           <div className="utilityTitle">
@@ -2155,18 +2246,26 @@ export default function HomePage() {
             {t("tableBooking")}
           </div>
 
-          <div className="utilitySub">{t("reserve")}</div>
+          <div className="utilitySub">
+            {t("reserve")}
+          </div>
 
-          <form onSubmit={saveReservation}>
+          <form
+            onSubmit={saveReservation}
+          >
             <div className="formGrid">
               <label className="field">
                 {t("name")}
+
                 <input
-                  value={bookingForm.name}
+                  value={
+                    bookingForm.name
+                  }
                   onChange={(e) =>
                     setBookingForm({
                       ...bookingForm,
-                      name: e.target.value,
+                      name:
+                        e.target.value,
                     })
                   }
                   placeholder="Your name"
@@ -2175,12 +2274,16 @@ export default function HomePage() {
 
               <label className="field">
                 {t("phone")}
+
                 <input
-                  value={bookingForm.phone}
+                  value={
+                    bookingForm.phone
+                  }
                   onChange={(e) =>
                     setBookingForm({
                       ...bookingForm,
-                      phone: e.target.value,
+                      phone:
+                        e.target.value,
                     })
                   }
                   placeholder="Enter phone number"
@@ -2189,13 +2292,17 @@ export default function HomePage() {
 
               <label className="field">
                 {t("email")}
+
                 <input
                   type="email"
-                  value={bookingForm.email}
+                  value={
+                    bookingForm.email
+                  }
                   onChange={(e) =>
                     setBookingForm({
                       ...bookingForm,
-                      email: e.target.value,
+                      email:
+                        e.target.value,
                     })
                   }
                   placeholder="Enter email address"
@@ -2204,13 +2311,17 @@ export default function HomePage() {
 
               <label className="field">
                 {t("date")}
+
                 <input
                   type="date"
-                  value={bookingForm.date}
+                  value={
+                    bookingForm.date
+                  }
                   onChange={(e) =>
                     setBookingForm({
                       ...bookingForm,
-                      date: e.target.value,
+                      date:
+                        e.target.value,
                     })
                   }
                 />
@@ -2218,13 +2329,17 @@ export default function HomePage() {
 
               <label className="field">
                 {t("time")}
+
                 <input
                   type="time"
-                  value={bookingForm.time}
+                  value={
+                    bookingForm.time
+                  }
                   onChange={(e) =>
                     setBookingForm({
                       ...bookingForm,
-                      time: e.target.value,
+                      time:
+                        e.target.value,
                     })
                   }
                 />
@@ -2232,81 +2347,131 @@ export default function HomePage() {
 
               <label className="field">
                 {t("persons")}
+
                 <select
-                  value={bookingForm.persons}
+                  value={
+                    bookingForm.persons
+                  }
                   onChange={(e) =>
                     setBookingForm({
                       ...bookingForm,
-                      persons: e.target.value,
+                      persons:
+                        e.target.value,
                     })
                   }
                 >
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((number) => (
-                    <option key={number} value={number}>
-                      {number}
-                    </option>
-                  ))}
+                  {[
+                    1, 2, 3, 4, 5,
+                    6, 7, 8, 9, 10,
+                  ].map(
+                    (number) => (
+                      <option
+                        key={number}
+                        value={number}
+                      >
+                        {number}
+                      </option>
+                    )
+                  )}
                 </select>
               </label>
 
               <label className="field">
                 {t("category")}
+
                 <select
-                  value={bookingForm.category}
+                  value={
+                    bookingForm.category
+                  }
                   onChange={(e) =>
                     setBookingForm({
                       ...bookingForm,
-                      category: e.target.value,
+                      category:
+                        e.target.value,
                       item: "",
                     })
                   }
                 >
-                  {categories.map((category, index) => (
-                    <option key={`${category}-${index}`} value={category}>
-                      {category}
-                    </option>
-                  ))}
+                  {categories.map(
+                    (
+                      category,
+                      index
+                    ) => (
+                      <option
+                        key={`${category}-${index}`}
+                        value={
+                          category
+                        }
+                      >
+                        {category}
+                      </option>
+                    )
+                  )}
                 </select>
               </label>
 
               <label className="field">
                 {t("item")}
+
                 <select
-                  value={bookingForm.item}
+                  value={
+                    bookingForm.item
+                  }
                   onChange={(e) =>
                     setBookingForm({
                       ...bookingForm,
-                      item: e.target.value,
+                      item:
+                        e.target.value,
                     })
                   }
                 >
-                  <option value="">Select item</option>
+                  <option value="">
+                    Select item
+                  </option>
 
                   {menuItems
                     .filter(
                       (item) =>
-                        String(item.category || "").toLowerCase() ===
+                        String(
+                          item.category ||
+                            ""
+                        ).toLowerCase() ===
                         bookingForm.category.toLowerCase()
                     )
-                    .map((item, index) => (
-                      <option
-                        key={item.id || `${item.name}-${index}`}
-                        value={item.name || ""}
-                      >
-                        {item.name}
-                      </option>
-                    ))}
+                    .map(
+                      (
+                        item,
+                        index
+                      ) => (
+                        <option
+                          key={
+                            item.id ||
+                            `${item.name}-${index}`
+                          }
+                          value={
+                            item.name ||
+                            ""
+                          }
+                        >
+                          {item.name}
+                        </option>
+                      )
+                    )}
                 </select>
               </label>
 
               <label className="field full">
                 {t("special")}
+
                 <textarea
-                  value={bookingForm.note}
+                  value={
+                    bookingForm.note
+                  }
                   onChange={(e) =>
                     setBookingForm({
                       ...bookingForm,
-                      note: e.target.value,
+                      note:
+                        e.target.value,
                     })
                   }
                   placeholder="Write your request (Optional)"
@@ -2315,7 +2480,10 @@ export default function HomePage() {
             </div>
 
             <div className="formButtons">
-              <button className="goldButton" type="submit">
+              <button
+                className="goldButton"
+                type="submit"
+              >
                 {t("confirm")}
               </button>
 
@@ -2330,7 +2498,8 @@ export default function HomePage() {
                     date: "",
                     time: "",
                     persons: "2",
-                    category: "Biryani",
+                    category:
+                      "Biryani",
                     item: "",
                     note: "",
                   })
@@ -2341,150 +2510,49 @@ export default function HomePage() {
             </div>
 
             {bookingMessage && (
-              <div className="message">{bookingMessage}</div>
+              <div className="message">
+                {bookingMessage}
+              </div>
             )}
           </form>
         </div>
 
-        {/* TRACK */}
-        <div className="utilityCard">
-          <div className="utilityTitle">
-            <span>⌘</span>
-            {t("track")}
-          </div>
-
-          <div className="utilitySub">{t("trackSub")}</div>
-
-          <form onSubmit={findBooking}>
-            <div className="trackButtons">
-              <button className="smallButton" type="button">
-                ☎ {t("phoneLogin")}
-              </button>
-
-              <button className="smallButton" type="button">
-                ✉ {t("emailLogin")}
-              </button>
+        {/* BOOKING DETAILS */}
+        <div className="utilityCard miniAction">
+          <div>
+            <div className="utilityTitle">
+              <span>▣</span>
+              {t("bookingDetails")}
             </div>
 
-            <input
-              className="trackInput"
-              value={trackValue}
-              onChange={(e) => setTrackValue(e.target.value)}
-              placeholder="Phone / Email / Booking Code"
-            />
-
-            <button className="otpButton" type="submit">
-              {t("getOtp")}
-            </button>
-
-            {trackMessage && (
-              <div className="message">{trackMessage}</div>
-            )}
-          </form>
-        </div>
-
-        {/* DETAILS */}
-        <div className="utilityCard">
-          <div className="utilityTitle">
-            <span>▣</span>
-            {t("bookingDetails")}
+            <div className="utilitySub">
+              {t("viewEditCancel")}
+            </div>
           </div>
 
-          <div className="utilitySub">{t("viewEditCancel")}</div>
+          <div
+            style={{
+              fontSize: "11px",
+              lineHeight: 1.6,
+              opacity: 0.8,
+              marginBottom: "10px",
+            }}
+          >
+            Find your booking using your
+            phone/email and booking code.
+            You can view, edit or cancel
+            your reservation.
+          </div>
 
-          {trackedBooking ? (
-            <>
-              <div className="bookingCodeBox">
-                <div style={{ fontSize: "10px" }}>
-                  {t("bookingCode")}
-                </div>
-
-                <div className="code">{trackedBooking.code}</div>
-              </div>
-
-              <div className="detailRows">
-                <div className="detailRow">
-                  <span>Name</span>
-                  <span>{trackedBooking.name}</span>
-                </div>
-
-                <div className="detailRow">
-                  <span>Date</span>
-                  <span>{trackedBooking.date}</span>
-                </div>
-
-                <div className="detailRow">
-                  <span>Time</span>
-                  <span>{trackedBooking.time}</span>
-                </div>
-
-                <div className="detailRow">
-                  <span>Persons</span>
-                  <span>{trackedBooking.persons}</span>
-                </div>
-
-                <div className="detailRow">
-                  <span>Category</span>
-                  <span>{trackedBooking.category}</span>
-                </div>
-
-                <div className="detailRow">
-                  <span>Item</span>
-                  <span>{trackedBooking.item || "-"}</span>
-                </div>
-
-                <div className="detailRow">
-                  <span>Status</span>
-                  <span className="status">
-                    {trackedBooking.status}
-                  </span>
-                </div>
-              </div>
-
-              <div className="formButtons">
-                <button
-                  className="goldButton"
-                  type="button"
-                  onClick={() => setTrackedBooking(null)}
-                >
-                  {t("viewDetails")}
-                </button>
-
-                <button
-                  className="blueButton"
-                  type="button"
-                  onClick={editTrackedBooking}
-                >
-                  {t("edit")}
-                </button>
-
-                <button
-                  className="dangerButton"
-                  type="button"
-                  onClick={cancelTrackedBooking}
-                >
-                  {t("cancel")}
-                </button>
-              </div>
-            </>
-          ) : (
-            <div
-              style={{
-                minHeight: "150px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                textAlign: "center",
-                opacity: 0.75,
-                fontSize: "12px",
-              }}
-            >
-              Enter your booking phone, email or code to see details.
-            </div>
-          )}
+          <a
+            href="/booking-details"
+            className="goldButton"
+          >
+            {t("bookingDetails")} →
+          </a>
         </div>
 
-        {/* GALLERY + REPORT */}
+        {/* GALLERY + REVIEWS */}
         <div className="utilityStack">
           <div className="utilityCard miniAction">
             <div>
@@ -2501,7 +2569,12 @@ export default function HomePage() {
             {gallery.length > 0 ? (
               <img
                 className="galleryPreview"
-                src={safeImage(gallery[0].image) || heroImage}
+                src={
+                  safeImage(
+                    gallery[0].image
+                  ) ||
+                  heroImage
+                }
                 alt="Gallery"
               />
             ) : (
@@ -2514,7 +2587,9 @@ export default function HomePage() {
 
             <button
               className="goldButton"
-              onClick={() => setGalleryOpen(true)}
+              onClick={() =>
+                setGalleryOpen(true)
+              }
             >
               {t("viewGallery")} →
             </button>
@@ -2523,31 +2598,42 @@ export default function HomePage() {
           <div className="utilityCard miniAction">
             <div>
               <div className="utilityTitle">
-                <span>➤</span>
-                {t("report")}
+                <span>★</span>
+                {t("reviews")}
               </div>
 
               <div className="utilitySub">
-                {t("reportSub")}
+                {totalReviews > 0
+                  ? `${averageRating}/5 · ${totalReviews} reviews`
+                  : "Share your experience with us"}
               </div>
             </div>
 
             <button
               className="goldButton"
-              onClick={() => setReviewsOpen(true)}
+              onClick={() =>
+                setReviewsOpen(true)
+              }
             >
-              {t("sendReport")} →
+              {t("viewReviews")} →
             </button>
           </div>
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer className="footer" id="contact">
+      <footer
+        className="footer"
+        id="contact"
+      >
         <div className="footerCol">
-          <div className="footerTitle">📍 {t("map")}</div>
+          <div className="footerTitle">
+            📍 {t("map")}
+          </div>
 
-          <div className="footerLine">Google Maps</div>
+          <div className="footerLine">
+            Google Maps
+          </div>
 
           <a
             href={mapUrl}
@@ -2560,39 +2646,57 @@ export default function HomePage() {
         </div>
 
         <div className="footerCol">
-          <div className="footerTitle">☎ {t("contactUs")}</div>
+          <div className="footerTitle">
+            ☎ {t("contactUs")}
+          </div>
 
           <div className="footerLine">
             ☎{" "}
-            <a href={`tel:${phone}`} className="footerLink">
+            <a
+              href={`tel:${phone}`}
+              className="footerLink"
+            >
               {phone}
             </a>
           </div>
 
-          <div className="footerLine">
-            🟢{" "}
-            <a
-              href={`https://wa.me/${whatsapp.replace(/\D/g, "")}`}
-              target="_blank"
-              rel="noreferrer"
-              className="footerLink"
-            >
-              WhatsApp
-            </a>
-          </div>
+          {whatsapp && (
+            <div className="footerLine">
+              🟢{" "}
+              <a
+                href={`https://wa.me/${whatsapp.replace(
+                  /\D/g,
+                  ""
+                )}`}
+                target="_blank"
+                rel="noreferrer"
+                className="footerLink"
+              >
+                WhatsApp
+              </a>
+            </div>
+          )}
 
           <div className="footerLine">
             ✉{" "}
-            <a href={`mailto:${email}`} className="footerLink">
+            <a
+              href={`mailto:${email}`}
+              className="footerLink"
+            >
               {email}
             </a>
           </div>
 
-          <div className="footerLine">📍 {address}</div>
+          <div className="footerLine">
+            📍 {address}
+          </div>
         </div>
 
+        {/* SOCIAL MEDIA */}
         <div className="footerCol">
-          <div className="footerTitle">◉ {t("follow")}</div>
+          <div className="footerTitle">
+            ◉ {t("socialMedia")}
+          </div>
 
           {facebook && (
             <div className="footerLine">
@@ -2650,34 +2754,68 @@ export default function HomePage() {
             </div>
           )}
 
-          {!facebook && !instagram && !tiktok && !youtube && (
+          {whatsapp && (
             <div className="footerLine">
-              Social media links can be added from Admin.
+              🟢{" "}
+              <a
+                href={`https://wa.me/${whatsapp.replace(
+                  /\D/g,
+                  ""
+                )}`}
+                target="_blank"
+                rel="noreferrer"
+                className="footerLink"
+              >
+                WhatsApp
+              </a>
             </div>
           )}
+
+          {!facebook &&
+            !instagram &&
+            !tiktok &&
+            !youtube &&
+            !whatsapp && (
+              <div className="footerLine">
+                Social media links can be added
+                from Admin.
+              </div>
+            )}
         </div>
 
+        {/* QUICK LINKS */}
         <div className="footerCol">
-          <div className="footerTitle">⚡ {t("quick")}</div>
+          <div className="footerTitle">
+            ⚡ {t("quick")}
+          </div>
 
           <div className="footerLine">
-            <a href="#about" className="footerLink">
+            <a
+              href="#about"
+              className="footerLink"
+            >
               👥 {t("about")}
             </a>
           </div>
 
           <div className="footerLine">
-            <a href="#menu" className="footerLink">
+            <a
+              href="#menu"
+              className="footerLink"
+            >
               ✉ {t("menu")}
             </a>
           </div>
 
           <div className="footerLine">
             <button
-              onClick={() => setGalleryOpen(true)}
+              onClick={() =>
+                setGalleryOpen(true)
+              }
               className="footerLink"
               style={{
-                background: "transparent",
+                background:
+                  "transparent",
                 border: 0,
                 padding: 0,
                 color: "inherit",
@@ -2688,7 +2826,37 @@ export default function HomePage() {
           </div>
 
           <div className="footerLine">
-            <a href="#contact" className="footerLink">
+            <button
+              onClick={() =>
+                setReviewsOpen(true)
+              }
+              className="footerLink"
+              style={{
+                background:
+                  "transparent",
+                border: 0,
+                padding: 0,
+                color: "inherit",
+              }}
+            >
+              ★ {t("reviews")}
+            </button>
+          </div>
+
+          <div className="footerLine">
+            <a
+              href="/booking-details"
+              className="footerLink"
+            >
+              ▣ {t("bookingDetails")}
+            </a>
+          </div>
+
+          <div className="footerLine">
+            <a
+              href="#contact"
+              className="footerLink"
+            >
               ☎ {t("contact")}
             </a>
           </div>
@@ -2696,9 +2864,16 @@ export default function HomePage() {
       </footer>
 
       <div className="copyright">
-        <span>© 2025 {restaurantName}. All rights reserved.</span>
+        <span>
+          © 2025 {restaurantName}. All rights
+          reserved.
+        </span>
 
-        <span style={{ color: GOLD_LIGHT }}>
+        <span
+          style={{
+            color: GOLD_LIGHT,
+          }}
+        >
           ❧ Good Food&nbsp; • &nbsp;Good Mood ❧
         </span>
       </div>
@@ -2707,27 +2882,42 @@ export default function HomePage() {
       {reviewsOpen && (
         <div
           className="modalBackdrop"
-          onClick={() => setReviewsOpen(false)}
+          onClick={() =>
+            setReviewsOpen(false)
+          }
         >
           <div
             className="modal"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) =>
+              e.stopPropagation()
+            }
           >
             <div className="modalHeader">
               <div>
-                <h2>★ {t("reviews")}</h2>
+                <h2>
+                  ★ {t("reviews")}
+                </h2>
 
-                <div style={{ marginTop: "4px" }}>
+                <div
+                  style={{
+                    marginTop: "4px",
+                  }}
+                >
                   <span className="stars">
-                    {totalReviews > 0 ? "★★★★★" : "☆☆☆☆☆"}
+                    {totalReviews > 0
+                      ? "★★★★★"
+                      : "☆☆☆☆☆"}
                   </span>{" "}
-                  {averageRating}/5 · {totalReviews} reviews
+                  {averageRating}/5 ·{" "}
+                  {totalReviews} reviews
                 </div>
               </div>
 
               <button
                 className="closeButton"
-                onClick={() => setReviewsOpen(false)}
+                onClick={() =>
+                  setReviewsOpen(false)
+                }
               >
                 ×
               </button>
@@ -2735,39 +2925,59 @@ export default function HomePage() {
 
             <div className="reviewLayout">
               {/* WRITE REVIEW */}
-              <form className="reviewForm" onSubmit={submitReview}>
-                <h3>{t("writeReview")}</h3>
+              <form
+                className="reviewForm"
+                onSubmit={submitReview}
+              >
+                <h3>
+                  {t("writeReview")}
+                </h3>
 
                 <input
-                  placeholder={t("name")}
-                  value={reviewForm.name}
+                  placeholder={`${t(
+                    "name"
+                  )} *`}
+                  value={
+                    reviewForm.name
+                  }
                   onChange={(e) =>
                     setReviewForm({
                       ...reviewForm,
-                      name: e.target.value,
+                      name:
+                        e.target.value,
                     })
                   }
                 />
 
                 <input
-                  placeholder={t("phone")}
-                  value={reviewForm.phone}
+                  placeholder={`${t(
+                    "phone"
+                  )} (Phone or Email — one required)`}
+                  value={
+                    reviewForm.phone
+                  }
                   onChange={(e) =>
                     setReviewForm({
                       ...reviewForm,
-                      phone: e.target.value,
+                      phone:
+                        e.target.value,
                     })
                   }
                 />
 
                 <input
                   type="email"
-                  placeholder={t("email")}
-                  value={reviewForm.email}
+                  placeholder={`${t(
+                    "email"
+                  )} (Phone or Email — one required)`}
+                  value={
+                    reviewForm.email
+                  }
                   onChange={(e) =>
                     setReviewForm({
                       ...reviewForm,
-                      email: e.target.value,
+                      email:
+                        e.target.value,
                     })
                   }
                 />
@@ -2775,144 +2985,212 @@ export default function HomePage() {
                 <div>
                   <div
                     style={{
-                      fontSize: "11px",
-                      marginBottom: "4px",
+                      fontSize:
+                        "11px",
+                      marginBottom:
+                        "4px",
                     }}
                   >
-                    {t("rating")}
+                    {t("rating")} ⭐
                   </div>
 
                   <div className="ratingButtons">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        className={`starButton ${
-                          reviewForm.rating >= star ? "active" : ""
-                        }`}
-                        onClick={() =>
-                          setReviewForm({
-                            ...reviewForm,
-                            rating: star,
-                          })
-                        }
-                      >
-                        ★
-                      </button>
-                    ))}
+                    {[1, 2, 3, 4, 5].map(
+                      (star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          className={`starButton ${
+                            reviewForm.rating >=
+                            star
+                              ? "active"
+                              : ""
+                          }`}
+                          onClick={() =>
+                            setReviewForm({
+                              ...reviewForm,
+                              rating:
+                                star,
+                            })
+                          }
+                        >
+                          ★
+                        </button>
+                      )
+                    )}
                   </div>
                 </div>
 
                 <textarea
-                  placeholder={t("reviewDetails")}
-                  value={reviewForm.review}
+                  placeholder={`${t(
+                    "reviewDetails"
+                  )} *`}
+                  value={
+                    reviewForm.review
+                  }
                   onChange={(e) =>
                     setReviewForm({
                       ...reviewForm,
-                      review: e.target.value,
+                      review:
+                        e.target.value,
                     })
                   }
                 />
 
-                <button className="goldButton" type="submit">
+                <button
+                  className="goldButton"
+                  type="submit"
+                >
                   {t("submitReview")}
                 </button>
 
                 {reviewMessage && (
-                  <div className="message">{reviewMessage}</div>
+                  <div className="message">
+                    {reviewMessage}
+                  </div>
                 )}
+
+                <div
+                  style={{
+                    fontSize: "9px",
+                    color: "#888",
+                    lineHeight: 1.4,
+                    marginTop:
+                      "2px",
+                  }}
+                >
+                  Your phone number and
+                  email are used only for
+                  customer identification
+                  and will never be shown
+                  publicly.
+                </div>
               </form>
 
               {/* ALL REVIEWS */}
               <div className="reviewList">
-                <h3>{t("allReviews")}</h3>
+                <h3>
+                  {t("allReviews")}
+                </h3>
 
                 {reviews.length > 0 ? (
-                  reviews.map((review) => (
-                    <div className="reviewItem" key={review.id}>
-                      <div className="reviewTop">
-                        <div className="reviewName">
-                          👤 {review.customerName}
+                  reviews.map(
+                    (review) => (
+                      <div
+                        className="reviewItem"
+                        key={
+                          review.id
+                        }
+                      >
+                        <div className="reviewTop">
+                          <div className="reviewName">
+                            👤{" "}
+                            {
+                              review.customerName
+                            }
+                          </div>
+
+                          <div className="reviewDate">
+                            {new Date(
+                              review.date
+                            ).toLocaleDateString()}
+                          </div>
                         </div>
 
-                        <div className="reviewDate">
-                          {new Date(review.date).toLocaleDateString()}
-                        </div>
-                      </div>
-
-                      <div className="stars">
-                        {"★".repeat(
-                          Math.max(0, Math.min(5, Number(review.rating)))
-                        )}
-                        <span style={{ color: "#555" }}>
+                        <div className="stars">
                           {"★".repeat(
                             Math.max(
                               0,
-                              5 - Math.min(5, Number(review.rating))
+                              Math.min(
+                                5,
+                                Number(
+                                  review.rating
+                                )
+                              )
                             )
                           )}
-                        </span>
-                      </div>
 
-                      <div className="reviewText">
-                        {review.review}
-                      </div>
-
-                      {review.replies?.map((reply) => (
-                        <div className="reply" key={reply.id}>
-                          <strong>Restaurant:</strong>{" "}
-                          {reply.text}
+                          <span
+                            style={{
+                              color:
+                                "#555",
+                            }}
+                          >
+                            {"★".repeat(
+                              Math.max(
+                                0,
+                                5 -
+                                  Math.min(
+                                    5,
+                                    Number(
+                                      review.rating
+                                    )
+                                  )
+                              )
+                            )}
+                          </span>
                         </div>
-                      ))}
-                    </div>
-                  ))
+
+                        <div className="reviewText">
+                          {review.review}
+                        </div>
+
+                        {review.replies
+                          ?.slice()
+                          .sort(
+                            (a, b) =>
+                              new Date(
+                                a.date
+                              ).getTime() -
+                              new Date(
+                                b.date
+                              ).getTime()
+                          )
+                          .map(
+                            (
+                              reply
+                            ) => (
+                              <div
+                                className="reply"
+                                key={
+                                  reply.id
+                                }
+                              >
+                                <strong>
+                                  Restaurant:
+                                </strong>{" "}
+                                {
+                                  reply.text
+                                }
+
+                                <div className="replyDate">
+                                  {new Date(
+                                    reply.date
+                                  ).toLocaleDateString()}
+                                </div>
+                              </div>
+                            )
+                          )}
+                      </div>
+                    )
+                  )
                 ) : (
                   <div
                     style={{
-                      padding: "25px 5px",
-                      textAlign: "center",
-                      opacity: 0.7,
+                      padding:
+                        "25px 5px",
+                      textAlign:
+                        "center",
+                      opacity:
+                        0.7,
                     }}
                   >
-                    {t("noReviews")}
+                    {t(
+                      "noReviews"
+                    )}
                   </div>
                 )}
               </div>
-
-              {/* REPORT */}
-              <form className="reportForm" onSubmit={submitReport}>
-                <h3>{t("reportReview")}</h3>
-
-                <input
-                  placeholder="Phone Number or Email"
-                  value={reportForm.contact}
-                  onChange={(e) =>
-                    setReportForm({
-                      ...reportForm,
-                      contact: e.target.value,
-                    })
-                  }
-                />
-
-                <textarea
-                  placeholder={t("reportDetails")}
-                  value={reportForm.details}
-                  onChange={(e) =>
-                    setReportForm({
-                      ...reportForm,
-                      details: e.target.value,
-                    })
-                  }
-                />
-
-                <button className="goldButton" type="submit">
-                  {t("submitReport")}
-                </button>
-
-                {reportMessage && (
-                  <div className="message">{reportMessage}</div>
-                )}
-              </form>
             </div>
           </div>
         </div>
@@ -2922,18 +3200,29 @@ export default function HomePage() {
       {galleryOpen && (
         <div
           className="modalBackdrop"
-          onClick={() => setGalleryOpen(false)}
+          onClick={() =>
+            setGalleryOpen(false)
+          }
         >
           <div
             className="modal"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) =>
+              e.stopPropagation()
+            }
           >
             <div className="modalHeader">
-              <h2>▣ {t("galleryTitle")}</h2>
+              <h2>
+                ▣{" "}
+                {t(
+                  "galleryTitle"
+                )}
+              </h2>
 
               <button
                 className="closeButton"
-                onClick={() => setGalleryOpen(false)}
+                onClick={() =>
+                  setGalleryOpen(false)
+                }
               >
                 ×
               </button>
@@ -2941,23 +3230,39 @@ export default function HomePage() {
 
             {gallery.length > 0 ? (
               <div className="galleryGrid">
-                {gallery.map((item, index) => (
-                  <img
-                    key={item.id || index}
-                    src={item.image || heroImage}
-                    alt={item.category || "Gallery"}
-                  />
-                ))}
+                {gallery.map(
+                  (item, index) => (
+                    <img
+                      key={
+                        item.id ||
+                        index
+                      }
+                      src={
+                        item.image ||
+                        heroImage
+                      }
+                      alt={
+                        item.category ||
+                        "Gallery"
+                      }
+                    />
+                  )
+                )}
               </div>
             ) : (
               <div
                 style={{
-                  textAlign: "center",
-                  padding: "50px 20px",
-                  opacity: 0.75,
+                  textAlign:
+                    "center",
+                  padding:
+                    "50px 20px",
+                  opacity:
+                    0.75,
                 }}
               >
-                {t("noGallery")}
+                {t(
+                  "noGallery"
+                )}
               </div>
             )}
           </div>
