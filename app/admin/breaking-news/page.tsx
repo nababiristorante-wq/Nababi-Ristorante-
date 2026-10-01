@@ -36,26 +36,28 @@ const MEDIA_STORE_NAME = "media";
 const MAX_IMAGE_SIZE = 8 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 50 * 1024 * 1024;
 
-const SUPPORTED_IMAGE_TYPES = [
+const SUPPORTED_IMAGES = [
   "image/jpeg",
   "image/png",
   "image/webp",
 ];
 
-const SUPPORTED_VIDEO_TYPES = [
+const SUPPORTED_VIDEOS = [
   "video/mp4",
   "video/webm",
   "video/quicktime",
 ];
 
+/* =========================================================
+   MEDIA DATABASE
+========================================================= */
+
 function openMediaDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    if (typeof window === "undefined" || !("indexedDB" in window)) {
-      reject(new Error("IndexedDB is not available in this browser."));
-      return;
-    }
-
-    const request = indexedDB.open(MEDIA_DB_NAME, MEDIA_DB_VERSION);
+    const request = indexedDB.open(
+      MEDIA_DB_NAME,
+      MEDIA_DB_VERSION
+    );
 
     request.onupgradeneeded = () => {
       const db = request.result;
@@ -73,24 +75,33 @@ function openMediaDB(): Promise<IDBDatabase> {
 
     request.onerror = () => {
       reject(
-        request.error || new Error("Could not open media database.")
+        request.error ||
+          new Error("Could not open media database.")
       );
     };
   });
 }
 
-async function saveMedia(
+function saveMedia(
   media: StoredMedia
 ): Promise<void> {
-  const db = await openMediaDB();
+  return new Promise(async (resolve, reject) => {
+    let db: IDBDatabase;
 
-  return new Promise((resolve, reject) => {
+    try {
+      db = await openMediaDB();
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
     const transaction = db.transaction(
       MEDIA_STORE_NAME,
       "readwrite"
     );
 
-    const store = transaction.objectStore(MEDIA_STORE_NAME);
+    const store =
+      transaction.objectStore(MEDIA_STORE_NAME);
 
     store.put(media);
 
@@ -106,7 +117,7 @@ async function saveMedia(
 
       reject(
         error ||
-          new Error("Could not save media file.")
+          new Error("Could not save media.")
       );
     };
 
@@ -117,28 +128,34 @@ async function saveMedia(
 
       reject(
         error ||
-          new Error("Media save operation was aborted.")
+          new Error("Media save was aborted.")
       );
     };
   });
 }
 
-async function getMedia(
+function getMedia(
   id: string
 ): Promise<StoredMedia | null> {
-  const db = await openMediaDB();
+  return new Promise(async (resolve, reject) => {
+    let db: IDBDatabase;
 
-  return new Promise((resolve, reject) => {
+    try {
+      db = await openMediaDB();
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
     const transaction = db.transaction(
       MEDIA_STORE_NAME,
       "readonly"
     );
 
-    const store = transaction.objectStore(
-      MEDIA_STORE_NAME
-    );
-
-    const request = store.get(id);
+    const request =
+      transaction
+        .objectStore(MEDIA_STORE_NAME)
+        .get(id);
 
     request.onsuccess = () => {
       resolve(request.result || null);
@@ -161,20 +178,27 @@ async function getMedia(
   });
 }
 
-async function deleteMedia(id: string): Promise<void> {
-  const db = await openMediaDB();
+function deleteMedia(
+  id: string
+): Promise<void> {
+  return new Promise(async (resolve, reject) => {
+    let db: IDBDatabase;
 
-  return new Promise((resolve, reject) => {
+    try {
+      db = await openMediaDB();
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
     const transaction = db.transaction(
       MEDIA_STORE_NAME,
       "readwrite"
     );
 
-    const store = transaction.objectStore(
-      MEDIA_STORE_NAME
-    );
-
-    store.delete(id);
+    transaction
+      .objectStore(MEDIA_STORE_NAME)
+      .delete(id);
 
     transaction.oncomplete = () => {
       db.close();
@@ -194,10 +218,19 @@ async function deleteMedia(id: string): Promise<void> {
   });
 }
 
+/* =========================================================
+   HELPERS
+========================================================= */
+
 function createMediaId() {
-  return `breaking-media-${Date.now()}-${Math.random()
-    .toString(36)
-    .slice(2, 10)}`;
+  return (
+    "breaking-media-" +
+    Date.now() +
+    "-" +
+    Math.random()
+      .toString(36)
+      .slice(2, 10)
+  );
 }
 
 function formatFileSize(bytes: number) {
@@ -209,41 +242,107 @@ function formatFileSize(bytes: number) {
     return `${(bytes / 1024).toFixed(1)} KB`;
   }
 
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  return `${(
+    bytes /
+    (1024 * 1024)
+  ).toFixed(2)} MB`;
 }
 
-function isSupportedImage(file: File) {
-  return SUPPORTED_IMAGE_TYPES.includes(
-    file.type.toLowerCase()
-  );
+/* =========================================================
+   FILE PROGRESS READER
+========================================================= */
+
+function readFileWithProgress(
+  file: File,
+  onProgress: (percent: number) => void
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percent = Math.round(
+          (event.loaded / event.total) * 100
+        );
+
+        onProgress(percent);
+      }
+    };
+
+    reader.onload = () => {
+      onProgress(100);
+
+      const result = reader.result;
+
+      if (!(result instanceof ArrayBuffer)) {
+        reject(
+          new Error(
+            "Could not read the selected file."
+          )
+        );
+
+        return;
+      }
+
+      resolve(
+        new Blob([result], {
+          type: file.type,
+        })
+      );
+    };
+
+    reader.onerror = () => {
+      reject(
+        reader.error ||
+          new Error(
+            "Could not read the selected file."
+          )
+      );
+    };
+
+    reader.onabort = () => {
+      reject(
+        new Error("File reading was cancelled.")
+      );
+    };
+
+    reader.readAsArrayBuffer(file);
+  });
 }
 
-function isSupportedVideo(file: File) {
-  return SUPPORTED_VIDEO_TYPES.includes(
-    file.type.toLowerCase()
-  );
-}
+/* =========================================================
+   IMAGE COMPRESSION
+========================================================= */
 
-async function compressImage(file: File): Promise<Blob> {
-  const objectUrl = URL.createObjectURL(file);
+async function compressImage(
+  file: File,
+  onProgress: (percent: number) => void
+): Promise<Blob> {
+  onProgress(5);
+
+  const objectUrl =
+    URL.createObjectURL(file);
 
   try {
-    const image = await new Promise<HTMLImageElement>(
-      (resolve, reject) => {
-        const img = new Image();
+    const image =
+      await new Promise<HTMLImageElement>(
+        (resolve, reject) => {
+          const img = new Image();
 
-        img.onload = () => resolve(img);
+          img.onload = () => resolve(img);
 
-        img.onerror = () =>
-          reject(
-            new Error(
-              "The selected image could not be read."
-            )
-          );
+          img.onerror = () =>
+            reject(
+              new Error(
+                "The selected image could not be opened."
+              )
+            );
 
-        img.src = objectUrl;
-      }
-    );
+          img.src = objectUrl;
+        }
+      );
+
+    onProgress(20);
 
     const maxWidth = 1400;
     const maxHeight = 1400;
@@ -251,7 +350,10 @@ async function compressImage(file: File): Promise<Blob> {
     let width = image.naturalWidth;
     let height = image.naturalHeight;
 
-    if (width > maxWidth || height > maxHeight) {
+    if (
+      width > maxWidth ||
+      height > maxHeight
+    ) {
       const ratio = Math.min(
         maxWidth / width,
         maxHeight / height
@@ -261,25 +363,28 @@ async function compressImage(file: File): Promise<Blob> {
       height = Math.round(height * ratio);
     }
 
-    const canvas = document.createElement("canvas");
+    const canvas =
+      document.createElement("canvas");
 
     canvas.width = width;
     canvas.height = height;
 
-    const context = canvas.getContext("2d");
+    const context =
+      canvas.getContext("2d");
 
     if (!context) {
       throw new Error(
-        "Your browser could not prepare the image."
+        "Could not prepare the image."
       );
     }
 
     context.fillStyle = "#ffffff";
+
     context.fillRect(
       0,
       0,
-      canvas.width,
-      canvas.height
+      width,
+      height
     );
 
     context.drawImage(
@@ -290,6 +395,8 @@ async function compressImage(file: File): Promise<Blob> {
       height
     );
 
+    onProgress(40);
+
     const qualities = [
       0.78,
       0.68,
@@ -299,33 +406,59 @@ async function compressImage(file: File): Promise<Blob> {
       0.32,
     ];
 
-    for (const quality of qualities) {
-      const blob = await new Promise<Blob | null>(
-        (resolve) => {
-          canvas.toBlob(
-            resolve,
-            "image/jpeg",
-            quality
-          );
-        }
-      );
+    for (
+      let index = 0;
+      index < qualities.length;
+      index++
+    ) {
+      const quality =
+        qualities[index];
+
+      const blob =
+        await new Promise<Blob | null>(
+          (resolve) => {
+            canvas.toBlob(
+              resolve,
+              "image/jpeg",
+              quality
+            );
+          }
+        );
 
       if (!blob) continue;
 
-      if (blob.size <= 500 * 1024) {
+      const compressionProgress =
+        45 +
+        Math.round(
+          ((index + 1) /
+            qualities.length) *
+            45
+        );
+
+      onProgress(
+        compressionProgress
+      );
+
+      if (
+        blob.size <=
+        500 * 1024
+      ) {
+        onProgress(92);
+
         return blob;
       }
     }
 
-    const finalBlob = await new Promise<Blob | null>(
-      (resolve) => {
-        canvas.toBlob(
-          resolve,
-          "image/jpeg",
-          0.25
-        );
-      }
-    );
+    const finalBlob =
+      await new Promise<Blob | null>(
+        (resolve) => {
+          canvas.toBlob(
+            resolve,
+            "image/jpeg",
+            0.25
+          );
+        }
+      );
 
     if (!finalBlob) {
       throw new Error(
@@ -333,30 +466,39 @@ async function compressImage(file: File): Promise<Blob> {
       );
     }
 
+    onProgress(92);
+
     return finalBlob;
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
 }
 
+/* =========================================================
+   COMPONENT
+========================================================= */
+
 export default function BreakingNewsPage() {
-  const [newsList, setNewsList] = useState<
-    BreakingNews[]
-  >([]);
+  const [newsList, setNewsList] =
+    useState<BreakingNews[]>([]);
 
-  const [text, setText] = useState("");
+  const [text, setText] =
+    useState("");
 
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] =
+    useState(true);
 
-  const [startDate, setStartDate] = useState("");
+  const [startDate, setStartDate] =
+    useState("");
 
-  const [endDate, setEndDate] = useState("");
+  const [endDate, setEndDate] =
+    useState("");
 
-  const [editingId, setEditingId] = useState<
-    number | null
-  >(null);
+  const [editingId, setEditingId] =
+    useState<number | null>(null);
 
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] =
+    useState(false);
 
   const [mediaType, setMediaType] =
     useState<MediaType>("none");
@@ -370,23 +512,35 @@ export default function BreakingNewsPage() {
   const [existingMediaUrl, setExistingMediaUrl] =
     useState("");
 
-  const [uploadingMedia, setUploadingMedia] =
+  const [uploadProgress, setUploadProgress] =
+    useState(0);
+
+  const [uploading, setUploading] =
     useState(false);
+
+  const [uploadStage, setUploadStage] =
+    useState("");
 
   const [mediaError, setMediaError] =
     useState("");
 
-  const [previewUrls, setPreviewUrls] = useState<
-    Record<number, string>
-  >({});
+  const [previewUrls, setPreviewUrls] =
+    useState<Record<number, string>>({});
+
+  /* =========================================================
+     LOAD NEWS
+  ========================================================= */
 
   useEffect(() => {
     try {
       const stored =
-        localStorage.getItem(STORAGE_KEY);
+        localStorage.getItem(
+          STORAGE_KEY
+        );
 
       if (stored) {
-        const parsed = JSON.parse(stored);
+        const parsed =
+          JSON.parse(stored);
 
         if (Array.isArray(parsed)) {
           setNewsList(parsed);
@@ -397,13 +551,35 @@ export default function BreakingNewsPage() {
     }
   }, []);
 
+  /* =========================================================
+     CLEANUP
+  ========================================================= */
+
   useEffect(() => {
     return () => {
-      Object.values(previewUrls).forEach((url) => {
+      if (selectedPreview) {
+        URL.revokeObjectURL(
+          selectedPreview
+        );
+      }
+
+      if (existingMediaUrl) {
+        URL.revokeObjectURL(
+          existingMediaUrl
+        );
+      }
+
+      Object.values(
+        previewUrls
+      ).forEach((url) => {
         URL.revokeObjectURL(url);
       });
     };
-  }, [previewUrls]);
+  }, []);
+
+  /* =========================================================
+     SAVE NEWS
+  ========================================================= */
 
   const saveNewsList = (
     nextList: BreakingNews[]
@@ -416,122 +592,180 @@ export default function BreakingNewsPage() {
     );
   };
 
+  /* =========================================================
+     RESET
+  ========================================================= */
+
   const resetForm = () => {
+    if (selectedPreview) {
+      URL.revokeObjectURL(
+        selectedPreview
+      );
+    }
+
+    if (existingMediaUrl) {
+      URL.revokeObjectURL(
+        existingMediaUrl
+      );
+    }
+
     setText("");
     setVisible(true);
     setStartDate("");
     setEndDate("");
     setEditingId(null);
+
     setMediaType("none");
+
     setSelectedFile(null);
-    setMediaError("");
-
-    if (selectedPreview) {
-      URL.revokeObjectURL(selectedPreview);
-    }
-
     setSelectedPreview("");
     setExistingMediaUrl("");
+
+    setUploadProgress(0);
+    setUploadStage("");
+    setMediaError("");
   };
 
-  const handleMediaTypeChange = (
+  /* =========================================================
+     MEDIA TYPE
+  ========================================================= */
+
+  const selectMediaType = (
     type: MediaType
   ) => {
-    setMediaType(type);
-    setMediaError("");
-
     if (selectedPreview) {
-      URL.revokeObjectURL(selectedPreview);
+      URL.revokeObjectURL(
+        selectedPreview
+      );
     }
 
-    setSelectedPreview("");
+    if (existingMediaUrl) {
+      URL.revokeObjectURL(
+        existingMediaUrl
+      );
+    }
+
+    setMediaType(type);
+
     setSelectedFile(null);
+    setSelectedPreview("");
     setExistingMediaUrl("");
+
+    setUploadProgress(0);
+    setUploadStage("");
+    setMediaError("");
   };
 
-  const handleFileChange = async (
+  /* =========================================================
+     FILE SELECT
+  ========================================================= */
+
+  const handleFileChange = (
     e: ChangeEvent<HTMLInputElement>
   ) => {
-    const file = e.target.files?.[0];
+    const file =
+      e.target.files?.[0];
 
     if (!file) return;
 
     setMediaError("");
+    setUploadProgress(0);
 
-    if (
-      mediaType === "image" &&
-      !isSupportedImage(file)
-    ) {
-      setMediaError(
-        "Please select a JPG, PNG or WEBP image."
-      );
+    if (mediaType === "image") {
+      if (
+        !SUPPORTED_IMAGES.includes(
+          file.type
+        )
+      ) {
+        setMediaError(
+          "Only JPG, PNG and WEBP images are supported."
+        );
 
-      e.target.value = "";
-      return;
+        e.target.value = "";
+        return;
+      }
+
+      if (
+        file.size >
+        MAX_IMAGE_SIZE
+      ) {
+        setMediaError(
+          `Image is too large. Maximum 8MB. Selected: ${formatFileSize(
+            file.size
+          )}`
+        );
+
+        e.target.value = "";
+        return;
+      }
     }
 
-    if (
-      mediaType === "video" &&
-      !isSupportedVideo(file)
-    ) {
-      setMediaError(
-        "Please select an MP4, WEBM or MOV video."
-      );
+    if (mediaType === "video") {
+      if (
+        !SUPPORTED_VIDEOS.includes(
+          file.type
+        )
+      ) {
+        setMediaError(
+          "Only MP4, WEBM and MOV videos are supported."
+        );
 
-      e.target.value = "";
-      return;
-    }
+        e.target.value = "";
+        return;
+      }
 
-    if (
-      mediaType === "image" &&
-      file.size > MAX_IMAGE_SIZE
-    ) {
-      setMediaError(
-        `Image is too large. Maximum size is 8MB. Selected: ${formatFileSize(
-          file.size
-        )}`
-      );
+      if (
+        file.size >
+        MAX_VIDEO_SIZE
+      ) {
+        setMediaError(
+          `Video is too large. Maximum 50MB. Selected: ${formatFileSize(
+            file.size
+          )}`
+        );
 
-      e.target.value = "";
-      return;
-    }
-
-    if (
-      mediaType === "video" &&
-      file.size > MAX_VIDEO_SIZE
-    ) {
-      setMediaError(
-        `Video is too large. Maximum size is 50MB. Selected: ${formatFileSize(
-          file.size
-        )}`
-      );
-
-      e.target.value = "";
-      return;
+        e.target.value = "";
+        return;
+      }
     }
 
     if (selectedPreview) {
-      URL.revokeObjectURL(selectedPreview);
+      URL.revokeObjectURL(
+        selectedPreview
+      );
     }
 
-    const previewUrl =
+    const preview =
       URL.createObjectURL(file);
 
     setSelectedFile(file);
-    setSelectedPreview(previewUrl);
+    setSelectedPreview(preview);
+
+    setUploadStage(
+      "File selected — ready to upload"
+    );
   };
+
+  /* =========================================================
+     SUBMIT
+  ========================================================= */
 
   const handleSubmit = async (
     e: FormEvent<HTMLFormElement>
   ) => {
     e.preventDefault();
 
-    const cleanText = text.trim();
+    const cleanText =
+      text.trim();
 
-    if (!cleanText && mediaType === "none") {
+    if (
+      !cleanText &&
+      mediaType === "none"
+    ) {
       alert(
-        "Please enter news text or add an image/video."
+        "Please enter breaking news text or upload an image/video."
       );
+
       return;
     }
 
@@ -543,6 +777,7 @@ export default function BreakingNewsPage() {
       alert(
         "End date cannot be before start date."
       );
+
       return;
     }
 
@@ -554,29 +789,74 @@ export default function BreakingNewsPage() {
       alert(
         `Please select a ${mediaType}.`
       );
+
       return;
     }
 
-    setUploadingMedia(true);
+    setUploading(true);
+    setSaved(false);
     setMediaError("");
+    setUploadProgress(
+      mediaType === "none"
+        ? 50
+        : 0
+    );
 
     try {
-      let mediaId: string | undefined =
-        undefined;
+      let mediaId:
+        | string
+        | undefined;
 
-      /*
-       * If user selected a new media file,
-       * save it into IndexedDB.
-       */
-      if (selectedFile && mediaType !== "none") {
-        mediaId = createMediaId();
+      /* =====================================================
+         SAVE NEW MEDIA
+      ===================================================== */
 
-        let blobToSave: Blob = selectedFile;
+      if (
+        selectedFile &&
+        mediaType !== "none"
+      ) {
+        mediaId =
+          createMediaId();
 
-        if (mediaType === "image") {
+        let blobToSave: Blob;
+
+        if (
+          mediaType === "image"
+        ) {
+          setUploadStage(
+            "Compressing image..."
+          );
+
           blobToSave =
-            await compressImage(selectedFile);
+            await compressImage(
+              selectedFile,
+              (progress) => {
+                setUploadProgress(
+                  progress
+                );
+              }
+            );
+        } else {
+          setUploadStage(
+            "Uploading video..."
+          );
+
+          blobToSave =
+            await readFileWithProgress(
+              selectedFile,
+              (progress) => {
+                setUploadProgress(
+                  progress
+                );
+              }
+            );
         }
+
+        setUploadProgress(95);
+
+        setUploadStage(
+          "Saving media..."
+        );
 
         await saveMedia({
           id: mediaId,
@@ -584,73 +864,98 @@ export default function BreakingNewsPage() {
           type: mediaType,
           name: selectedFile.name,
         });
+
+        setUploadProgress(100);
+
+        setUploadStage(
+          "Upload complete"
+        );
       }
 
-      /*
-       * Editing existing news
-       */
-      if (editingId !== null) {
-        const oldItem = newsList.find(
-          (item) => item.id === editingId
-        );
+      /* =====================================================
+         EDIT
+      ===================================================== */
 
-        const oldMediaId = oldItem?.mediaId;
+      if (
+        editingId !== null
+      ) {
+        const oldItem =
+          newsList.find(
+            (item) =>
+              item.id ===
+              editingId
+          );
 
-        const updated = newsList.map(
-          (item) =>
-            item.id === editingId
-              ? {
-                  ...item,
-                  text: cleanText,
-                  visible,
-                  startDate,
-                  endDate,
-                  mediaType:
-                    mediaType === "none"
-                      ? undefined
-                      : mediaType,
-                  mediaId:
-                    mediaId ||
-                    (mediaType !== "none"
-                      ? item.mediaId
-                      : undefined),
-                }
-              : item
-        );
+        const oldMediaId =
+          oldItem?.mediaId;
+
+        const updated =
+          newsList.map(
+            (item) =>
+              item.id ===
+              editingId
+                ? {
+                    ...item,
+                    text: cleanText,
+                    visible,
+                    startDate,
+                    endDate,
+                    mediaType:
+                      mediaType ===
+                      "none"
+                        ? undefined
+                        : mediaType,
+                    mediaId:
+                      mediaId ||
+                      (mediaType !==
+                      "none"
+                        ? item.mediaId
+                        : undefined),
+                  }
+                : item
+          );
 
         saveNewsList(updated);
 
         /*
-         * Delete old media only after the
-         * new media has been saved successfully.
+         * Remove old media only after
+         * new media has been successfully saved.
          */
+
         if (
           mediaId &&
           oldMediaId &&
           oldMediaId !== mediaId
         ) {
           try {
-            await deleteMedia(oldMediaId);
+            await deleteMedia(
+              oldMediaId
+            );
           } catch {
-            // Keep old media if cleanup fails.
+            // Ignore cleanup failure.
           }
         }
 
         if (
-          mediaType === "none" &&
+          mediaType ===
+            "none" &&
           oldMediaId
         ) {
           try {
-            await deleteMedia(oldMediaId);
+            await deleteMedia(
+              oldMediaId
+            );
           } catch {
-            // Ignore cleanup error.
+            // Ignore cleanup failure.
           }
         }
       } else {
-        /*
-         * New news
-         */
-        const newNews: BreakingNews = {
+        /* ===================================================
+           NEW NEWS
+        =================================================== */
+
+        const newNews:
+          BreakingNews = {
           id: Date.now(),
           text: cleanText,
           visible,
@@ -669,30 +974,48 @@ export default function BreakingNewsPage() {
         ]);
       }
 
+      setUploadProgress(100);
+      setUploadStage(
+        "Successfully saved"
+      );
+
       setSaved(true);
 
       setTimeout(() => {
         setSaved(false);
       }, 2500);
 
-      resetForm();
+      setTimeout(() => {
+        resetForm();
+      }, 500);
     } catch (error) {
       console.error(error);
 
       setMediaError(
         error instanceof Error
           ? error.message
-          : "Could not save the breaking news."
+          : "Could not save breaking news."
+      );
+
+      setUploadStage(
+        "Upload failed"
       );
     } finally {
-      setUploadingMedia(false);
+      setTimeout(() => {
+        setUploading(false);
+      }, 600);
     }
   };
+
+  /* =========================================================
+     EDIT NEWS
+  ========================================================= */
 
   const editNews = async (
     item: BreakingNews
   ) => {
     setEditingId(item.id);
+
     setText(item.text);
     setVisible(item.visible);
     setStartDate(item.startDate);
@@ -703,10 +1026,21 @@ export default function BreakingNewsPage() {
     );
 
     setMediaError("");
+    setUploadProgress(0);
+    setUploadStage("");
+
     setSelectedFile(null);
 
     if (selectedPreview) {
-      URL.revokeObjectURL(selectedPreview);
+      URL.revokeObjectURL(
+        selectedPreview
+      );
+    }
+
+    if (existingMediaUrl) {
+      URL.revokeObjectURL(
+        existingMediaUrl
+      );
     }
 
     setSelectedPreview("");
@@ -715,14 +1049,19 @@ export default function BreakingNewsPage() {
     if (item.mediaId) {
       try {
         const media =
-          await getMedia(item.mediaId);
-
-        if (media) {
-          const url = URL.createObjectURL(
-            media.blob
+          await getMedia(
+            item.mediaId
           );
 
-          setExistingMediaUrl(url);
+        if (media) {
+          const url =
+            URL.createObjectURL(
+              media.blob
+            );
+
+          setExistingMediaUrl(
+            url
+          );
         }
       } catch (error) {
         console.error(error);
@@ -735,29 +1074,38 @@ export default function BreakingNewsPage() {
     });
   };
 
+  /* =========================================================
+     DELETE
+  ========================================================= */
+
   const deleteNews = async (
     id: number
   ) => {
-    const confirmDelete =
+    const confirmed =
       window.confirm(
         "Are you sure you want to delete this breaking news?"
       );
 
-    if (!confirmDelete) return;
+    if (!confirmed) return;
 
-    const item = newsList.find(
-      (news) => news.id === id
-    );
+    const item =
+      newsList.find(
+        (news) =>
+          news.id === id
+      );
 
     saveNewsList(
       newsList.filter(
-        (news) => news.id !== id
+        (news) =>
+          news.id !== id
       )
     );
 
     if (item?.mediaId) {
       try {
-        await deleteMedia(item.mediaId);
+        await deleteMedia(
+          item.mediaId
+        );
       } catch (error) {
         console.error(error);
       }
@@ -768,152 +1116,202 @@ export default function BreakingNewsPage() {
     }
   };
 
+  /* =========================================================
+     VISIBILITY
+  ========================================================= */
+
   const toggleVisibility = (
     id: number
   ) => {
-    const updated = newsList.map(
-      (item) =>
-        item.id === id
-          ? {
-              ...item,
-              visible: !item.visible,
-            }
-          : item
-    );
+    const updated =
+      newsList.map(
+        (item) =>
+          item.id === id
+            ? {
+                ...item,
+                visible:
+                  !item.visible,
+              }
+            : item
+      );
 
     saveNewsList(updated);
   };
 
-  const activeNews = useMemo(() => {
-    const now = new Date();
+  /* =========================================================
+     ACTIVE NEWS
+  ========================================================= */
 
-    return newsList.filter((item) => {
-      if (!item.visible) return false;
+  const activeNews =
+    useMemo(() => {
+      const now =
+        new Date();
 
-      if (item.startDate) {
-        const start = new Date(
-          `${item.startDate}T00:00:00`
-        );
+      return newsList.filter(
+        (item) => {
+          if (!item.visible) {
+            return false;
+          }
 
-        if (now < start) return false;
-      }
+          if (item.startDate) {
+            const start =
+              new Date(
+                `${item.startDate}T00:00:00`
+              );
 
-      if (item.endDate) {
-        const end = new Date(
-          `${item.endDate}T23:59:59`
-        );
+            if (now < start) {
+              return false;
+            }
+          }
 
-        if (now > end) return false;
-      }
+          if (item.endDate) {
+            const end =
+              new Date(
+                `${item.endDate}T23:59:59`
+              );
 
-      return true;
-    });
-  }, [newsList]);
+            if (now > end) {
+              return false;
+            }
+          }
+
+          return true;
+        }
+      );
+    }, [newsList]);
+
+  /* =========================================================
+     LOAD MEDIA PREVIEWS
+  ========================================================= */
 
   useEffect(() => {
     let cancelled = false;
 
-    const loadMediaPreviews = async () => {
-      const nextUrls: Record<
-        number,
-        string
-      > = {};
+    const loadPreviews =
+      async () => {
+        const nextUrls: Record<
+          number,
+          string
+        > = {};
 
-      for (const item of newsList) {
-        if (!item.mediaId) continue;
-
-        try {
-          const media =
-            await getMedia(item.mediaId);
-
-          if (
-            media &&
-            !cancelled
-          ) {
-            nextUrls[item.id] =
-              URL.createObjectURL(
-                media.blob
-              );
+        for (const item of newsList) {
+          if (!item.mediaId) {
+            continue;
           }
-        } catch {
-          // Ignore missing media.
+
+          try {
+            const media =
+              await getMedia(
+                item.mediaId
+              );
+
+            if (
+              media &&
+              !cancelled
+            ) {
+              nextUrls[
+                item.id
+              ] =
+                URL.createObjectURL(
+                  media.blob
+                );
+            }
+          } catch {
+            // Ignore missing media.
+          }
         }
-      }
 
-      if (!cancelled) {
-        setPreviewUrls(nextUrls);
-      } else {
-        Object.values(nextUrls).forEach(
-          (url) => URL.revokeObjectURL(url)
-        );
-      }
-    };
+        if (!cancelled) {
+          setPreviewUrls(
+            nextUrls
+          );
+        } else {
+          Object.values(
+            nextUrls
+          ).forEach((url) =>
+            URL.revokeObjectURL(
+              url
+            )
+          );
+        }
+      };
 
-    loadMediaPreviews();
+    loadPreviews();
 
     return () => {
       cancelled = true;
     };
   }, [newsList]);
 
+  /* =========================================================
+     UI
+  ========================================================= */
+
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#090706] text-white">
-      {/* Luxury Background */}
+    <main className="relative min-h-screen overflow-hidden bg-[#080706] text-white">
+
+      {/* NEW BACKGROUND */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(194,122,45,0.20),transparent_32%),radial-gradient(circle_at_85%_20%,rgba(117,55,25,0.22),transparent_30%),radial-gradient(circle_at_50%_100%,rgba(95,45,18,0.18),transparent_38%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_10%,rgba(245,158,11,0.16),transparent_28%),radial-gradient(circle_at_90%_15%,rgba(234,88,12,0.14),transparent_30%),radial-gradient(circle_at_50%_100%,rgba(120,53,15,0.16),transparent_35%)]" />
 
-        <div className="absolute left-[-180px] top-[-180px] h-[500px] w-[500px] rounded-full bg-amber-500/10 blur-[120px]" />
+        <div className="absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full bg-amber-500/10 blur-[130px]" />
 
-        <div className="absolute right-[-180px] top-[10%] h-[500px] w-[500px] rounded-full bg-orange-700/10 blur-[130px]" />
+        <div className="absolute -right-40 top-20 h-[500px] w-[500px] rounded-full bg-orange-600/10 blur-[130px]" />
 
-        <div className="absolute bottom-[-220px] left-[35%] h-[520px] w-[520px] rounded-full bg-yellow-700/10 blur-[140px]" />
+        <div className="absolute bottom-[-200px] left-1/3 h-[500px] w-[500px] rounded-full bg-yellow-700/10 blur-[140px]" />
 
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.018)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.018)_1px,transparent_1px)] bg-[size:45px_45px]" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.018)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.018)_1px,transparent_1px)] bg-[size:48px_48px]" />
       </div>
 
       <div className="relative flex min-h-screen items-center justify-center px-4 py-8 sm:px-6">
         <div className="w-full max-w-6xl">
 
-          {/* Header */}
+          {/* HEADER */}
           <div className="mb-7 text-center">
-            <div className="mb-3 inline-flex rounded-full border border-amber-300/20 bg-amber-400/10 px-4 py-1.5 text-xs font-medium tracking-wide text-amber-200 backdrop-blur-xl">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-400/10 px-5 py-2 text-xs font-semibold tracking-widest text-amber-200 backdrop-blur-xl">
+              <span>✦</span>
               NABABI RISTORANTE
+              <span>✦</span>
             </div>
 
-            <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              Breaking News Management
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              Breaking News
             </h1>
 
-            <p className="mt-2 text-sm text-white/50">
-              Create announcements with text,
-              images or videos.
+            <p className="mt-2 text-sm text-white/45">
+              Manage text, images and videos
+              for your website.
             </p>
           </div>
 
-          {/* Main Card */}
-          <div className="rounded-[30px] border border-amber-200/10 bg-white/[0.055] p-5 shadow-2xl shadow-black/50 backdrop-blur-2xl sm:p-7">
+          {/* MAIN CARD */}
+          <div className="rounded-[32px] border border-amber-200/10 bg-white/[0.045] p-5 shadow-2xl shadow-black/60 backdrop-blur-2xl sm:p-7">
+
             <div className="grid gap-6 lg:grid-cols-[410px_1fr]">
 
-              {/* Form */}
-              <section className="rounded-[26px] border border-white/10 bg-black/20 p-5">
-                <div className="mb-5">
+              {/* =================================================
+                  LEFT FORM
+              ================================================= */}
+              <section className="rounded-[26px] border border-white/10 bg-black/25 p-5">
+
+                <div className="mb-6">
                   <h2 className="text-xl font-semibold">
                     {editingId !== null
-                      ? "Edit News"
+                      ? "Edit Breaking News"
                       : "Add Breaking News"}
                   </h2>
 
-                  <div className="mt-2 h-1 w-14 rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-red-500" />
+                  <div className="mt-2 h-1 w-16 rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-red-500" />
                 </div>
 
                 <form
                   onSubmit={handleSubmit}
-                  className="space-y-4"
+                  className="space-y-5"
                 >
 
-                  {/* Text */}
+                  {/* TEXT */}
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-white/85">
+                    <label className="mb-2 block text-sm font-medium text-white/80">
                       News Text
                     </label>
 
@@ -921,80 +1319,112 @@ export default function BreakingNewsPage() {
                       rows={5}
                       value={text}
                       onChange={(e) =>
-                        setText(e.target.value)
+                        setText(
+                          e.target.value
+                        )
                       }
-                      placeholder="Write your breaking news or announcement..."
-                      className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.045] px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-white/25 focus:border-amber-400/50 focus:bg-white/[0.07]"
+                      placeholder="Write your breaking news..."
+                      className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-white/25 focus:border-amber-400/50 focus:bg-white/[0.055]"
                     />
                   </div>
 
-                  {/* Media Type */}
+                  {/* MEDIA SELECTOR */}
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-white/85">
-                      Breaking News Media
+                    <label className="mb-3 block text-sm font-medium text-white/80">
+                      Choose News Type
                     </label>
 
                     <div className="grid grid-cols-3 gap-2">
+
+                      {/* TEXT */}
                       <button
                         type="button"
                         onClick={() =>
-                          handleMediaTypeChange(
+                          selectMediaType(
                             "none"
                           )
                         }
-                        className={`rounded-xl border px-3 py-3 text-xs font-medium transition ${
-                          mediaType === "none"
-                            ? "border-amber-400/50 bg-amber-400/10 text-amber-200"
-                            : "border-white/10 bg-white/[0.04] text-white/60 hover:bg-white/[0.08]"
+                        className={`group rounded-2xl border p-4 transition ${
+                          mediaType ===
+                          "none"
+                            ? "border-amber-400/50 bg-amber-400/10 shadow-lg shadow-amber-900/10"
+                            : "border-white/10 bg-white/[0.025] hover:border-white/20 hover:bg-white/[0.05]"
                         }`}
                       >
-                        📝 Text
+                        <div className="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-xl bg-white/5 text-2xl">
+                          📝
+                        </div>
+
+                        <p className="text-xs font-medium">
+                          Text
+                        </p>
                       </button>
 
+                      {/* IMAGE */}
                       <button
                         type="button"
                         onClick={() =>
-                          handleMediaTypeChange(
+                          selectMediaType(
                             "image"
                           )
                         }
-                        className={`rounded-xl border px-3 py-3 text-xs font-medium transition ${
-                          mediaType === "image"
-                            ? "border-amber-400/50 bg-amber-400/10 text-amber-200"
-                            : "border-white/10 bg-white/[0.04] text-white/60 hover:bg-white/[0.08]"
+                        className={`group rounded-2xl border p-4 transition ${
+                          mediaType ===
+                          "image"
+                            ? "border-amber-400/50 bg-amber-400/10 shadow-lg shadow-amber-900/10"
+                            : "border-white/10 bg-white/[0.025] hover:border-white/20 hover:bg-white/[0.05]"
                         }`}
                       >
-                        🖼️ Image
+                        <div className="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/10 text-2xl">
+                          🖼️
+                        </div>
+
+                        <p className="text-xs font-medium">
+                          Image
+                        </p>
                       </button>
 
+                      {/* VIDEO */}
                       <button
                         type="button"
                         onClick={() =>
-                          handleMediaTypeChange(
+                          selectMediaType(
                             "video"
                           )
                         }
-                        className={`rounded-xl border px-3 py-3 text-xs font-medium transition ${
-                          mediaType === "video"
-                            ? "border-amber-400/50 bg-amber-400/10 text-amber-200"
-                            : "border-white/10 bg-white/[0.04] text-white/60 hover:bg-white/[0.08]"
+                        className={`group rounded-2xl border p-4 transition ${
+                          mediaType ===
+                          "video"
+                            ? "border-amber-400/50 bg-amber-400/10 shadow-lg shadow-amber-900/10"
+                            : "border-white/10 bg-white/[0.025] hover:border-white/20 hover:bg-white/[0.05]"
                         }`}
                       >
-                        🎥 Video
+                        <div className="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-xl bg-red-500/10 text-2xl">
+                          🎬
+                        </div>
+
+                        <p className="text-xs font-medium">
+                          Video
+                        </p>
                       </button>
                     </div>
                   </div>
 
-                  {/* Media Upload */}
+                  {/* =================================================
+                      IMAGE / VIDEO UPLOAD BOX
+                  ================================================= */}
                   {mediaType !== "none" && (
                     <div>
-                      <label className="mb-2 block text-sm font-medium text-white/85">
-                        {mediaType === "image"
-                          ? "Upload Image"
-                          : "Upload Video"}
+
+                      <label className="mb-2 block text-sm font-medium text-white/80">
+                        {mediaType ===
+                        "image"
+                          ? "Upload Breaking News Image"
+                          : "Upload Breaking News Video"}
                       </label>
 
-                      <label className="block cursor-pointer rounded-2xl border border-dashed border-amber-300/20 bg-amber-400/[0.035] p-4 transition hover:border-amber-300/40 hover:bg-amber-400/[0.06]">
+                      <label className="group block cursor-pointer rounded-2xl border-2 border-dashed border-amber-400/20 bg-gradient-to-br from-amber-400/[0.04] to-orange-500/[0.02] p-5 transition hover:border-amber-400/40 hover:bg-amber-400/[0.07]">
+
                         <input
                           type="file"
                           hidden
@@ -1010,31 +1440,73 @@ export default function BreakingNewsPage() {
                         />
 
                         <div className="text-center">
-                          <div className="mb-2 text-3xl">
+
+                          <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10 text-4xl shadow-inner">
                             {mediaType ===
                             "image"
-                              ? "🖼️"
+                              ? "📷"
                               : "🎥"}
                           </div>
 
-                          <p className="text-sm font-medium text-white/80">
-                            Click to choose{" "}
-                            {mediaType}
+                          <p className="text-sm font-semibold text-white/85">
+                            Click here to upload
                           </p>
 
                           <p className="mt-1 text-xs text-white/40">
                             {mediaType ===
                             "image"
-                              ? "JPG, PNG, WEBP — Maximum 8MB"
-                              : "MP4, WEBM, MOV — Maximum 50MB"}
+                              ? "JPG, PNG, WEBP"
+                              : "MP4, WEBM, MOV"}
+                          </p>
+
+                          <p className="mt-2 text-[11px] text-amber-200/50">
+                            {mediaType ===
+                            "image"
+                              ? "Maximum 8MB"
+                              : "Maximum 50MB"}
                           </p>
                         </div>
                       </label>
 
-                      {/* Selected Preview */}
+                      {/* SELECTED FILE */}
+                      {selectedFile && (
+                        <div className="mt-3 rounded-2xl border border-white/10 bg-black/30 p-3">
+
+                          <div className="flex items-center gap-3">
+
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-xl">
+                              {mediaType ===
+                              "image"
+                                ? "🖼️"
+                                : "🎬"}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-xs font-medium text-white/80">
+                                {
+                                  selectedFile.name
+                                }
+                              </p>
+
+                              <p className="mt-1 text-[11px] text-white/40">
+                                {formatFileSize(
+                                  selectedFile.size
+                                )}
+                              </p>
+                            </div>
+
+                            <span className="rounded-full bg-green-500/10 px-2 py-1 text-[10px] text-green-300">
+                              Ready
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* PREVIEW */}
                       {(selectedPreview ||
                         existingMediaUrl) && (
-                        <div className="mt-3 overflow-hidden rounded-2xl border border-white/10 bg-black/30">
+                        <div className="mt-3 overflow-hidden rounded-2xl border border-white/10 bg-black">
+
                           {mediaType ===
                             "image" && (
                             <img
@@ -1042,7 +1514,7 @@ export default function BreakingNewsPage() {
                                 selectedPreview ||
                                 existingMediaUrl
                               }
-                              alt="Selected media preview"
+                              alt="Preview"
                               className="max-h-64 w-full object-cover"
                             />
                           )}
@@ -1059,31 +1531,76 @@ export default function BreakingNewsPage() {
                               className="max-h-64 w-full bg-black object-contain"
                             />
                           )}
-
-                          {selectedFile && (
-                            <div className="border-t border-white/10 px-3 py-2 text-xs text-white/50">
-                              {selectedFile.name}{" "}
-                              •{" "}
-                              {formatFileSize(
-                                selectedFile.size
-                              )}
-                            </div>
-                          )}
                         </div>
                       )}
 
+                      {/* =================================================
+                          UPLOAD PROGRESS
+                      ================================================= */}
+                      {uploading && (
+                        <div className="mt-4 rounded-2xl border border-amber-400/20 bg-amber-500/[0.06] p-4">
+
+                          <div className="mb-2 flex items-center justify-between">
+
+                            <div className="flex items-center gap-2">
+                              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-500/10 text-sm">
+                                ⬆️
+                              </span>
+
+                              <span className="text-xs font-medium text-white/75">
+                                {uploadStage ||
+                                  "Uploading..."}
+                              </span>
+                            </div>
+
+                            <span className="text-sm font-bold text-amber-300">
+                              {uploadProgress}%
+                            </span>
+                          </div>
+
+                          <div className="h-3 overflow-hidden rounded-full bg-white/10">
+
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-red-500 transition-all duration-300"
+                              style={{
+                                width: `${uploadProgress}%`,
+                              }}
+                            />
+                          </div>
+
+                          <div className="mt-2 flex justify-between text-[10px] text-white/35">
+                            <span>
+                              0%
+                            </span>
+
+                            <span>
+                              {uploadProgress <
+                              100
+                                ? "Uploading..."
+                                : "Complete"}
+                            </span>
+
+                            <span>
+                              100%
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ERROR */}
                       {mediaError && (
-                        <div className="mt-2 rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs text-red-200">
-                          {mediaError}
+                        <div className="mt-3 rounded-xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-xs leading-5 text-red-200">
+                          ⚠️ {mediaError}
                         </div>
                       )}
                     </div>
                   )}
 
-                  {/* Dates */}
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                  {/* DATES */}
+                  <div className="grid gap-3 sm:grid-cols-2">
+
                     <div>
-                      <label className="mb-2 block text-sm font-medium text-white/85">
+                      <label className="mb-2 block text-xs font-medium text-white/70">
                         Start Date
                       </label>
 
@@ -1095,12 +1612,12 @@ export default function BreakingNewsPage() {
                             e.target.value
                           )
                         }
-                        className="w-full rounded-xl border border-white/10 bg-white/[0.045] px-3 py-3 text-sm text-white outline-none focus:border-amber-400/50"
+                        className="w-full rounded-xl border border-white/10 bg-white/[0.035] px-3 py-3 text-sm text-white outline-none focus:border-amber-400/50"
                       />
                     </div>
 
                     <div>
-                      <label className="mb-2 block text-sm font-medium text-white/85">
+                      <label className="mb-2 block text-xs font-medium text-white/70">
                         End Date
                       </label>
 
@@ -1112,27 +1629,30 @@ export default function BreakingNewsPage() {
                             e.target.value
                           )
                         }
-                        className="w-full rounded-xl border border-white/10 bg-white/[0.045] px-3 py-3 text-sm text-white outline-none focus:border-amber-400/50"
+                        className="w-full rounded-xl border border-white/10 bg-white/[0.035] px-3 py-3 text-sm text-white outline-none focus:border-amber-400/50"
                       />
                     </div>
                   </div>
 
-                  {/* Visibility */}
-                  <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.045] px-4 py-3">
+                  {/* VISIBILITY */}
+                  <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3">
+
                     <div>
                       <p className="text-sm font-medium">
                         Show on Website
                       </p>
 
-                      <p className="mt-1 text-xs text-white/40">
-                        Display this news to visitors
+                      <p className="mt-1 text-[11px] text-white/35">
+                        Display this breaking news
                       </p>
                     </div>
 
                     <button
                       type="button"
                       onClick={() =>
-                        setVisible(!visible)
+                        setVisible(
+                          !visible
+                        )
                       }
                       className={`relative h-7 w-12 rounded-full transition ${
                         visible
@@ -1141,7 +1661,7 @@ export default function BreakingNewsPage() {
                       }`}
                     >
                       <span
-                        className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-md transition ${
+                        className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition ${
                           visible
                             ? "left-6"
                             : "left-1"
@@ -1150,48 +1670,77 @@ export default function BreakingNewsPage() {
                     </button>
                   </div>
 
-                  {/* Buttons */}
-                  <div className="flex gap-3 pt-2">
-                    <button
-                      type="submit"
-                      disabled={uploadingMedia}
-                      className="flex-1 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-950/30 transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {uploadingMedia
-                        ? "Saving..."
-                        : editingId !== null
-                        ? "Update News"
-                        : "Save News"}
-                    </button>
+                  {/* SAVE BUTTON */}
+                  <button
+                    type="submit"
+                    disabled={uploading}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 px-5 py-3.5 text-sm font-bold text-white shadow-xl shadow-orange-950/30 transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {uploading ? (
+                      <>
+                        <span className="animate-spin">
+                          ◌
+                        </span>
 
-                    {editingId !== null && (
-                      <button
-                        type="button"
-                        onClick={resetForm}
-                        className="rounded-xl border border-white/10 bg-white/[0.045] px-5 py-3 text-sm font-medium text-white/70 transition hover:bg-white/10"
-                      >
-                        Cancel
-                      </button>
+                        Uploading{" "}
+                        {uploadProgress}%
+                      </>
+                    ) : (
+                      <>
+                        <span>
+                          {mediaType ===
+                          "image"
+                            ? "🖼️"
+                            : mediaType ===
+                              "video"
+                            ? "🎬"
+                            : "📢"}
+                        </span>
+
+                        {editingId !==
+                        null
+                          ? "Update Breaking News"
+                          : "Upload & Save Breaking News"}
+                      </>
                     )}
-                  </div>
+                  </button>
+
+                  {editingId !== null && (
+                    <button
+                      type="button"
+                      onClick={
+                        resetForm
+                      }
+                      disabled={
+                        uploading
+                      }
+                      className="w-full rounded-xl border border-white/10 bg-white/[0.035] px-5 py-3 text-sm text-white/65 transition hover:bg-white/[0.07]"
+                    >
+                      Cancel Edit
+                    </button>
+                  )}
 
                   {saved && (
                     <div className="rounded-xl border border-green-400/20 bg-green-500/10 px-4 py-3 text-center text-sm text-green-200">
-                      Breaking news saved successfully.
+                      ✓ Breaking news uploaded successfully.
                     </div>
                   )}
                 </form>
               </section>
 
-              {/* News List */}
-              <section className="rounded-[26px] border border-white/10 bg-black/20 p-5">
-                <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              {/* =================================================
+                  RIGHT NEWS LIST
+              ================================================= */}
+              <section className="rounded-[26px] border border-white/10 bg-black/25 p-5">
+
+                <div className="mb-5 flex items-center justify-between">
+
                   <div>
                     <h2 className="text-xl font-semibold">
                       News List
                     </h2>
 
-                    <div className="mt-2 h-1 w-14 rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-red-500" />
+                    <div className="mt-2 h-1 w-16 rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-red-500" />
                   </div>
 
                   <div className="rounded-full border border-green-400/20 bg-green-500/10 px-3 py-1.5 text-xs text-green-200">
@@ -1200,32 +1749,43 @@ export default function BreakingNewsPage() {
                   </div>
                 </div>
 
-                {/* Live Preview */}
-                {activeNews.length > 0 && (
+                {/* LIVE PREVIEW */}
+                {activeNews.length >
+                  0 && (
                   <div className="mb-5 overflow-hidden rounded-2xl border border-amber-400/20 bg-black/30">
-                    <div className="border-b border-white/10 bg-amber-400/[0.06] px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-500/15">
-                          🔔
-                        </span>
 
-                        <span className="text-sm font-semibold text-amber-100">
-                          Live Website Preview
-                        </span>
+                    <div className="flex items-center gap-2 border-b border-white/10 bg-amber-500/[0.06] px-4 py-3">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/10 text-lg">
+                        🚨
+                      </span>
+
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-amber-200">
+                          Live Preview
+                        </p>
+
+                        <p className="text-[10px] text-white/35">
+                          Currently visible
+                        </p>
                       </div>
                     </div>
 
                     <div className="p-4">
-                      {activeNews[0].mediaType ===
+
+                      {activeNews[0]
+                        .mediaType ===
                         "image" &&
-                        activeNews[0].mediaId &&
+                        activeNews[0]
+                          .mediaId &&
                         previewUrls[
-                          activeNews[0].id
+                          activeNews[0]
+                            .id
                         ] && (
                           <img
                             src={
                               previewUrls[
-                                activeNews[0].id
+                                activeNews[0]
+                                  .id
                               ]
                             }
                             alt="Breaking news"
@@ -1233,16 +1793,20 @@ export default function BreakingNewsPage() {
                           />
                         )}
 
-                      {activeNews[0].mediaType ===
+                      {activeNews[0]
+                        .mediaType ===
                         "video" &&
-                        activeNews[0].mediaId &&
+                        activeNews[0]
+                          .mediaId &&
                         previewUrls[
-                          activeNews[0].id
+                          activeNews[0]
+                            .id
                         ] && (
                           <video
                             src={
                               previewUrls[
-                                activeNews[0].id
+                                activeNews[0]
+                                  .id
                               ]
                             }
                             controls
@@ -1251,7 +1815,8 @@ export default function BreakingNewsPage() {
                           />
                         )}
 
-                      {activeNews[0].text && (
+                      {activeNews[0]
+                        .text && (
                         <p className="text-sm leading-6 text-white/75">
                           {
                             activeNews[0]
@@ -1263,31 +1828,38 @@ export default function BreakingNewsPage() {
                   </div>
                 )}
 
-                {newsList.length === 0 ? (
-                  <div className="flex min-h-[360px] items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.025]">
+                {/* EMPTY */}
+                {newsList.length ===
+                0 ? (
+                  <div className="flex min-h-[380px] items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02]">
+
                     <div className="text-center">
-                      <div className="mb-3 text-4xl">
+
+                      <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-amber-500/10 text-4xl">
                         📢
                       </div>
 
-                      <p className="text-sm font-medium text-white/80">
-                        No breaking news yet
+                      <p className="text-sm font-semibold text-white/75">
+                        No Breaking News
                       </p>
 
-                      <p className="mt-1 text-xs text-white/35">
-                        Add text, image or video.
+                      <p className="mt-2 text-xs text-white/35">
+                        Upload text, image or video
+                        from the left panel.
                       </p>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
+
                     {newsList.map(
                       (item) => (
                         <div
                           key={item.id}
-                          className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035] transition hover:border-amber-300/20"
+                          className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] transition hover:border-amber-300/20"
                         >
-                          {/* Media */}
+
+                          {/* MEDIA PREVIEW */}
                           {item.mediaType ===
                             "image" &&
                             item.mediaId &&
@@ -1300,7 +1872,7 @@ export default function BreakingNewsPage() {
                                     item.id
                                   ]
                                 }
-                                alt="Breaking news media"
+                                alt="Breaking news"
                                 className="max-h-72 w-full object-cover"
                               />
                             )}
@@ -1324,36 +1896,40 @@ export default function BreakingNewsPage() {
                             )}
 
                           <div className="p-4">
-                            <div className="flex items-start gap-3">
-                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10">
+
+                            <div className="flex gap-3">
+
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-xl">
                                 {item.mediaType ===
                                 "image"
                                   ? "🖼️"
                                   : item.mediaType ===
                                     "video"
-                                  ? "🎥"
+                                  ? "🎬"
                                   : "📢"}
                               </div>
 
                               <div className="min-w-0 flex-1">
-                                {item.text && (
-                                  <p className="text-sm leading-6 text-white/85">
-                                    {item.text}
-                                  </p>
-                                )}
 
-                                {!item.text && (
-                                  <p className="text-sm text-white/40">
+                                {item.text ? (
+                                  <p className="text-sm leading-6 text-white/80">
+                                    {
+                                      item.text
+                                    }
+                                  </p>
+                                ) : (
+                                  <p className="text-sm text-white/35">
                                     Media-only breaking news
                                   </p>
                                 )}
 
                                 <div className="mt-3 flex flex-wrap gap-2">
+
                                   <span
-                                    className={`rounded-full px-2.5 py-1 text-[11px] ${
+                                    className={`rounded-full px-2.5 py-1 text-[10px] ${
                                       item.visible
-                                        ? "bg-green-500/15 text-green-200"
-                                        : "bg-red-500/15 text-red-200"
+                                        ? "bg-green-500/10 text-green-200"
+                                        : "bg-red-500/10 text-red-200"
                                     }`}
                                   >
                                     {item.visible
@@ -1364,16 +1940,16 @@ export default function BreakingNewsPage() {
                                   {item.mediaType &&
                                     item.mediaType !==
                                       "none" && (
-                                      <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] text-amber-200">
+                                      <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] text-amber-200">
                                         {item.mediaType ===
                                         "image"
-                                          ? "Image"
-                                          : "Video"}
+                                          ? "🖼️ Image"
+                                          : "🎬 Video"}
                                       </span>
                                     )}
 
                                   {item.startDate && (
-                                    <span className="rounded-full bg-white/5 px-2.5 py-1 text-[11px] text-white/40">
+                                    <span className="rounded-full bg-white/5 px-2.5 py-1 text-[10px] text-white/35">
                                       Start:{" "}
                                       {
                                         item.startDate
@@ -1382,7 +1958,7 @@ export default function BreakingNewsPage() {
                                   )}
 
                                   {item.endDate && (
-                                    <span className="rounded-full bg-white/5 px-2.5 py-1 text-[11px] text-white/40">
+                                    <span className="rounded-full bg-white/5 px-2.5 py-1 text-[10px] text-white/35">
                                       End:{" "}
                                       {
                                         item.endDate
@@ -1393,8 +1969,9 @@ export default function BreakingNewsPage() {
                               </div>
                             </div>
 
-                            {/* Actions */}
-                            <div className="mt-4 flex gap-2 border-t border-white/10 pt-3">
+                            {/* ACTIONS */}
+                            <div className="mt-4 grid grid-cols-3 gap-2 border-t border-white/10 pt-3">
+
                               <button
                                 type="button"
                                 onClick={() =>
@@ -1402,9 +1979,9 @@ export default function BreakingNewsPage() {
                                     item
                                   )
                                 }
-                                className="flex-1 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-medium text-white/75 transition hover:bg-white/10"
+                                className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-xs font-medium text-white/70 transition hover:bg-white/10"
                               >
-                                Edit
+                                ✏️ Edit
                               </button>
 
                               <button
@@ -1414,11 +1991,11 @@ export default function BreakingNewsPage() {
                                     item.id
                                   )
                                 }
-                                className="flex-1 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-medium text-white/75 transition hover:bg-white/10"
+                                className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-xs font-medium text-white/70 transition hover:bg-white/10"
                               >
                                 {item.visible
-                                  ? "Hide"
-                                  : "Show"}
+                                  ? "👁️ Hide"
+                                  : "👁️ Show"}
                               </button>
 
                               <button
@@ -1428,9 +2005,9 @@ export default function BreakingNewsPage() {
                                     item.id
                                   )
                                 }
-                                className="flex-1 rounded-lg border border-red-400/10 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-200 transition hover:bg-red-500/20"
+                                className="rounded-xl border border-red-400/10 bg-red-500/10 px-3 py-2.5 text-xs font-medium text-red-200 transition hover:bg-red-500/20"
                               >
-                                Delete
+                                🗑️ Delete
                               </button>
                             </div>
                           </div>
