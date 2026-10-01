@@ -1,73 +1,109 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
-type Lang = "en" | "it" | "bn";
+type Language = "it" | "en" | "bn";
 
-type MenuItem = {
-  id?: string;
-  name?: string;
-  description?: string;
-  price?: string | number;
-  category?: string;
-  image?: string;
-  available?: boolean;
-};
-
-type GalleryItem = {
-  id?: string;
-  image?: string;
-  category?: string;
-  visible?: boolean;
-  order?: number;
-};
-
-type Review = {
-  id: string;
-  customerName: string;
-  phone?: string;
-  email?: string;
-  rating: number;
-  review: string;
+type BookingForm = {
+  name: string;
+  phone: string;
   date: string;
-  visible: boolean;
-  replies?: {
-    id: string;
-    text: string;
-    date: string;
-  }[];
+  time: string;
+  guests: string;
+  menu: string;
+  note: string;
 };
 
 type Reservation = {
   id: string;
-  code: string;
   name: string;
   phone: string;
-  email: string;
   date: string;
   time: string;
-  persons: string;
-  category: string;
-  item: string;
+  guests: number;
+  menu: string;
   note: string;
-  status: string;
+  status: "Pending" | "Confirmed" | "Cancelled" | "Completed";
+  createdAt: string;
 };
 
-const GOLD = "#d9a441";
-const GOLD_LIGHT = "#f6cf70";
+type BreakingNewsItem = {
+  id: number;
+  text: string;
+  visible: boolean;
+  startDate: string;
+  endDate: string;
+  mediaType?: "none" | "image" | "video";
+  mediaId?: string;
+};
 
-const defaultCategories = [
-  "Biryani",
-  "Pizza",
-  "Burger",
-  "Naan",
-  "Chicken",
-  "Mutton",
-  "Drinks",
-  "Dessert",
-];
+type BreakingMedia = {
+  id: string;
+  type: "image" | "video";
+  blob: Blob;
+};
+
+type SocialSettings = {
+  facebook?: string;
+  instagram?: string;
+  tiktok?: string;
+  youtube?: string;
+  whatsapp?: string;
+  visible?: boolean;
+};
 
 const translations = {
+  it: {
+    home: "Home",
+    about: "About",
+    menu: "Menu",
+    gallery: "Gallery",
+    reviews: "Reviews",
+    contact: "Contact",
+    order: "Order Now",
+    admin: "Admin Login",
+    heroSmall: "BENVENUTI DA NABABI RISTORANTE",
+    heroTitle: "Autentico Gusto Reale",
+    heroText:
+      "Scopri i veri sapori dell'India e del Bangladesh nel cuore di Roma.",
+    viewMenu: "Vedi Menu",
+    book: "Prenota un Tavolo",
+    address: "Via Vespasiano 73/75/77, Roma",
+    phone: "Telefono",
+    whatsapp: "WhatsApp",
+    watch: "Guarda Video",
+    specialTitle: "Le Nostre Specialità",
+    specialText:
+      "Scopri i nostri sapori autentici dell'India e del Bangladesh.",
+    aboutTitle: "La Nostra Storia",
+    aboutText:
+      "Nababi Ristorante porta nel cuore di Roma le ricche tradizioni culinarie dell'India e del Bangladesh. Sapori autentici, ingredienti selezionati e una presentazione elegante.",
+    galleryTitle: "La Nostra Gallery",
+    galleryText:
+      "Un viaggio attraverso i nostri piatti, il nostro ambiente e i momenti speciali.",
+    bookingTitle: "Prenota un Tavolo",
+    bookingText:
+      "Prenota il tuo tavolo e vivi un'esperienza autentica da Nababi Ristorante.",
+    name: "Nome",
+    bookingPhone: "Telefono",
+    date: "Data",
+    time: "Orario",
+    guests: "Numero di persone",
+    food: "Menu / Piatti desiderati",
+    note: "Richiesta speciale",
+    confirm: "Conferma Prenotazione",
+    bookingSuccess:
+      "Prenotazione ricevuta! Ti contatteremo per confermare.",
+    reviewsTitle: "Cosa Dicono i Nostri Clienti",
+    reviewButton: "Scrivi una Recensione",
+    contactTitle: "Contatti",
+    contactText:
+      "Siamo a tua disposizione. Contattaci per informazioni, prenotazioni e richieste.",
+    bookingDetails: "Booking Details",
+    socialMedia: "Social Media",
+    footer: "© 2026 Nababi Ristorante. Tutti i diritti riservati.",
+  },
+
   en: {
     home: "Home",
     about: "About",
@@ -75,155 +111,50 @@ const translations = {
     gallery: "Gallery",
     reviews: "Reviews",
     contact: "Contact",
-    login: "Login / Register",
-    admin: "Admin",
-    welcome: "WELCOME TO",
-    subtitle: "Authentic Flavors of India & Bangladesh",
+    order: "Order Now",
+    admin: "Admin Login",
+    heroSmall: "WELCOME TO NABABI RISTORANTE",
+    heroTitle: "Authentic Royal Taste",
     heroText:
-      "Experience royal taste with traditional spices, fresh ingredients and warm hospitality.",
-    explore: "Explore Menu",
-    fresh: "Fresh Ingredients",
-    freshSub: "Only the best for you",
-    chefs: "Skilled Chefs",
-    chefsSub: "Crafted with love",
-    ambience: "Cozy Ambience",
-    ambienceSub: "Feel at home",
-    service: "Fast Service",
-    serviceSub: "Your time matters",
-    aboutUs: "ABOUT US",
-    ourStory: "Our Story",
-    learnMore: "Learn More",
-    watchVideo: "Watch Our Restaurant Video",
-    playVideo: "Play Video",
-    smallReviews: "Reviews",
-    viewReviews: "View Reviews",
-    ourMenu: "Our Menu",
-    chooseCategory: "Choose Your Favourite Category",
-    fullMenu: "View Full Menu",
-    tableBooking: "Table Booking",
-    reserve: "Reserve Your Table",
-    phone: "Phone Number",
-    email: "Email",
+      "Discover the true flavors of India and Bangladesh in the heart of Rome.",
+    viewMenu: "View Menu",
+    book: "Book a Table",
+    address: "Via Vespasiano 73/75/77, Rome",
+    phone: "Phone",
+    whatsapp: "WhatsApp",
+    watch: "Watch Video",
+    specialTitle: "Our Specialities",
+    specialText:
+      "Discover our authentic flavors of India and Bangladesh.",
+    aboutTitle: "Our Story",
+    aboutText:
+      "Nababi Ristorante brings the rich culinary traditions of India and Bangladesh to the heart of Rome. Authentic flavors, carefully selected ingredients and elegant presentation.",
+    galleryTitle: "Our Gallery",
+    galleryText:
+      "A journey through our dishes, our restaurant and special moments.",
+    bookingTitle: "Book a Table",
+    bookingText:
+      "Book your table and enjoy an authentic experience at Nababi Ristorante.",
+    name: "Name",
+    bookingPhone: "Phone",
     date: "Date",
     time: "Time",
-    persons: "No. of Persons",
-    category: "Category",
-    item: "Item",
-    special: "Special Request",
+    guests: "Number of guests",
+    food: "Menu / Desired dishes",
+    note: "Special request",
     confirm: "Confirm Booking",
-    cancel: "Cancel",
-    track: "Track Your Booking",
-    trackSub: "Login with your phone or email",
-    phoneLogin: "Phone Login",
-    emailLogin: "Email Login",
-    getOtp: "Get OTP",
+    bookingSuccess:
+      "Booking received! We will contact you to confirm.",
+    reviewsTitle: "What Our Customers Say",
+    reviewButton: "Write a Review",
+    contactTitle: "Contact",
+    contactText:
+      "We are here for you. Contact us for information, reservations and requests.",
     bookingDetails: "Booking Details",
-    viewEditCancel: "View, Edit or Cancel",
-    bookingCode: "Booking Code",
-    viewDetails: "View Details",
-    edit: "Edit",
-    galleryTitle: "Gallery",
-    gallerySub: "Our Photo Gallery",
-    viewGallery: "View Gallery",
-    report: "Send Us a Report",
-    reportSub: "We'd love to hear from you",
-    sendReport: "Send Report",
-    map: "Find Us on Map",
-    openMap: "Open Map",
-    contactUs: "Contact Us",
-    follow: "Follow Us",
-    quick: "Quick Links",
-    writeReview: "Write a Review",
-    allReviews: "All Reviews",
-    reviewDetails: "Review Details",
-    submitReview: "Submit Review",
-    reportReview: "Report a Review",
-    reportDetails: "Report Details",
-    submitReport: "Submit Report",
-    rating: "Rating",
-    name: "Name",
-    close: "Close",
-    noReviews: "No reviews yet.",
-    noGallery: "Gallery images will appear here.",
+    socialMedia: "Social Media",
+    footer: "© 2026 Nababi Ristorante. All rights reserved.",
   },
-  it: {
-    home: "Home",
-    about: "Chi siamo",
-    menu: "Menu",
-    gallery: "Galleria",
-    reviews: "Recensioni",
-    contact: "Contatti",
-    login: "Login / Registrati",
-    admin: "Admin",
-    welcome: "BENVENUTI A",
-    subtitle: "Autentici sapori dell'India e del Bangladesh",
-    heroText:
-      "Scopri il gusto reale con spezie tradizionali, ingredienti freschi e calorosa ospitalità.",
-    explore: "Esplora Menu",
-    fresh: "Ingredienti Freschi",
-    freshSub: "Solo il meglio per te",
-    chefs: "Chef Esperti",
-    chefsSub: "Preparato con amore",
-    ambience: "Atmosfera Accogliente",
-    ambienceSub: "Sentiti a casa",
-    service: "Servizio Veloce",
-    serviceSub: "Il tuo tempo conta",
-    aboutUs: "CHI SIAMO",
-    ourStory: "La Nostra Storia",
-    learnMore: "Scopri di più",
-    watchVideo: "Guarda il Video del Ristorante",
-    playVideo: "Guarda Video",
-    smallReviews: "Recensioni",
-    viewReviews: "Vedi Recensioni",
-    ourMenu: "Il Nostro Menu",
-    chooseCategory: "Scegli la tua categoria preferita",
-    fullMenu: "Vedi Menu Completo",
-    tableBooking: "Prenotazione Tavolo",
-    reserve: "Prenota il tuo tavolo",
-    phone: "Numero di telefono",
-    email: "Email",
-    date: "Data",
-    time: "Ora",
-    persons: "Numero persone",
-    category: "Categoria",
-    item: "Prodotto",
-    special: "Richiesta speciale",
-    confirm: "Conferma Prenotazione",
-    cancel: "Annulla",
-    track: "Segui la Prenotazione",
-    trackSub: "Accedi con telefono o email",
-    phoneLogin: "Login Telefono",
-    emailLogin: "Login Email",
-    getOtp: "Ottieni OTP",
-    bookingDetails: "Dettagli Prenotazione",
-    viewEditCancel: "Visualizza, modifica o annulla",
-    bookingCode: "Codice Prenotazione",
-    viewDetails: "Vedi Dettagli",
-    edit: "Modifica",
-    galleryTitle: "Galleria",
-    gallerySub: "La Nostra Galleria",
-    viewGallery: "Vedi Galleria",
-    report: "Inviaci una Segnalazione",
-    reportSub: "La tua opinione è importante",
-    sendReport: "Invia Segnalazione",
-    map: "Trova sulla Mappa",
-    openMap: "Apri Mappa",
-    contactUs: "Contatti",
-    follow: "Seguici",
-    quick: "Link Rapidi",
-    writeReview: "Scrivi una Recensione",
-    allReviews: "Tutte le Recensioni",
-    reviewDetails: "Dettagli Recensione",
-    submitReview: "Invia Recensione",
-    reportReview: "Segnala una Recensione",
-    reportDetails: "Dettagli Segnalazione",
-    submitReport: "Invia Segnalazione",
-    rating: "Valutazione",
-    name: "Nome",
-    close: "Chiudi",
-    noReviews: "Nessuna recensione.",
-    noGallery: "Le immagini della galleria appariranno qui.",
-  },
+
   bn: {
     home: "হোম",
     about: "আমাদের সম্পর্কে",
@@ -231,479 +162,1094 @@ const translations = {
     gallery: "গ্যালারি",
     reviews: "রিভিউ",
     contact: "যোগাযোগ",
-    login: "লগইন / রেজিস্টার",
-    admin: "অ্যাডমিন",
-    welcome: "স্বাগতম",
-    subtitle: "ভারত ও বাংলাদেশের আসল স্বাদ",
+    order: "অর্ডার করুন",
+    admin: "অ্যাডমিন লগইন",
+    heroSmall: "নাবাবি রিস্টোরান্তেতে স্বাগতম",
+    heroTitle: "আসল রাজকীয় স্বাদ",
     heroText:
-      "ঐতিহ্যবাহী মসলা, তাজা উপকরণ এবং আন্তরিক আতিথেয়তার সঙ্গে রাজকীয় স্বাদ উপভোগ করুন।",
-    explore: "মেনু দেখুন",
-    fresh: "তাজা উপকরণ",
-    freshSub: "আপনার জন্য সেরাটাই",
-    chefs: "দক্ষ শেফ",
-    chefsSub: "ভালোবাসা দিয়ে তৈরি",
-    ambience: "আরামদায়ক পরিবেশ",
-    ambienceSub: "ঘরের মতো অনুভূতি",
-    service: "দ্রুত সার্ভিস",
-    serviceSub: "আপনার সময় গুরুত্বপূর্ণ",
-    aboutUs: "আমাদের সম্পর্কে",
-    ourStory: "আমাদের গল্প",
-    learnMore: "আরও জানুন",
-    watchVideo: "রেস্টুরেন্ট ভিডিও দেখুন",
-    playVideo: "ভিডিও দেখুন",
-    smallReviews: "রিভিউ",
-    viewReviews: "রিভিউ দেখুন",
-    ourMenu: "আমাদের মেনু",
-    chooseCategory: "আপনার পছন্দের ক্যাটাগরি নির্বাচন করুন",
-    fullMenu: "সম্পূর্ণ মেনু",
-    tableBooking: "টেবিল বুকিং",
-    reserve: "টেবিল রিজার্ভ করুন",
-    phone: "ফোন নম্বর",
-    email: "ইমেইল",
+      "রোমের হৃদয়ে ভারত ও বাংলাদেশের আসল স্বাদ উপভোগ করুন।",
+    viewMenu: "মেনু দেখুন",
+    book: "টেবিল বুক করুন",
+    address: "Via Vespasiano 73/75/77, Roma",
+    phone: "ফোন",
+    whatsapp: "হোয়াটসঅ্যাপ",
+    watch: "ভিডিও দেখুন",
+    specialTitle: "আমাদের বিশেষ খাবার",
+    specialText:
+      "ভারত ও বাংলাদেশের আসল স্বাদের খাবারগুলো আবিষ্কার করুন।",
+    aboutTitle: "আমাদের গল্প",
+    aboutText:
+      "Nababi Ristorante রোমের হৃদয়ে ভারত ও বাংলাদেশের সমৃদ্ধ খাবারের ঐতিহ্য নিয়ে এসেছে। আসল স্বাদ, বাছাই করা উপকরণ এবং সুন্দর পরিবেশন আমাদের বিশেষত্ব।",
+    galleryTitle: "আমাদের গ্যালারি",
+    galleryText:
+      "আমাদের খাবার, রেস্টুরেন্ট এবং বিশেষ মুহূর্তগুলোর একটি সুন্দর ভ্রমণ।",
+    bookingTitle: "টেবিল বুক করুন",
+    bookingText:
+      "আপনার টেবিল বুক করুন এবং Nababi Ristorante-এ একটি বিশেষ অভিজ্ঞতা উপভোগ করুন।",
+    name: "নাম",
+    bookingPhone: "ফোন",
     date: "তারিখ",
     time: "সময়",
-    persons: "কতজন",
-    category: "ক্যাটাগরি",
-    item: "আইটেম",
-    special: "বিশেষ অনুরোধ",
+    guests: "কতজন",
+    food: "মেনু / পছন্দের খাবার",
+    note: "বিশেষ অনুরোধ",
     confirm: "বুকিং নিশ্চিত করুন",
-    cancel: "বাতিল",
-    track: "বুকিং ট্র্যাক করুন",
-    trackSub: "ফোন অথবা ইমেইল দিয়ে লগইন",
-    phoneLogin: "ফোন লগইন",
-    emailLogin: "ইমেইল লগইন",
-    getOtp: "OTP নিন",
-    bookingDetails: "বুকিং ডিটেইলস",
-    viewEditCancel: "দেখুন, পরিবর্তন বা বাতিল করুন",
-    bookingCode: "বুকিং কোড",
-    viewDetails: "ডিটেইলস দেখুন",
-    edit: "এডিট",
-    galleryTitle: "গ্যালারি",
-    gallerySub: "আমাদের ছবি",
-    viewGallery: "গ্যালারি দেখুন",
-    report: "রিপোর্ট পাঠান",
-    reportSub: "আপনার মতামত আমাদের জন্য গুরুত্বপূর্ণ",
-    sendReport: "রিপোর্ট পাঠান",
-    map: "ম্যাপে খুঁজুন",
-    openMap: "ম্যাপ খুলুন",
-    contactUs: "যোগাযোগ",
-    follow: "ফলো করুন",
-    quick: "কুইক লিংক",
-    writeReview: "রিভিউ লিখুন",
-    allReviews: "সব রিভিউ",
-    reviewDetails: "রিভিউ ডিটেইলস",
-    submitReview: "রিভিউ পাঠান",
-    reportReview: "রিভিউ রিপোর্ট করুন",
-    reportDetails: "রিপোর্টের বিস্তারিত",
-    submitReport: "রিপোর্ট পাঠান",
-    rating: "রেটিং",
-    name: "নাম",
-    close: "বন্ধ করুন",
-    noReviews: "এখনও কোনো রিভিউ নেই।",
-    noGallery: "গ্যালারির ছবি এখানে দেখা যাবে।",
+    bookingSuccess:
+      "বুকিং গ্রহণ করা হয়েছে! নিশ্চিত করার জন্য আমরা আপনার সাথে যোগাযোগ করব।",
+    reviewsTitle: "আমাদের কাস্টমাররা কী বলেন",
+    reviewButton: "রিভিউ লিখুন",
+    contactTitle: "যোগাযোগ",
+    contactText:
+      "আমরা আপনার জন্য প্রস্তুত। তথ্য, বুকিং ও অন্যান্য বিষয়ে আমাদের সাথে যোগাযোগ করুন।",
+    bookingDetails: "Booking Details",
+    socialMedia: "Social Media",
+    footer: "© 2026 Nababi Ristorante. সর্বস্বত্ব সংরক্ষিত।",
   },
 };
 
-function getText(lang: Lang, key: keyof typeof translations.en) {
-  return translations[lang][key];
+const categories = [
+  {
+    icon: "🍛",
+    it: "Biryani",
+    en: "Biryani",
+    bn: "বিরিয়ানি",
+    text: "Authentic royal biryani",
+  },
+  {
+    icon: "🍗",
+    it: "Pollo",
+    en: "Chicken",
+    bn: "চিকেন",
+    text: "Chicken specialities",
+  },
+  {
+    icon: "🥩",
+    it: "Carne",
+    en: "Meat",
+    bn: "মাংস",
+    text: "Traditional meat dishes",
+  },
+  {
+    icon: "🐟",
+    it: "Pesce",
+    en: "Fish",
+    bn: "মাছ",
+    text: "Fresh fish specialities",
+  },
+  {
+    icon: "🥗",
+    it: "Vegetariano",
+    en: "Vegetarian",
+    bn: "ভেজিটেরিয়ান",
+    text: "Fresh vegetarian dishes",
+  },
+  {
+    icon: "🥤",
+    it: "Bevande",
+    en: "Drinks",
+    bn: "পানীয়",
+    text: "Drinks and house specialities",
+  },
+];
+
+const reviews = [
+  {
+    name: "Cliente Nababi",
+    stars: 5,
+    text: "Ottimo cibo, ambiente elegante e sapori autentici.",
+  },
+  {
+    name: "Restaurant Guest",
+    stars: 5,
+    text: "A wonderful experience with delicious Indian and Bangladeshi food.",
+  },
+  {
+    name: "Cliente",
+    stars: 5,
+    text: "Piatti molto buoni e servizio cordiale.",
+  },
+];
+
+const emptyBookingForm: BookingForm = {
+  name: "",
+  phone: "",
+  date: "",
+  time: "",
+  guests: "2",
+  menu: "",
+  note: "",
+};
+
+const MEDIA_DB_NAME = "nababi-breaking-news-media-db";
+const MEDIA_DB_VERSION = 1;
+const MEDIA_STORE_NAME = "media";
+
+function openMediaDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === "undefined" || !window.indexedDB) {
+      reject(new Error("IndexedDB unavailable"));
+      return;
+    }
+
+    const request = indexedDB.open(
+      MEDIA_DB_NAME,
+      MEDIA_DB_VERSION
+    );
+
+    request.onupgradeneeded = () => {
+      const db = request.result;
+
+      if (!db.objectStoreNames.contains(MEDIA_STORE_NAME)) {
+        db.createObjectStore(MEDIA_STORE_NAME, {
+          keyPath: "id",
+        });
+      }
+    };
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () =>
+      reject(request.error || new Error("Unable to open media database"));
+  });
 }
 
-function readStorage<T>(key: string, fallback: T): T {
+async function getBreakingMedia(
+  mediaId: string
+): Promise<BreakingMedia | null> {
   try {
-    const value = localStorage.getItem(key);
-    if (!value) return fallback;
-    return JSON.parse(value) as T;
+    const db = await openMediaDB();
+
+    return await new Promise((resolve, reject) => {
+      const transaction = db.transaction(
+        MEDIA_STORE_NAME,
+        "readonly"
+      );
+
+      const store = transaction.objectStore(MEDIA_STORE_NAME);
+      const request = store.get(mediaId);
+
+      request.onsuccess = () => {
+        resolve(request.result || null);
+      };
+
+      request.onerror = () => {
+        reject(request.error);
+      };
+    });
   } catch {
-    return fallback;
+    return null;
   }
 }
 
-function safeImage(value?: string) {
-  if (!value) return "";
-  return value;
+function isBreakingNewsActive(
+  item: BreakingNewsItem,
+  now = new Date()
+) {
+  if (!item.visible) return false;
+
+  const start = item.startDate
+    ? new Date(item.startDate)
+    : null;
+
+  const end = item.endDate
+    ? new Date(item.endDate)
+    : null;
+
+  if (start && !Number.isNaN(start.getTime()) && now < start) {
+    return false;
+  }
+
+  if (end && !Number.isNaN(end.getTime()) && now > end) {
+    return false;
+  }
+
+  return true;
 }
 
-export default function HomePage() {
-  const [lang, setLang] = useState<Lang>("en");
+export default function Home() {
+  const [language, setLanguage] = useState<Language>("it");
 
-  const [home, setHome] = useState<any>({});
-  const [contact, setContact] = useState<any>({});
-  const [social, setSocial] = useState<any>({});
-  const [openingHours, setOpeningHours] = useState<any[]>([]);
-  const [settings, setSettings] = useState<any>({});
+  const [selectedCategory, setSelectedCategory] =
+    useState<string | null>(null);
 
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [categories, setCategories] = useState<string[]>(defaultCategories);
-  const [gallery, setGallery] = useState<GalleryItem[]>([]);
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [bookingForm, setBookingForm] =
+    useState<BookingForm>(emptyBookingForm);
 
-  const [selectedCategory, setSelectedCategory] = useState("Biryani");
-  const [galleryOpen, setGalleryOpen] = useState(false);
-  const [reviewsOpen, setReviewsOpen] = useState(false);
+  const [bookingSuccess, setBookingSuccess] = useState(false);
 
-  const [trackValue, setTrackValue] = useState("");
-  const [trackedBooking, setTrackedBooking] =
-    useState<Reservation | null>(null);
+  const [breakingNews, setBreakingNews] =
+    useState<BreakingNewsItem | null>(null);
 
-  const [reviewForm, setReviewForm] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    rating: 5,
-    review: "",
-  });
+  const [breakingMediaUrl, setBreakingMediaUrl] =
+    useState<string | null>(null);
 
-  const [reportForm, setReportForm] = useState({
-    contact: "",
-    details: "",
-  });
+  const [breakingNewsClosed, setBreakingNewsClosed] =
+    useState(false);
 
-  const [bookingForm, setBookingForm] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    date: "",
-    time: "",
-    persons: "2",
-    category: "Biryani",
-    item: "",
-    note: "",
-  });
+  const [social, setSocial] =
+    useState<SocialSettings | null>(null);
 
-  const [bookingMessage, setBookingMessage] = useState("");
-  const [reviewMessage, setReviewMessage] = useState("");
-  const [reportMessage, setReportMessage] = useState("");
-  const [trackMessage, setTrackMessage] = useState("");
-
-  const [breakingNews, setBreakingNews] = useState<any[]>([]);
-  const [newsClosed, setNewsClosed] = useState(false);
-
-  const t = (key: keyof typeof translations.en) => getText(lang, key);
+  const t = translations[language];
 
   useEffect(() => {
-    const savedLang = localStorage.getItem("nababi-language") as Lang | null;
-    if (savedLang === "en" || savedLang === "it" || savedLang === "bn") {
-      setLang(savedLang);
-    }
+    let cancelled = false;
 
-    setHome(readStorage("nababi-home-settings", {}));
-    setContact(readStorage("nababi-contact", {}));
-    setSocial(readStorage("nababi-social-media", {}));
-    setOpeningHours(readStorage("nababi-opening-hours", []));
-    setSettings(readStorage("nababi-settings", {}));
+    const loadBreakingNews = async () => {
+      try {
+        const raw = localStorage.getItem(
+          "nababi-breaking-news"
+        );
 
-    const rawMenu = readStorage<any[]>("nababi-menu", []);
-    const rawCategories = readStorage<any[]>(
-      "nababi-categories",
-      defaultCategories
-    );
+        if (!raw) {
+          if (!cancelled) setBreakingNews(null);
+          return;
+        }
 
-    const normalizedCategories = Array.from(
-      new Set(
-        rawCategories
-          .map((c: any) =>
-            typeof c === "string" ? c : c?.name ?? c?.title ?? ""
-          )
-          .filter(Boolean)
-          .map(String)
-      )
-    );
+        const parsed = JSON.parse(raw);
 
-    setCategories(
-      normalizedCategories.length ? normalizedCategories : defaultCategories
-    );
-    setMenuItems(Array.isArray(rawMenu) ? rawMenu : []);
+        if (!Array.isArray(parsed)) {
+          if (!cancelled) setBreakingNews(null);
+          return;
+        }
 
-    const rawGallery = readStorage<GalleryItem[]>("nababi-gallery", []);
-    setGallery(
-      Array.isArray(rawGallery)
-        ? rawGallery.filter((item) => item.visible !== false)
-        : []
-    );
+        const active = parsed.find((item) =>
+          isBreakingNewsActive(item)
+        );
 
-    const rawReviews = readStorage<Review[]>("nababi-reviews", []);
-    setReviews(
-      Array.isArray(rawReviews)
-        ? rawReviews.filter((review) => review.visible !== false)
-        : []
-    );
+        if (!cancelled) {
+          setBreakingNews(active || null);
+          setBreakingNewsClosed(false);
+        }
 
-    setReservations(readStorage<Reservation[]>("nababi-reservations", []));
+        if (
+          active?.mediaId &&
+          active.mediaType &&
+          active.mediaType !== "none"
+        ) {
+          const media = await getBreakingMedia(
+            active.mediaId
+          );
 
-    const news = readStorage<any[]>("nababi-breaking-news", []);
-    const now = new Date();
+          if (media && !cancelled) {
+            const url = URL.createObjectURL(media.blob);
 
-    const activeNews = Array.isArray(news)
-      ? news.filter((item) => {
-          if (item.visible === false) return false;
-
-          if (item.startDate) {
-            const start = new Date(item.startDate);
-            if (now < start) return false;
+            setBreakingMediaUrl(url);
           }
+        }
+      } catch (error) {
+        console.error("Breaking news load error:", error);
 
-          if (item.endDate) {
-            const end = new Date(item.endDate);
-            if (now > end) return false;
-          }
+        if (!cancelled) {
+          setBreakingNews(null);
+        }
+      }
+    };
 
-          return true;
-        })
-      : [];
+    loadBreakingNews();
 
-    setBreakingNews(activeNews);
+    const interval = window.setInterval(
+      loadBreakingNews,
+      30000
+    );
+
+    const storageListener = () => {
+      loadBreakingNews();
+    };
+
+    window.addEventListener(
+      "storage",
+      storageListener
+    );
+
+    return () => {
+      cancelled = true;
+
+      window.clearInterval(interval);
+
+      window.removeEventListener(
+        "storage",
+        storageListener
+      );
+    };
   }, []);
 
-  const heroImage =
-    home?.heroImage ||
-    "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=1400&q=85";
-
-  const aboutImage =
-    home?.aboutImage ||
-    "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1000&q=85";
-
-  const restaurantName =
-    settings?.restaurantName ||
-    contact?.restaurantName ||
-    "Nababi Ristorante";
-
-  const address =
-    contact?.address || "Via Vespasiano 73/75/77, Roma";
-
-  const phone = contact?.phone || "+39 393 3805350";
-  const email = contact?.email || "info@nababi.it";
-  const whatsapp = contact?.whatsapp || phone;
-
-  const mapUrl =
-    contact?.googleMapsUrl ||
-    "https://www.google.com/maps/search/?api=1&query=Via+Vespasiano+73+Roma";
-
-  const facebook = social?.facebook || "";
-  const instagram = social?.instagram || "";
-  const tiktok = social?.tiktok || "";
-  const youtube = social?.youtube || "";
-
-  const currentItems = useMemo(() => {
-    return menuItems.filter((item) => {
-      const category = String(item.category || "").trim().toLowerCase();
-      return category === selectedCategory.toLowerCase();
-    });
-  }, [menuItems, selectedCategory]);
-
-  const displayItems = currentItems.slice(0, 8);
-
-  const totalReviews = reviews.length;
-
-  const averageRating =
-    totalReviews > 0
-      ? (
-          reviews.reduce((sum, item) => sum + Number(item.rating || 0), 0) /
-          totalReviews
-        ).toFixed(1)
-      : "0.0";
-
-  function saveReservation(e: FormEvent) {
-    e.preventDefault();
-    setBookingMessage("");
-
-    if (
-      !bookingForm.name ||
-      !bookingForm.phone ||
-      !bookingForm.email ||
-      !bookingForm.date ||
-      !bookingForm.time
-    ) {
-      setBookingMessage("Please complete the required booking fields.");
-      return;
-    }
-
-    const code =
-      "NAB-" +
-      Math.random().toString(36).substring(2, 8).toUpperCase();
-
-    const reservation: Reservation = {
-      id: Date.now().toString(),
-      code,
-      name: bookingForm.name,
-      phone: bookingForm.phone,
-      email: bookingForm.email,
-      date: bookingForm.date,
-      time: bookingForm.time,
-      persons: bookingForm.persons,
-      category: bookingForm.category,
-      item: bookingForm.item,
-      note: bookingForm.note,
-      status: "Confirmed",
+  useEffect(() => {
+    return () => {
+      if (breakingMediaUrl) {
+        URL.revokeObjectURL(breakingMediaUrl);
+      }
     };
+  }, [breakingMediaUrl]);
 
-    const next = [...reservations, reservation];
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(
+        "nababi-social-media"
+      );
 
-    setReservations(next);
-    localStorage.setItem("nababi-reservations", JSON.stringify(next));
+      if (raw) {
+        const parsed = JSON.parse(raw);
 
-    setBookingMessage(`Booking confirmed. Your code is ${code}.`);
+        if (parsed && typeof parsed === "object") {
+          setSocial(parsed);
+        }
+      }
+    } catch {
+      setSocial(null);
+    }
+  }, []);
 
-    setBookingForm({
-      name: "",
-      phone: "",
-      email: "",
-      date: "",
-      time: "",
-      persons: "2",
-      category: "Biryani",
-      item: "",
-      note: "",
-    });
-  }
-
-  function findBooking(e: FormEvent) {
+  const handleBookingSubmit = (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
 
-    const value = trackValue.trim().toLowerCase();
+    try {
+      const storedReservations = localStorage.getItem(
+        "nababi-reservations"
+      );
 
-    if (!value) {
-      setTrackMessage("Enter your phone, email or booking code.");
-      return;
+      let existingReservations: Reservation[] = [];
+
+      if (storedReservations) {
+        try {
+          const parsed = JSON.parse(storedReservations);
+
+          if (Array.isArray(parsed)) {
+            existingReservations = parsed;
+          }
+        } catch {
+          existingReservations = [];
+        }
+      }
+
+      const newReservation: Reservation = {
+        id: Date.now().toString(),
+        name: bookingForm.name.trim(),
+        phone: bookingForm.phone.trim(),
+        date: bookingForm.date,
+        time: bookingForm.time,
+        guests: Number(bookingForm.guests),
+        menu: bookingForm.menu.trim(),
+        note: bookingForm.note.trim(),
+        status: "Pending",
+        createdAt: new Date().toISOString(),
+      };
+
+      localStorage.setItem(
+        "nababi-reservations",
+        JSON.stringify([
+          ...existingReservations,
+          newReservation,
+        ])
+      );
+
+      setBookingForm(emptyBookingForm);
+      setBookingSuccess(true);
+
+      setTimeout(() => {
+        setBookingSuccess(false);
+      }, 6000);
+    } catch (error) {
+      console.error("Booking save error:", error);
+
+      alert(
+        "Unable to save the booking. Please try again."
+      );
     }
+  };
 
-    const found = reservations.find(
-      (booking) =>
-        booking.phone.toLowerCase() === value ||
-        booking.email.toLowerCase() === value ||
-        booking.code.toLowerCase() === value
-    );
-
-    if (!found) {
-      setTrackedBooking(null);
-      setTrackMessage("No booking found.");
-      return;
-    }
-
-    setTrackedBooking(found);
-    setTrackMessage("");
-  }
-
-  function submitReview(e: FormEvent) {
-    e.preventDefault();
-    setReviewMessage("");
-
-    if (!reviewForm.name.trim()) {
-      setReviewMessage("Please enter your name.");
-      return;
-    }
-
-    if (!reviewForm.phone.trim() && !reviewForm.email.trim()) {
-      setReviewMessage("Please enter phone number or email.");
-      return;
-    }
-
-    if (!reviewForm.review.trim()) {
-      setReviewMessage("Please write your review.");
-      return;
-    }
-
-    const newReview: Review = {
-      id: Date.now().toString(),
-      customerName: reviewForm.name.trim(),
-      phone: reviewForm.phone.trim(),
-      email: reviewForm.email.trim(),
-      rating: reviewForm.rating,
-      review: reviewForm.review.trim(),
-      date: new Date().toISOString(),
-      visible: true,
-      replies: [],
-    };
-
-    const next = [...reviews, newReview];
-
-    setReviews(next);
-    localStorage.setItem("nababi-reviews", JSON.stringify(next));
-
-    setReviewMessage("Thank you. Your review has been submitted.");
-
-    setReviewForm({
-      name: "",
-      phone: "",
-      email: "",
-      rating: 5,
-      review: "",
-    });
-  }
-
-  function submitReport(e: FormEvent) {
-    e.preventDefault();
-
-    if (!reportForm.contact || !reportForm.details) {
-      setReportMessage("Please enter your phone/email and report details.");
-      return;
-    }
-
-    const reports = readStorage<any[]>("nababi-review-reports", []);
-
-    reports.push({
-      id: Date.now().toString(),
-      contact: reportForm.contact,
-      details: reportForm.details,
-      date: new Date().toISOString(),
-    });
-
-    localStorage.setItem("nababi-review-reports", JSON.stringify(reports));
-
-    setReportMessage("Your report has been submitted.");
-
-    setReportForm({
-      contact: "",
-      details: "",
-    });
-  }
-
-  function cancelTrackedBooking() {
-    if (!trackedBooking) return;
-
-    const next = reservations.map((item) =>
-      item.id === trackedBooking.id
-        ? { ...item, status: "Cancelled" }
-        : item
-    );
-
-    setReservations(next);
-    localStorage.setItem("nababi-reservations", JSON.stringify(next));
-
-    setTrackedBooking({
-      ...trackedBooking,
-      status: "Cancelled",
-    });
-  }
-
-  function editTrackedBooking() {
-    if (!trackedBooking) return;
-
-    setBookingForm({
-      name: trackedBooking.name,
-      phone: trackedBooking.phone,
-      email: trackedBooking.email,
-      date: trackedBooking.date,
-      time: trackedBooking.time,
-      persons: trackedBooking.persons,
-      category: trackedBooking.category,
-      item: trackedBooking.item,
-      note: trackedBooking.note,
-    });
-
-    window.scrollTo({
-      top: document.getElementById("booking")?.offsetTop || 0,
-      behavior: "smooth",
-    });
-  }
-
-  function openAdmin() {
-    window.location.href = "/admin";
-  }
+  const socialVisible = social?.visible !== false;
 
   return (
     <main className="site">
-      <style jsx global>{`
+
+      {/* HEADER */}
+      <header className="header">
+        <a href="#home" className="logo">
+          <span className="logo-crown">♛</span>
+
+          <span>
+            <strong>NABABI</strong>
+            <small>RISTORANTE</small>
+          </span>
+        </a>
+
+        <nav className="nav">
+          <a href="#home">{t.home}</a>
+          <a href="#about">{t.about}</a>
+          <a href="#menu">{t.menu}</a>
+          <a href="#gallery">{t.gallery}</a>
+          <a href="#reviews">{t.reviews}</a>
+          <a href="#contact">{t.contact}</a>
+        </nav>
+
+        <div className="header-actions">
+          <a href="#booking" className="order-btn">
+            {t.order}
+          </a>
+
+          <a href="/admin" className="admin-btn">
+            🔒 {t.admin}
+          </a>
+
+          <select
+            className="language"
+            value={language}
+            onChange={(e) =>
+              setLanguage(e.target.value as Language)
+            }
+          >
+            <option value="it">🇮🇹 IT</option>
+            <option value="en">🇬🇧 EN</option>
+            <option value="bn">🇧🇩 বাংলা</option>
+          </select>
+        </div>
+      </header>
+
+      {/* HERO */}
+      <section id="home" className="hero">
+
+        {/* BREAKING NEWS */}
+        {breakingNews &&
+          !breakingNewsClosed && (
+            <div className="breaking-news-box">
+              <div className="breaking-news-header">
+                <strong>Breaking News</strong>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setBreakingNewsClosed(true)
+                  }
+                  aria-label="Close breaking news"
+                >
+                  ×
+                </button>
+              </div>
+
+              {breakingMediaUrl &&
+                breakingNews.mediaType === "image" && (
+                  <img
+                    src={breakingMediaUrl}
+                    alt="Breaking News"
+                    className="breaking-news-media"
+                  />
+                )}
+
+              {breakingMediaUrl &&
+                breakingNews.mediaType === "video" && (
+                  <video
+                    src={breakingMediaUrl}
+                    className="breaking-news-media"
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    controls
+                  />
+                )}
+
+              <div className="breaking-news-content">
+                <strong>{breakingNews.text}</strong>
+
+                <span>◷ Live Offer</span>
+              </div>
+            </div>
+          )}
+
+        <div className="hero-content">
+          <p className="eyebrow">
+            {t.heroSmall}
+          </p>
+
+          <h1>{t.heroTitle}</h1>
+
+          <p className="hero-text">
+            {t.heroText}
+          </p>
+
+          <div className="hero-buttons">
+            <a href="#menu" className="primary-btn">
+              🍛 {t.viewMenu}
+            </a>
+
+            <a href="#booking" className="secondary-btn">
+              ◉ {t.book}
+            </a>
+          </div>
+
+          <div className="quick-info">
+            <div>
+              <span>📍</span>
+              <small>Address</small>
+              <strong>{t.address}</strong>
+            </div>
+
+            <div>
+              <span>☎</span>
+              <small>{t.phone}</small>
+              <strong>+39 393 3805350</strong>
+            </div>
+
+            <div>
+              <span>💬</span>
+              <small>{t.whatsapp}</small>
+              <strong>+39 333 7687319</strong>
+            </div>
+          </div>
+        </div>
+
+        <div className="hero-art">
+          <div className="royal-circle">
+            <div className="food-circle">
+              🍛
+            </div>
+          </div>
+
+          <div className="hero-art-buttons">
+            <button type="button">
+              ▶ {t.watch}
+            </button>
+
+            <a href="#gallery">
+              ▣ {t.gallery}
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* SPECIALITIES */}
+      <section
+        id="menu"
+        className="section specialities"
+      >
+        <div className="section-heading">
+          <p className="eyebrow">
+            NABABI RISTORANTE
+          </p>
+
+          <h2>{t.specialTitle}</h2>
+
+          <p>{t.specialText}</p>
+        </div>
+
+        <div className="category-grid">
+          {categories.map((category) => {
+            const title =
+              language === "it"
+                ? category.it
+                : language === "en"
+                ? category.en
+                : category.bn;
+
+            return (
+              <button
+                type="button"
+                key={category.it}
+                className={`category-card ${
+                  selectedCategory === category.it
+                    ? "category-active"
+                    : ""
+                }`}
+                onClick={() =>
+                  setSelectedCategory(
+                    selectedCategory === category.it
+                      ? null
+                      : category.it
+                  )
+                }
+              >
+                <div className="category-image">
+                  {category.icon}
+                </div>
+
+                <h3>{title}</h3>
+
+                <p>{category.text}</p>
+
+                <span>
+                  View Menu →
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {selectedCategory && (
+          <div className="selected-category">
+            <span>✓</span>
+            {selectedCategory} selected — menu items will appear here.
+          </div>
+        )}
+      </section>
+
+      {/* ABOUT */}
+      <section
+        id="about"
+        className="section about-section"
+      >
+        <div className="about-image">
+          <div className="about-placeholder">
+            <span>👑</span>
+            <strong>NABABI</strong>
+            <small>RISTORANTE</small>
+          </div>
+        </div>
+
+        <div className="about-content">
+          <p className="eyebrow">
+            NABABI RISTORANTE
+          </p>
+
+          <h2>{t.aboutTitle}</h2>
+
+          <p>{t.aboutText}</p>
+
+          <p>
+            India and Bangladesh meet in Rome through
+            authentic recipes, traditional spices and
+            a warm royal atmosphere.
+          </p>
+
+          <a
+            href="#contact"
+            className="primary-btn"
+          >
+            {t.contact} →
+          </a>
+        </div>
+      </section>
+
+      {/* GALLERY */}
+      <section
+        id="gallery"
+        className="section gallery-section"
+      >
+        <div className="section-heading">
+          <p className="eyebrow">
+            NABABI RISTORANTE
+          </p>
+
+          <h2>{t.galleryTitle}</h2>
+
+          <p>{t.galleryText}</p>
+        </div>
+
+        <div className="gallery-grid">
+          <div className="gallery-card large">
+            🍛
+          </div>
+
+          <div className="gallery-card">
+            🍗
+          </div>
+
+          <div className="gallery-card">
+            🥘
+          </div>
+
+          <div className="gallery-card">
+            🍚
+          </div>
+
+          <div className="gallery-card">
+            🥗
+          </div>
+
+          <div className="gallery-card large">
+            👨‍🍳
+          </div>
+        </div>
+      </section>
+
+      {/* BOOKING */}
+      <section
+        id="booking"
+        className="section booking-section"
+      >
+        <div className="section-heading">
+          <p className="eyebrow">
+            RESERVATION
+          </p>
+
+          <h2>{t.bookingTitle}</h2>
+
+          <p>{t.bookingText}</p>
+        </div>
+
+        <form
+          className="booking-form"
+          onSubmit={handleBookingSubmit}
+        >
+          <div className="form-grid">
+
+            <label>
+              {t.name}
+
+              <input
+                type="text"
+                placeholder={t.name}
+                required
+                value={bookingForm.name}
+                onChange={(e) => {
+                  setBookingSuccess(false);
+
+                  setBookingForm({
+                    ...bookingForm,
+                    name: e.target.value,
+                  });
+                }}
+              />
+            </label>
+
+            <label>
+              {t.bookingPhone}
+
+              <input
+                type="tel"
+                placeholder="+39 ..."
+                required
+                value={bookingForm.phone}
+                onChange={(e) => {
+                  setBookingSuccess(false);
+
+                  setBookingForm({
+                    ...bookingForm,
+                    phone: e.target.value,
+                  });
+                }}
+              />
+            </label>
+
+            <label>
+              {t.date}
+
+              <input
+                type="date"
+                required
+                value={bookingForm.date}
+                onChange={(e) => {
+                  setBookingSuccess(false);
+
+                  setBookingForm({
+                    ...bookingForm,
+                    date: e.target.value,
+                  });
+                }}
+              />
+            </label>
+
+            <label>
+              {t.time}
+
+              <input
+                type="time"
+                required
+                value={bookingForm.time}
+                onChange={(e) => {
+                  setBookingSuccess(false);
+
+                  setBookingForm({
+                    ...bookingForm,
+                    time: e.target.value,
+                  });
+                }}
+              />
+            </label>
+
+            <label>
+              {t.guests}
+
+              <select
+                required
+                value={bookingForm.guests}
+                onChange={(e) => {
+                  setBookingSuccess(false);
+
+                  setBookingForm({
+                    ...bookingForm,
+                    guests: e.target.value,
+                  });
+                }}
+              >
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7+</option>
+              </select>
+            </label>
+
+            <label>
+              {t.food}
+
+              <input
+                type="text"
+                placeholder={t.food}
+                value={bookingForm.menu}
+                onChange={(e) => {
+                  setBookingSuccess(false);
+
+                  setBookingForm({
+                    ...bookingForm,
+                    menu: e.target.value,
+                  });
+                }}
+              />
+            </label>
+          </div>
+
+          <label>
+            {t.note}
+
+            <textarea
+              rows={5}
+              placeholder={t.note}
+              value={bookingForm.note}
+              onChange={(e) => {
+                setBookingSuccess(false);
+
+                setBookingForm({
+                  ...bookingForm,
+                  note: e.target.value,
+                });
+              }}
+            />
+          </label>
+
+          <button
+            className="primary-btn submit-btn"
+            type="submit"
+          >
+            {t.confirm} →
+          </button>
+
+          {bookingSuccess && (
+            <div className="booking-success">
+              ✓ {t.bookingSuccess}
+            </div>
+          )}
+        </form>
+
+        {/* BOOKING DETAILS */}
+        <div className="booking-details-link">
+          <a
+            href="/booking-details"
+            className="secondary-btn"
+          >
+            📋 {t.bookingDetails}
+          </a>
+        </div>
+      </section>
+
+      {/* REVIEWS */}
+      <section
+        id="reviews"
+        className="section reviews-section"
+      >
+        <div className="section-heading">
+          <p className="eyebrow">
+            REVIEWS
+          </p>
+
+          <h2>{t.reviewsTitle}</h2>
+        </div>
+
+        <div className="reviews-grid">
+          {reviews.map((review) => (
+            <div
+              className="review-card"
+              key={review.name}
+            >
+              <div className="stars">
+                {"★".repeat(review.stars)}
+              </div>
+
+              <p>
+                “{review.text}”
+              </p>
+
+              <strong>
+                {review.name}
+              </strong>
+
+              <small>
+                Verified Customer
+              </small>
+            </div>
+          ))}
+        </div>
+
+        <div className="center">
+          <button
+            type="button"
+            className="secondary-btn"
+          >
+            ✦ {t.reviewButton}
+          </button>
+        </div>
+      </section>
+
+      {/* CONTACT */}
+      <section
+        id="contact"
+        className="section contact-section"
+      >
+        <div className="contact-content">
+          <p className="eyebrow">
+            NABABI RISTORANTE
+          </p>
+
+          <h2>{t.contactTitle}</h2>
+
+          <p>{t.contactText}</p>
+
+          <div className="contact-list">
+            <a
+              href="https://www.google.com/maps/search/?api=1&query=Via+Vespasiano+73%2F75%2F77+Roma"
+              target="_blank"
+              rel="noreferrer"
+            >
+              📍 <span>{t.address}</span>
+            </a>
+
+            <a href="tel:+393933805350">
+              ☎ <span>+39 393 3805350</span>
+            </a>
+
+            <a
+              href="https://wa.me/393337687319"
+              target="_blank"
+              rel="noreferrer"
+            >
+              💬 <span>WhatsApp +39 333 7687319</span>
+            </a>
+          </div>
+        </div>
+
+        <div className="map-box">
+          <div>
+            <span>📍</span>
+
+            <strong>Roma</strong>
+
+            <small>
+              Via Vespasiano 73/75/77
+            </small>
+
+            <a
+              href="https://www.google.com/maps/search/?api=1&query=Via+Vespasiano+73%2F75%2F77+Roma"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open Google Maps →
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* SOCIAL MEDIA */}
+      {socialVisible && (
+        <section className="social-section">
+          <p className="eyebrow">
+            {t.socialMedia}
+          </p>
+
+          <div className="social-links">
+
+            {social?.facebook && (
+              <a
+                href={social.facebook}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Facebook
+              </a>
+            )}
+
+            {social?.instagram && (
+              <a
+                href={social.instagram}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Instagram
+              </a>
+            )}
+
+            {social?.tiktok && (
+              <a
+                href={social.tiktok}
+                target="_blank"
+                rel="noreferrer"
+              >
+                TikTok
+              </a>
+            )}
+
+            {social?.youtube && (
+              <a
+                href={social.youtube}
+                target="_blank"
+                rel="noreferrer"
+              >
+                YouTube
+              </a>
+            )}
+
+            {social?.whatsapp && (
+              <a
+                href={social.whatsapp}
+                target="_blank"
+                rel="noreferrer"
+              >
+                WhatsApp
+              </a>
+            )}
+
+            {!social &&
+              <>
+                <a
+                  href="https://www.facebook.com/share/1HEDPavdg6/?mibextid=wwXIfr"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Facebook
+                </a>
+
+                <a
+                  href="https://www.tiktok.com/@nababiristorante?_r=1&_t=ZN-9A75cGh3gec"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  TikTok
+                </a>
+              </>
+            }
+          </div>
+        </section>
+      )}
+
+      {/* FOOTER */}
+      <footer className="footer">
+        <div>
+          <span className="footer-logo">
+            ♛ NABABI
+          </span>
+
+          <p>RISTORANTE</p>
+        </div>
+
+        <p>{t.footer}</p>
+
+        <a href="/admin">
+          Admin Panel
+        </a>
+      </footer>
+
+      <style jsx>{`
         * {
           box-sizing: border-box;
         }
@@ -712,2257 +1258,884 @@ export default function HomePage() {
           scroll-behavior: smooth;
         }
 
-        body {
-          margin: 0;
-          background: #02090a;
-          color: #f7f0df;
-          font-family: Georgia, "Times New Roman", serif;
-        }
-
-        button,
-        input,
-        select,
-        textarea {
-          font: inherit;
-        }
-
-        button {
-          cursor: pointer;
-        }
-
-        a {
-          color: inherit;
-          text-decoration: none;
-        }
-
         .site {
           min-height: 100vh;
           background:
             radial-gradient(
-              circle at 50% 0%,
-              rgba(217, 164, 65, 0.08),
-              transparent 35%
+              circle at 15% 10%,
+              rgba(184, 145, 72, 0.12),
+              transparent 30%
             ),
-            #02090a;
-          overflow-x: hidden;
-        }
-
-        .gold {
-          color: ${GOLD_LIGHT};
+            radial-gradient(
+              circle at 85% 35%,
+              rgba(184, 145, 72, 0.09),
+              transparent 28%
+            ),
+            #100d0c;
+          color: #f5eddc;
+          font-family: Georgia, "Times New Roman", serif;
         }
 
         .header {
           position: sticky;
           top: 0;
-          z-index: 100;
-          height: 62px;
+          z-index: 50;
+          min-height: 82px;
+          padding: 14px 5%;
           display: flex;
           align-items: center;
           justify-content: space-between;
           gap: 20px;
-          padding: 0 30px;
-          background: rgba(1, 7, 8, 0.96);
-          border-bottom: 1px solid ${GOLD};
-          backdrop-filter: blur(15px);
+          background: rgba(16, 13, 12, 0.94);
+          border-bottom: 1px solid rgba(202, 164, 83, 0.3);
+          backdrop-filter: blur(14px);
         }
 
-        .brand {
+        .logo {
           display: flex;
           align-items: center;
           gap: 10px;
-          min-width: 210px;
+          color: #ead49a;
+          text-decoration: none;
+          min-width: 180px;
         }
 
-        .brandMark {
-          color: ${GOLD_LIGHT};
-          font-size: 37px;
-          line-height: 1;
+        .logo-crown {
+          font-size: 35px;
+          color: #c9a55a;
         }
 
-        .brandText {
-          font-size: 25px;
-          font-weight: 700;
-          letter-spacing: 4px;
-          color: ${GOLD_LIGHT};
-          line-height: 0.9;
-        }
-
-        .brandSub {
+        .logo strong {
           display: block;
-          margin-top: 5px;
-          font-size: 9px;
           letter-spacing: 4px;
-          color: ${GOLD};
+          font-size: 20px;
+        }
+
+        .logo small {
+          display: block;
+          letter-spacing: 3px;
+          font-size: 9px;
+          color: #c8b99b;
         }
 
         .nav {
           display: flex;
           align-items: center;
-          gap: 25px;
-          font-size: 14px;
-          white-space: nowrap;
+          gap: 22px;
         }
 
-        .nav a:hover {
-          color: ${GOLD_LIGHT};
-        }
-
-        .navActive {
-          color: ${GOLD_LIGHT};
-          border-bottom: 2px solid ${GOLD_LIGHT};
-          padding-bottom: 8px;
-        }
-
-        .headerActions {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          min-width: 280px;
-          justify-content: flex-end;
-        }
-
-        .langButton,
-        .adminButton {
-          border: 1px solid ${GOLD};
-          color: #fff;
-          background: transparent;
-          border-radius: 25px;
-          padding: 8px 13px;
-        }
-
-        .adminButton {
-          color: ${GOLD_LIGHT};
-          font-weight: 700;
-        }
-
-        .loginLink {
-          color: #fff;
-          font-size: 14px;
-        }
-
-        .hero {
-          min-height: 350px;
-          position: relative;
-          display: grid;
-          grid-template-columns: 30% 40% 30%;
-          align-items: center;
-          border-bottom: 1px solid ${GOLD};
-          background:
-            linear-gradient(
-              90deg,
-              rgba(0, 0, 0, 0.7),
-              rgba(0, 0, 0, 0.2),
-              rgba(0, 0, 0, 0.2)
-            ),
-            url("${heroImage}") center / cover no-repeat;
-        }
-
-        .heroOverlay {
-          position: absolute;
-          inset: 0;
-          background:
-            linear-gradient(
-              90deg,
-              rgba(0, 0, 0, 0.75),
-              rgba(0, 0, 0, 0.2) 55%,
-              rgba(0, 0, 0, 0.15)
-            );
-        }
-
-        .heroLeft,
-        .heroCenter,
-        .heroRight {
-          position: relative;
-          z-index: 2;
-        }
-
-        .heroLeft {
-          padding: 25px;
-          align-self: end;
-          padding-bottom: 25px;
-        }
-
-        .heroCenter {
-          text-align: center;
-        }
-
-        .heroRight {
-          height: 100%;
-        }
-
-        .breaking {
-          position: absolute;
-          top: 17px;
-          left: 20px;
-          width: 222px;
-          padding: 8px;
-          background: rgba(2, 9, 10, 0.92);
-          border: 1px solid #b9c2c4;
-          border-radius: 8px;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-        }
-
-        .breakingHeader {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 7px;
-        }
-
-        .breakingTitle {
-          background: #ff2424;
-          color: #fff;
-          font-weight: 700;
-          padding: 4px 9px;
-          border-radius: 5px;
+        .nav a,
+        .footer a {
+          color: #eee2ca;
+          text-decoration: none;
           font-size: 13px;
+          transition: 0.25s;
         }
 
-        .breakingClose {
-          color: #fff;
-          background: transparent;
-          border: 0;
-          font-size: 21px;
+        .nav a:hover,
+        .footer a:hover {
+          color: #d9b86b;
         }
 
-        .breakingImage {
-          width: 100%;
-          height: 86px;
-          object-fit: cover;
-          border-radius: 5px;
-        }
-
-        .breakingText {
-          margin: 5px 0 2px;
-          font-size: 12px;
-          font-weight: 700;
-        }
-
-        .breakingTime {
-          color: ${GOLD_LIGHT};
-          font-size: 11px;
-        }
-
-        .heroContact {
-          margin-top: 130px;
-          display: grid;
-          gap: 15px;
-          font-size: 14px;
-        }
-
-        .heroCenterSmall {
-          color: ${GOLD_LIGHT};
-          font-size: 16px;
-          letter-spacing: 1px;
-        }
-
-        .heroTitle {
-          margin: 8px 0;
-          font-size: clamp(40px, 5vw, 66px);
-          color: ${GOLD_LIGHT};
-          text-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
-        }
-
-        .heroSubtitle {
-          font-size: 21px;
-          font-style: italic;
-          color: #fff;
-        }
-
-        .heroLine {
-          width: 230px;
-          height: 1px;
-          margin: 23px auto;
-          background: ${GOLD};
-          position: relative;
-        }
-
-        .heroLine::after {
-          content: "❧";
-          position: absolute;
-          left: 50%;
-          top: -17px;
-          transform: translateX(-50%);
-          color: ${GOLD_LIGHT};
-          font-size: 25px;
-        }
-
-        .heroDescription {
-          max-width: 430px;
-          margin: 0 auto 18px;
-          line-height: 1.5;
-        }
-
-        .goldButton {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          border: 1px solid ${GOLD_LIGHT};
-          background: linear-gradient(135deg, #211700, #6e4b08);
-          color: #fff4d5;
-          padding: 11px 24px;
-          border-radius: 24px;
-          font-weight: 700;
-          transition: 0.2s ease;
-        }
-
-        .goldButton:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 0 18px rgba(217, 164, 65, 0.25);
-        }
-
-        .highlights {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          border-bottom: 1px solid ${GOLD};
-          background: #021011;
-        }
-
-        .highlight {
-          min-height: 105px;
+        .header-actions {
           display: flex;
           align-items: center;
-          justify-content: center;
-          flex-direction: column;
-          gap: 5px;
-          border-right: 1px solid ${GOLD};
-          text-align: center;
-        }
-
-        .highlight:last-child {
-          border-right: 0;
-        }
-
-        .roundIcon {
-          width: 49px;
-          height: 49px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border: 1px solid ${GOLD};
-          border-radius: 50%;
-          color: ${GOLD_LIGHT};
-          font-size: 25px;
-        }
-
-        .highlight strong {
-          font-size: 15px;
-        }
-
-        .highlight small {
-          opacity: 0.8;
-          font-size: 11px;
-        }
-
-        .aboutSection {
-          display: grid;
-          grid-template-columns: 1.05fr 1.2fr 0.75fr;
-          gap: 28px;
-          padding: 27px 40px;
-          border-bottom: 1px solid ${GOLD};
-          align-items: center;
-        }
-
-        .videoCard {
-          position: relative;
-          min-height: 170px;
-          border: 1px solid ${GOLD};
-          border-radius: 8px;
-          overflow: hidden;
-          background: #071113;
-        }
-
-        .videoImage {
-          width: 100%;
-          height: 170px;
-          object-fit: cover;
-          display: block;
-        }
-
-        .videoPlay {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 48px;
-          height: 48px;
-          border-radius: 50%;
-          border: 1px solid #fff;
-          color: #fff;
-          background: rgba(0, 0, 0, 0.45);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 21px;
-        }
-
-        .videoLabel {
-          position: absolute;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          padding: 8px;
-          background: linear-gradient(transparent, rgba(0, 0, 0, 0.95));
-          text-align: center;
-          color: #fff;
-        }
-
-        .aboutContent h4 {
-          margin: 0 0 5px;
-          color: ${GOLD};
-          letter-spacing: 1px;
-          font-size: 13px;
-        }
-
-        .aboutContent h2 {
-          margin: 0 0 8px;
-          color: ${GOLD_LIGHT};
-          font-size: 28px;
-        }
-
-        .aboutContent p {
-          line-height: 1.5;
-          font-size: 14px;
-          color: #eee;
-        }
-
-        .reviewMini {
-          border: 1px solid ${GOLD};
-          border-radius: 8px;
-          padding: 18px;
-          min-height: 170px;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          background:
-            linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.8)),
-            url("${heroImage}") center / cover;
-        }
-
-        .reviewMiniTitle {
-          font-size: 21px;
-          color: ${GOLD_LIGHT};
-          margin-bottom: 7px;
-        }
-
-        .stars {
-          color: ${GOLD_LIGHT};
-          letter-spacing: 2px;
-          font-size: 18px;
-        }
-
-        .reviewMiniText {
-          font-size: 12px;
-          margin: 7px 0 13px;
-        }
-
-        .menuSection {
-          padding: 12px 40px 25px;
-          border-bottom: 1px solid ${GOLD};
-        }
-
-        .sectionHeader {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 15px;
-          margin-bottom: 14px;
-        }
-
-        .sectionHeader h2 {
-          margin: 0;
-          color: ${GOLD_LIGHT};
-          font-size: 29px;
-        }
-
-        .sectionHeader p {
-          margin: 2px 0 0;
-          font-size: 13px;
-        }
-
-        .categoryRow {
-          display: grid;
-          grid-template-columns: repeat(8, 1fr);
           gap: 9px;
         }
 
-        .categoryCard {
-          min-height: 115px;
-          border: 1px solid ${GOLD};
-          border-radius: 7px;
-          background: #041012;
-          overflow: hidden;
-          color: #fff;
-          padding: 0;
-          transition: 0.2s ease;
-        }
-
-        .categoryCard:hover,
-        .categoryCard.active {
-          border-color: ${GOLD_LIGHT};
-          box-shadow: 0 0 16px rgba(217, 164, 65, 0.2);
-          transform: translateY(-2px);
-        }
-
-        .categoryImage {
-          width: 100%;
-          height: 80px;
-          object-fit: cover;
-          display: block;
-        }
-
-        .categoryName {
-          padding: 7px 3px;
-          font-size: 13px;
-        }
-
-        .menuItems {
-          margin-top: 18px;
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 13px;
-        }
-
-        .menuItem {
-          border: 1px solid rgba(217, 164, 65, 0.65);
-          border-radius: 8px;
-          overflow: hidden;
-          background: #071214;
-        }
-
-        .menuItem img {
-          width: 100%;
-          height: 120px;
-          object-fit: cover;
-        }
-
-        .menuItemBody {
-          padding: 10px;
-        }
-
-        .menuItemName {
-          color: ${GOLD_LIGHT};
-          font-weight: 700;
-        }
-
-        .menuItemDescription {
-          color: #ddd;
+        .order-btn,
+        .admin-btn,
+        .primary-btn,
+        .secondary-btn {
+          text-decoration: none;
+          border-radius: 30px;
+          padding: 11px 17px;
           font-size: 12px;
-          min-height: 32px;
-          margin: 5px 0;
-        }
-
-        .menuItemPrice {
-          color: #fff;
           font-weight: 700;
+          cursor: pointer;
+          border: 1px solid #c9a55a;
+          transition: 0.25s;
         }
 
-        .utilityGrid {
-          padding: 17px 36px 20px;
-          display: grid;
-          grid-template-columns: 1.35fr 0.9fr 0.95fr 0.75fr;
-          gap: 10px;
-          border-bottom: 1px solid ${GOLD};
+        .order-btn,
+        .primary-btn {
+          color: #17110c;
+          background: linear-gradient(
+            135deg,
+            #f0dfa7,
+            #b99045
+          );
         }
 
-        .utilityCard {
-          border: 1px solid rgba(217, 164, 65, 0.7);
-          border-radius: 7px;
-          padding: 13px;
-          background:
-            linear-gradient(
-              135deg,
-              rgba(8, 20, 21, 0.98),
-              rgba(1, 10, 11, 0.98)
-            );
-          min-width: 0;
-        }
-
-        .utilityTitle {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          color: ${GOLD_LIGHT};
-          font-size: 17px;
-          font-weight: 700;
-        }
-
-        .utilitySub {
-          font-size: 10px;
-          opacity: 0.8;
-          margin: 2px 0 12px 31px;
-        }
-
-        .formGrid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 7px;
-        }
-
-        .field {
-          display: grid;
-          gap: 4px;
-          font-size: 11px;
-        }
-
-        .field.full {
-          grid-column: 1 / -1;
-        }
-
-        .field input,
-        .field select,
-        .field textarea,
-        .reviewForm input,
-        .reviewForm textarea,
-        .reportForm input,
-        .reportForm textarea,
-        .trackInput {
-          width: 100%;
-          border: 1px solid #1c566c;
-          border-radius: 5px;
-          background: #052535;
-          color: #fff;
-          padding: 9px 10px;
-          outline: none;
-        }
-
-        .field textarea,
-        .reviewForm textarea,
-        .reportForm textarea {
-          min-height: 55px;
-          resize: vertical;
-        }
-
-        .field input:focus,
-        .field select:focus,
-        .field textarea:focus,
-        .reviewForm input:focus,
-        .reviewForm textarea:focus,
-        .reportForm input:focus,
-        .reportForm textarea:focus,
-        .trackInput:focus {
-          border-color: ${GOLD_LIGHT};
-        }
-
-        .formButtons {
-          display: flex;
-          gap: 8px;
-          margin-top: 9px;
-        }
-
-        .dangerButton,
-        .blueButton,
-        .smallButton {
-          border-radius: 5px;
-          padding: 9px 13px;
+        .admin-btn,
+        .secondary-btn {
+          color: #f2dfb0;
           background: transparent;
-          color: #fff;
-          border: 1px solid ${GOLD};
         }
 
-        .dangerButton {
-          border-color: red;
-          color: #ff6d6d;
+        .order-btn:hover,
+        .primary-btn:hover,
+        .admin-btn:hover,
+        .secondary-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(201, 165, 90, 0.2);
         }
 
-        .blueButton {
-          border-color: #00a6e8;
-          color: #54c9ff;
+        .language {
+          color: #ead9b0;
+          background: #211a17;
+          border: 1px solid #6e5933;
+          border-radius: 20px;
+          padding: 9px 10px;
         }
 
-        .trackButtons {
-          display: flex;
-          gap: 7px;
-          margin-bottom: 10px;
-        }
-
-        .trackButtons button {
-          flex: 1;
-        }
-
-        .otpButton {
-          width: 100%;
-          margin-top: 10px;
-          border: 0;
-          border-radius: 5px;
-          padding: 10px;
-          background: linear-gradient(135deg, #f7d36b, #d79b28);
-          color: #16100a;
-          font-weight: 700;
-        }
-
-        .bookingCodeBox {
-          border: 1px solid rgba(217, 164, 65, 0.35);
-          border-radius: 6px;
-          padding: 10px;
-          background: rgba(0, 0, 0, 0.3);
-          margin-bottom: 10px;
-        }
-
-        .code {
-          color: ${GOLD_LIGHT};
-          font-size: 18px;
-          font-weight: 700;
-        }
-
-        .detailRows {
+        .hero {
+          min-height: 680px;
+          padding: 90px 8%;
           display: grid;
-          gap: 5px;
-          font-size: 11px;
-        }
-
-        .detailRow {
-          display: grid;
-          grid-template-columns: 72px 1fr;
-        }
-
-        .status {
-          display: inline-block;
-          width: fit-content;
-          background: #07862d;
-          color: #fff;
-          padding: 2px 7px;
-          border-radius: 4px;
-        }
-
-        .galleryPreview {
-          width: 100%;
-          height: 100px;
-          object-fit: cover;
-          border-radius: 5px;
-          margin: 5px 0 10px;
-        }
-
-        .utilityStack {
-          display: grid;
-          gap: 10px;
-        }
-
-        .miniAction {
-          min-height: 118px;
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
-        }
-
-        .footer {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 0;
-          border-bottom: 1px solid ${GOLD};
-        }
-
-        .footerCol {
-          padding: 18px 35px;
-          border-right: 1px solid rgba(217, 164, 65, 0.75);
-          min-height: 135px;
-        }
-
-        .footerCol:last-child {
-          border-right: 0;
-        }
-
-        .footerTitle {
-          color: ${GOLD_LIGHT};
-          font-size: 16px;
-          font-weight: 700;
-          margin-bottom: 7px;
-        }
-
-        .footerLine {
-          display: flex;
-          gap: 8px;
-          margin: 6px 0;
-          font-size: 12px;
-        }
-
-        .footerLink:hover {
-          color: ${GOLD_LIGHT};
-        }
-
-        .copyright {
-          display: flex;
-          justify-content: space-between;
-          gap: 15px;
-          padding: 11px 40px;
-          font-size: 11px;
-        }
-
-        .modalBackdrop {
-          position: fixed;
-          inset: 0;
-          z-index: 500;
-          background: rgba(0, 0, 0, 0.78);
-          display: flex;
+          grid-template-columns: 1.1fr 0.9fr;
           align-items: center;
-          justify-content: center;
-          padding: 20px;
-          overflow-y: auto;
+          gap: 50px;
+          position: relative;
         }
 
-        .modal {
-          width: min(1100px, 100%);
-          max-height: 90vh;
-          overflow-y: auto;
-          border: 1px solid ${GOLD};
-          border-radius: 10px;
-          background:
-            radial-gradient(
-              circle at top,
-              rgba(217, 164, 65, 0.1),
-              transparent 35%
-            ),
-            #031011;
-          box-shadow: 0 25px 80px rgba(0, 0, 0, 0.8);
-          padding: 20px;
-        }
-
-        .modalHeader {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 15px;
-          border-bottom: 1px solid rgba(217, 164, 65, 0.5);
-          padding-bottom: 12px;
+        .eyebrow {
+          color: #d2b267;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 3px;
+          text-transform: uppercase;
           margin-bottom: 15px;
         }
 
-        .modalHeader h2 {
+        .hero h1 {
           margin: 0;
-          color: ${GOLD_LIGHT};
+          max-width: 700px;
+          font-size: clamp(55px, 7vw, 92px);
+          line-height: 0.95;
+          color: #f0e1b1;
+          font-weight: 500;
         }
 
-        .closeButton {
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          border: 1px solid ${GOLD};
-          background: transparent;
-          color: #fff;
+        .hero-text {
+          max-width: 570px;
+          color: #cbbda5;
+          line-height: 1.8;
+          margin: 28px 0;
         }
 
-        .reviewLayout {
-          display: grid;
-          grid-template-columns: 0.8fr 1.4fr 0.8fr;
-          gap: 12px;
-        }
-
-        .reviewForm,
-        .reportForm,
-        .reviewList {
-          border: 1px solid rgba(217, 164, 65, 0.7);
-          border-radius: 7px;
-          padding: 14px;
-          background: #061315;
-        }
-
-        .reviewForm h3,
-        .reportForm h3,
-        .reviewList h3 {
-          color: ${GOLD_LIGHT};
-          margin: 0 0 10px;
-        }
-
-        .reviewForm {
-          display: grid;
-          gap: 8px;
-        }
-
-        .ratingButtons {
+        .hero-buttons {
           display: flex;
-          gap: 4px;
+          flex-wrap: wrap;
+          gap: 12px;
+          margin-bottom: 42px;
         }
 
-        .starButton {
-          border: 0;
+        .quick-info {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          border-top: 1px solid rgba(207, 172, 94, 0.3);
+          padding-top: 22px;
+          gap: 18px;
+        }
+
+        .quick-info div {
+          display: grid;
+          grid-template-columns: 25px 1fr;
+          column-gap: 5px;
+        }
+
+        .quick-info span {
+          grid-row: span 2;
+          font-size: 18px;
+        }
+
+        .quick-info small {
+          color: #ad9b7d;
+          font-size: 9px;
+          text-transform: uppercase;
+        }
+
+        .quick-info strong {
+          font-size: 10px;
+          color: #e4d7bb;
+        }
+
+        .hero-art {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .royal-circle {
+          width: min(390px, 80vw);
+          aspect-ratio: 1;
+          border-radius: 50%;
+          display: grid;
+          place-items: center;
+          border: 2px solid #aa8140;
+          box-shadow:
+            0 0 0 16px rgba(172, 130, 64, 0.08),
+            0 0 0 32px rgba(172, 130, 64, 0.04);
+          background:
+            radial-gradient(
+              circle,
+              #5d392d 0%,
+              #211817 47%,
+              #100d0c 70%
+            );
+        }
+
+        .food-circle {
+          width: 52%;
+          aspect-ratio: 1;
+          border-radius: 50%;
+          display: grid;
+          place-items: center;
+          font-size: clamp(70px, 9vw, 125px);
+          background:
+            radial-gradient(
+              circle,
+              #d99d51,
+              #7c4a31
+            );
+          border: 12px solid #5c3930;
+          box-shadow: 0 15px 35px rgba(0, 0, 0, 0.45);
+        }
+
+        .hero-art-buttons {
+          display: flex;
+          gap: 12px;
+          margin-top: 30px;
+        }
+
+        .hero-art-buttons button,
+        .hero-art-buttons a {
+          color: #e9d9b4;
           background: transparent;
-          color: #444;
-          font-size: 22px;
-          padding: 0;
+          border: 1px solid #9c7a43;
+          padding: 10px 15px;
+          border-radius: 25px;
+          text-decoration: none;
+          font-size: 12px;
         }
 
-        .starButton.active {
-          color: ${GOLD_LIGHT};
+        /* BREAKING NEWS */
+
+        .breaking-news-box {
+          position: absolute;
+          z-index: 20;
+          left: 3%;
+          top: 50%;
+          transform: translateY(-50%);
+          width: min(310px, 27vw);
+          overflow: hidden;
+          border: 1px solid rgba(219, 180, 93, 0.65);
+          border-radius: 16px;
+          background: rgba(24, 17, 14, 0.96);
+          box-shadow:
+            0 20px 55px rgba(0, 0, 0, 0.55),
+            0 0 30px rgba(201, 165, 90, 0.12);
+          backdrop-filter: blur(14px);
         }
 
-        .reviewItem {
-          border-bottom: 1px solid rgba(217, 164, 65, 0.2);
-          padding: 10px 0;
-        }
-
-        .reviewItem:last-child {
-          border-bottom: 0;
-        }
-
-        .reviewTop {
+        .breaking-news-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 10px;
+          padding: 12px 14px;
+          color: #f0d991;
+          border-bottom: 1px solid rgba(201, 165, 90, 0.25);
         }
 
-        .reviewName {
-          color: #fff;
+        .breaking-news-header strong {
+          font-size: 14px;
+          letter-spacing: 0.5px;
+        }
+
+        .breaking-news-header button {
+          width: 28px;
+          height: 28px;
+          border: 1px solid #72592f;
+          border-radius: 50%;
+          color: #e8d49d;
+          background: #1a120f;
+          cursor: pointer;
+          font-size: 20px;
+          line-height: 20px;
+        }
+
+        .breaking-news-header button:hover {
+          background: #4a2f25;
+        }
+
+        .breaking-news-media {
+          display: block;
+          width: 100%;
+          max-height: 190px;
+          object-fit: cover;
+          background: #100d0c;
+        }
+
+        .breaking-news-content {
+          padding: 15px;
+          display: grid;
+          gap: 9px;
+        }
+
+        .breaking-news-content strong {
+          color: #f3e0aa;
+          font-size: 15px;
+          line-height: 1.45;
+        }
+
+        .breaking-news-content span {
+          color: #d2b267;
+          font-size: 11px;
           font-weight: 700;
         }
 
-        .reviewDate {
-          color: #999;
-          font-size: 10px;
+        .section {
+          padding: 100px 8%;
+          border-top: 1px solid rgba(203, 163, 78, 0.13);
         }
 
-        .reviewText {
-          margin: 5px 0;
-          color: #ddd;
+        .section-heading {
+          max-width: 700px;
+          margin: 0 auto 50px;
+          text-align: center;
+        }
+
+        .section-heading h2,
+        .about-content h2,
+        .contact-content h2 {
+          font-size: clamp(38px, 5vw, 60px);
+          line-height: 1;
+          font-weight: 500;
+          color: #eddcae;
+          margin: 0 0 18px;
+        }
+
+        .section-heading > p:last-child,
+        .about-content > p,
+        .contact-content > p {
+          color: #bfb29c;
+          line-height: 1.8;
+        }
+
+        .category-grid {
+          display: grid;
+          grid-template-columns: repeat(6, 1fr);
+          gap: 16px;
+        }
+
+        .category-card {
+          min-height: 220px;
+          padding: 22px 14px;
+          color: #f2e6cd;
+          background:
+            linear-gradient(
+              145deg,
+              rgba(74, 48, 39, 0.8),
+              rgba(28, 21, 18, 0.95)
+            );
+          border: 1px solid rgba(194, 154, 77, 0.35);
+          border-radius: 16px;
+          cursor: pointer;
+          transition: 0.3s;
+        }
+
+        .category-card:hover,
+        .category-active {
+          transform: translateY(-8px);
+          border-color: #d2ac5f;
+          box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+        }
+
+        .category-image {
+          width: 85px;
+          height: 85px;
+          margin: 0 auto 18px;
+          border-radius: 50%;
+          display: grid;
+          place-items: center;
+          font-size: 42px;
+          background: #35221c;
+          border: 1px solid #94703c;
+        }
+
+        .category-card h3 {
+          margin: 0 0 7px;
+          color: #ead6a4;
+        }
+
+        .category-card p {
+          margin: 0 0 13px;
+          color: #aa9c85;
           font-size: 12px;
-          line-height: 1.5;
         }
 
-        .reply {
-          margin-left: 20px;
-          padding: 7px 10px;
-          border-left: 2px solid ${GOLD};
-          color: #cfcfcf;
+        .category-card span {
+          color: #cfae65;
           font-size: 11px;
         }
 
-        .galleryGrid {
+        .selected-category {
+          margin: 30px auto 0;
+          max-width: 600px;
+          padding: 15px;
+          text-align: center;
+          border: 1px solid #806331;
+          border-radius: 12px;
+          color: #ddc68e;
+          background: rgba(74, 48, 39, 0.3);
+        }
+
+        .selected-category span {
+          color: #d8b365;
+          margin-right: 8px;
+        }
+
+        .about-section {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          align-items: center;
+          gap: 70px;
+          background: rgba(52, 34, 28, 0.2);
+        }
+
+        .about-image {
+          min-height: 480px;
+          display: grid;
+          place-items: center;
+          border-radius: 25px;
+          border: 1px solid rgba(201, 165, 90, 0.4);
+          background:
+            radial-gradient(
+              circle at center,
+              #744b38,
+              #241815 65%
+            );
+        }
+
+        .about-placeholder {
+          width: 230px;
+          height: 230px;
+          border-radius: 50%;
+          border: 2px solid #c6a15a;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          color: #ead59d;
+          background: #211614;
+          box-shadow:
+            0 0 0 20px rgba(198, 161, 90, 0.05);
+        }
+
+        .about-placeholder span {
+          font-size: 50px;
+        }
+
+        .about-placeholder strong {
+          letter-spacing: 4px;
+          font-size: 22px;
+        }
+
+        .about-placeholder small {
+          letter-spacing: 3px;
+        }
+
+        .about-content .primary-btn {
+          display: inline-block;
+          margin-top: 20px;
+        }
+
+        .gallery-grid {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
-          gap: 10px;
+          grid-auto-rows: 190px;
+          gap: 15px;
         }
 
-        .galleryGrid img {
+        .gallery-card {
+          display: grid;
+          place-items: center;
+          font-size: 65px;
+          border-radius: 15px;
+          border: 1px solid rgba(198, 161, 90, 0.35);
+          background:
+            linear-gradient(
+              145deg,
+              #5a3a2d,
+              #1e1714
+            );
+          transition: 0.3s;
+        }
+
+        .gallery-card:hover {
+          transform: scale(1.02);
+          border-color: #d5b36c;
+        }
+
+        .gallery-card.large {
+          grid-column: span 2;
+        }
+
+        .booking-section {
+          background:
+            radial-gradient(
+              circle at center,
+              rgba(116, 75, 56, 0.25),
+              transparent 50%
+            );
+        }
+
+        .booking-form {
+          max-width: 900px;
+          margin: auto;
+          padding: 35px;
+          border-radius: 20px;
+          border: 1px solid rgba(199, 163, 88, 0.4);
+          background: rgba(35, 25, 21, 0.9);
+        }
+
+        .form-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 18px;
+          margin-bottom: 18px;
+        }
+
+        .booking-form label {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          color: #d6c59f;
+          font-size: 12px;
+        }
+
+        .booking-form input,
+        .booking-form select,
+        .booking-form textarea {
           width: 100%;
-          height: 180px;
-          object-fit: cover;
-          border-radius: 6px;
-          border: 1px solid rgba(217, 164, 65, 0.6);
+          padding: 13px;
+          color: #f1e4ca;
+          background: #15100e;
+          border: 1px solid #604b2d;
+          border-radius: 9px;
+          outline: none;
         }
 
-        .message {
-          margin-top: 8px;
-          color: ${GOLD_LIGHT};
-          font-size: 11px;
+        .booking-form input:focus,
+        .booking-form select:focus,
+        .booking-form textarea:focus {
+          border-color: #cba65d;
         }
 
-        .mobileNav {
-          display: none;
+        .submit-btn {
+          margin-top: 20px;
+          border: 0;
         }
 
-        @media (max-width: 1050px) {
-          .header {
-            padding: 0 15px;
-          }
+        .booking-success {
+          margin-top: 20px;
+          padding: 15px 18px;
+          border: 1px solid #806331;
+          border-radius: 10px;
+          background: rgba(74, 48, 39, 0.45);
+          color: #e5cd91;
+          text-align: center;
+          line-height: 1.6;
+        }
 
+        .booking-details-link {
+          text-align: center;
+          margin-top: 30px;
+        }
+
+        .reviews-section {
+          background: rgba(48, 31, 25, 0.2);
+        }
+
+        .reviews-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 20px;
+          max-width: 1050px;
+          margin: auto;
+        }
+
+        .review-card {
+          padding: 30px;
+          border-radius: 17px;
+          border: 1px solid rgba(195, 158, 83, 0.3);
+          background: #1c1512;
+        }
+
+        .stars {
+          color: #d7b15f;
+          letter-spacing: 3px;
+          margin-bottom: 18px;
+        }
+
+        .review-card p {
+          min-height: 75px;
+          color: #c8bba4;
+          line-height: 1.7;
+        }
+
+        .review-card strong {
+          display: block;
+          color: #ead7a4;
+          margin-top: 20px;
+        }
+
+        .review-card small {
+          color: #897b68;
+        }
+
+        .center {
+          text-align: center;
+          margin-top: 35px;
+        }
+
+        .contact-section {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 60px;
+          align-items: center;
+        }
+
+        .contact-list {
+          display: grid;
+          gap: 13px;
+          margin-top: 25px;
+        }
+
+        .contact-list a {
+          color: #dfcfaa;
+          text-decoration: none;
+          padding: 16px;
+          border: 1px solid rgba(195, 158, 83, 0.2);
+          border-radius: 12px;
+          background: rgba(50, 33, 27, 0.3);
+        }
+
+        .map-box {
+          min-height: 350px;
+          border-radius: 20px;
+          border: 1px solid rgba(200, 164, 86, 0.4);
+          display: grid;
+          place-items: center;
+          text-align: center;
+          background:
+            radial-gradient(
+              circle,
+              #503429,
+              #1c1512 65%
+            );
+        }
+
+        .map-box span {
+          display: block;
+          font-size: 50px;
+        }
+
+        .map-box strong {
+          display: block;
+          color: #e6d29b;
+          font-size: 30px;
+          margin: 10px;
+        }
+
+        .map-box small {
+          display: block;
+          color: #ad9c7e;
+        }
+
+        .map-box a {
+          display: inline-block;
+          margin-top: 20px;
+          color: #d5b269;
+        }
+
+        .social-section {
+          padding: 55px 8%;
+          text-align: center;
+          border-top: 1px solid rgba(203, 163, 78, 0.13);
+        }
+
+        .social-links {
+          display: flex;
+          justify-content: center;
+          gap: 15px;
+          flex-wrap: wrap;
+        }
+
+        .social-links a {
+          color: #e2d1a6;
+          text-decoration: none;
+          padding: 12px 22px;
+          border: 1px solid #6c5430;
+          border-radius: 30px;
+        }
+
+        .footer {
+          padding: 35px 8%;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 20px;
+          border-top: 1px solid rgba(203, 163, 78, 0.2);
+          color: #91836e;
+          font-size: 12px;
+        }
+
+        .footer-logo {
+          color: #dfc27b;
+          letter-spacing: 3px;
+        }
+
+        .footer p {
+          margin: 5px 0 0;
+        }
+
+        @media (max-width: 1100px) {
           .nav {
-            gap: 13px;
+            display: none;
           }
 
-          .headerActions {
-            min-width: auto;
+          .category-grid {
+            grid-template-columns: repeat(3, 1fr);
           }
 
-          .aboutSection {
-            grid-template-columns: 1fr 1fr;
-          }
-
-          .reviewMini {
-            grid-column: 1 / -1;
-          }
-
-          .categoryRow {
-            grid-template-columns: repeat(4, 1fr);
-          }
-
-          .utilityGrid {
-            grid-template-columns: 1fr 1fr;
-          }
-
-          .footer {
-            grid-template-columns: 1fr 1fr;
+          .breaking-news-box {
+            width: 260px;
           }
         }
 
-        @media (max-width: 760px) {
+        @media (max-width: 800px) {
           .header {
-            height: auto;
-            min-height: 62px;
-            padding: 9px 12px;
             flex-wrap: wrap;
           }
 
-          .brand {
-            min-width: auto;
-          }
-
-          .brandText {
-            font-size: 20px;
-          }
-
-          .nav {
-            display: none;
-          }
-
-          .headerActions {
+          .header-actions {
             margin-left: auto;
-          }
-
-          .loginLink {
-            display: none;
           }
 
           .hero {
             grid-template-columns: 1fr;
-            min-height: 600px;
+            padding-top: 60px;
           }
 
-          .heroCenter {
-            padding: 120px 20px 30px;
+          .hero h1 {
+            font-size: 55px;
           }
 
-          .heroLeft {
-            position: absolute;
-            inset: 0;
-            padding: 0;
-          }
-
-          .heroContact {
-            position: absolute;
-            bottom: 25px;
-            left: 20px;
-            margin: 0;
-          }
-
-          .heroRight {
-            display: none;
-          }
-
-          .breaking {
-            width: 205px;
-          }
-
-          .highlights {
-            grid-template-columns: 1fr 1fr;
-          }
-
-          .highlight:nth-child(2) {
-            border-right: 0;
-          }
-
-          .highlight:nth-child(-n + 2) {
-            border-bottom: 1px solid ${GOLD};
-          }
-
-          .aboutSection {
+          .quick-info {
             grid-template-columns: 1fr;
-            padding: 20px;
           }
 
-          .reviewMini {
-            grid-column: auto;
+          .about-section,
+          .contact-section {
+            grid-template-columns: 1fr;
           }
 
-          .menuSection {
-            padding: 15px;
-          }
-
-          .sectionHeader {
-            align-items: flex-start;
-            flex-direction: column;
-          }
-
-          .categoryRow {
+          .category-grid {
             grid-template-columns: repeat(2, 1fr);
           }
 
-          .menuItems {
-            grid-template-columns: 1fr 1fr;
+          .reviews-grid {
+            grid-template-columns: 1fr;
           }
 
-          .utilityGrid {
+          .gallery-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+
+          .form-grid {
             grid-template-columns: 1fr;
-            padding: 15px;
+          }
+
+          .breaking-news-box {
+            position: relative;
+            left: auto;
+            top: auto;
+            transform: none;
+            width: min(100%, 330px);
+            margin: -35px auto 25px;
+            grid-column: 1;
+            grid-row: 1;
+          }
+
+          .hero-content {
+            grid-row: 2;
+          }
+
+          .hero-art {
+            grid-row: 3;
           }
 
           .footer {
-            grid-template-columns: 1fr;
-          }
-
-          .footerCol {
-            border-right: 0;
-            border-bottom: 1px solid rgba(217, 164, 65, 0.4);
-          }
-
-          .copyright {
             flex-direction: column;
-            padding: 12px 20px;
+            text-align: center;
+          }
+        }
+
+        @media (max-width: 520px) {
+          .header {
+            padding: 12px 4%;
           }
 
-          .reviewLayout {
+          .logo {
+            min-width: auto;
+          }
+
+          .logo strong {
+            font-size: 16px;
+          }
+
+          .order-btn {
+            display: none;
+          }
+
+          .admin-btn {
+            padding: 9px 10px;
+          }
+
+          .hero,
+          .section {
+            padding-left: 5%;
+            padding-right: 5%;
+          }
+
+          .hero h1 {
+            font-size: 46px;
+          }
+
+          .category-grid {
             grid-template-columns: 1fr;
           }
 
-          .galleryGrid {
-            grid-template-columns: 1fr 1fr;
+          .gallery-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .gallery-card.large {
+            grid-column: span 1;
+          }
+
+          .booking-form {
+            padding: 20px;
+          }
+
+          .breaking-news-box {
+            width: 100%;
           }
         }
       `}</style>
-
-      {/* HEADER */}
-      <header className="header">
-        <a href="#home" className="brand">
-          <span className="brandMark">♛</span>
-
-          <span className="brandText">
-            NABABI
-            <span className="brandSub">RISTORANTE</span>
-          </span>
-        </a>
-
-        <nav className="nav">
-          <a href="#home" className="navActive">
-            {t("home")}
-          </a>
-
-          <a href="#about">{t("about")}</a>
-
-          <a href="#menu">{t("menu")}</a>
-
-          <button
-            onClick={() => setGalleryOpen(true)}
-            style={{
-              background: "transparent",
-              border: 0,
-              color: "inherit",
-            }}
-          >
-            {t("gallery")}
-          </button>
-
-          <button
-            onClick={() => setReviewsOpen(true)}
-            style={{
-              background: "transparent",
-              border: 0,
-              color: "inherit",
-            }}
-          >
-            {t("reviews")}
-          </button>
-
-          <a href="#contact">{t("contact")}</a>
-        </nav>
-
-        <div className="headerActions">
-          <select
-            className="langButton"
-            value={lang}
-            onChange={(e) => {
-              const next = e.target.value as Lang;
-              setLang(next);
-              localStorage.setItem("nababi-language", next);
-            }}
-          >
-            <option value="en">🇬🇧 EN</option>
-            <option value="it">🇮🇹 IT</option>
-            <option value="bn">🇧🇩 BN</option>
-          </select>
-
-          <a className="loginLink" href="/login">
-            👤 {t("login")}
-          </a>
-
-          <button className="adminButton" onClick={openAdmin}>
-            ⚙ {t("admin")}
-          </button>
-        </div>
-      </header>
-
-      {/* HERO */}
-      <section className="hero" id="home">
-        <div className="heroOverlay" />
-
-        <div className="heroLeft">
-          {!newsClosed && breakingNews.length > 0 && (
-            <div className="breaking">
-              <div className="breakingHeader">
-                <span className="breakingTitle">Breaking News</span>
-
-                <button
-                  className="breakingClose"
-                  onClick={() => setNewsClosed(true)}
-                >
-                  ×
-                </button>
-              </div>
-
-              {breakingNews[0]?.image ? (
-                <img
-                  src={breakingNews[0].image}
-                  className="breakingImage"
-                  alt="Breaking News"
-                />
-              ) : (
-                <img
-                  src={heroImage}
-                  className="breakingImage"
-                  alt="Breaking News"
-                />
-              )}
-
-              <div className="breakingText">
-                {breakingNews[0]?.text || "Special Discount on Biryani!"}
-              </div>
-
-              <div className="breakingTime">◷ Live Offer</div>
-            </div>
-          )}
-
-          <div className="heroContact">
-            <div>☎ {phone}</div>
-            <div>📍 {address}</div>
-          </div>
-        </div>
-
-        <div className="heroCenter">
-          <div className="heroCenterSmall">→ {t("welcome")}</div>
-
-          <h1 className="heroTitle">{restaurantName.toUpperCase()}</h1>
-
-          <div className="heroSubtitle">{t("subtitle")}</div>
-
-          <div className="heroLine" />
-
-          <p className="heroDescription">{t("heroText")}</p>
-
-          <a className="goldButton" href="#menu">
-            {t("explore")} →
-          </a>
-        </div>
-
-        <div className="heroRight" />
-      </section>
-
-      {/* HIGHLIGHTS */}
-      <section className="highlights">
-        <div className="highlight">
-          <div className="roundIcon">🍃</div>
-          <strong>{t("fresh")}</strong>
-          <small>{t("freshSub")}</small>
-        </div>
-
-        <div className="highlight">
-          <div className="roundIcon">👨‍🍳</div>
-          <strong>{t("chefs")}</strong>
-          <small>{t("chefsSub")}</small>
-        </div>
-
-        <div className="highlight">
-          <div className="roundIcon">⌂</div>
-          <strong>{t("ambience")}</strong>
-          <small>{t("ambienceSub")}</small>
-        </div>
-
-        <div className="highlight">
-          <div className="roundIcon">⏱</div>
-          <strong>{t("service")}</strong>
-          <small>{t("serviceSub")}</small>
-        </div>
-      </section>
-
-      {/* ABOUT + VIDEO + SMALL REVIEW OPTION */}
-      <section className="aboutSection" id="about">
-        <div className="videoCard">
-          <img
-            className="videoImage"
-            src={aboutImage}
-            alt="Nababi Restaurant"
-          />
-
-          <div className="videoPlay">▶</div>
-
-          <div className="videoLabel">
-            {t("watchVideo")}
-          </div>
-        </div>
-
-        <div className="aboutContent">
-          <h4>{t("aboutUs")}</h4>
-
-          <h2>{home?.welcomeTitle || t("ourStory")}</h2>
-
-          <p>
-            {home?.welcomeText ||
-              "At Nababi Ristorante, we bring the rich culinary traditions of India and Bangladesh to the heart of Rome. Our goal is to serve you the freshest, tastiest and most memorable food with a cozy atmosphere."}
-          </p>
-
-          <a className="goldButton" href="#about">
-            {t("learnMore")} →
-          </a>
-        </div>
-
-        {/* SMALL REVIEW OPTION */}
-        <div className="reviewMini">
-          <div className="reviewMiniTitle">★ {t("smallReviews")}</div>
-
-          <div className="stars">
-            {totalReviews > 0 ? "★★★★★" : "☆☆☆☆☆"}
-          </div>
-
-          <strong>
-            {averageRating}/5
-          </strong>
-
-          <div className="reviewMiniText">
-            {totalReviews > 0
-              ? `Based on ${totalReviews} reviews`
-              : "Share your experience with us"}
-          </div>
-
-          <button
-            className="goldButton"
-            onClick={() => setReviewsOpen(true)}
-          >
-            {t("viewReviews")} →
-          </button>
-        </div>
-      </section>
-
-      {/* MENU */}
-      <section className="menuSection" id="menu">
-        <div className="sectionHeader">
-          <div>
-            <h2>{t("ourMenu")}</h2>
-            <p>{t("chooseCategory")}</p>
-          </div>
-
-          <button
-            className="goldButton"
-            onClick={() => {
-              document
-                .getElementById("menuItems")
-                ?.scrollIntoView({ behavior: "smooth" });
-            }}
-          >
-            🍴 {t("fullMenu")} →
-          </button>
-        </div>
-
-        <div className="categoryRow">
-          {categories.map((category, index) => {
-            const name = String(category);
-
-            const categoryItem = menuItems.find(
-              (item) =>
-                String(item.category || "").toLowerCase() ===
-                name.toLowerCase()
-            );
-
-            const categoryImage =
-              categoryItem?.image ||
-              [
-                "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=600&q=80",
-                "https://images.unsplash.com/photo-1579751626657-72bc17010498?auto=format&fit=crop&w=600&q=80",
-                "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80",
-                "https://images.unsplash.com/photo-1601050690117-94f5f6fa8bd7?auto=format&fit=crop&w=600&q=80",
-              ][index % 4];
-
-            return (
-              <button
-                key={`${name}-${index}`}
-                className={`categoryCard ${
-                  selectedCategory.toLowerCase() === name.toLowerCase()
-                    ? "active"
-                    : ""
-                }`}
-                onClick={() => {
-                  setSelectedCategory(name);
-                  setBookingForm((prev) => ({
-                    ...prev,
-                    category: name,
-                  }));
-                }}
-              >
-                <img
-                  className="categoryImage"
-                  src={categoryImage}
-                  alt={name}
-                />
-
-                <div className="categoryName">
-                  {name} →
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="menuItems" id="menuItems">
-          {displayItems.length > 0 ? (
-            displayItems.map((item, index) => (
-              <div
-                className="menuItem"
-                key={item.id || `${item.name}-${index}`}
-              >
-                {item.image ? (
-                  <img src={item.image} alt={item.name || "Food"} />
-                ) : (
-                  <img src={heroImage} alt={item.name || "Food"} />
-                )}
-
-                <div className="menuItemBody">
-                  <div className="menuItemName">
-                    {item.name || "Menu Item"}
-                  </div>
-
-                  <div className="menuItemDescription">
-                    {item.description || ""}
-                  </div>
-
-                  <div className="menuItemPrice">
-                    {item.price !== undefined && item.price !== ""
-                      ? `${settings?.currency || "€"} ${item.price}`
-                      : ""}
-                  </div>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div
-              style={{
-                gridColumn: "1 / -1",
-                padding: "25px",
-                textAlign: "center",
-                border: `1px solid ${GOLD}`,
-                borderRadius: "8px",
-              }}
-            >
-              {selectedCategory} items will appear here after adding them
-              from Admin Menu.
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* BOOKING / TRACKING / DETAILS / GALLERY */}
-      <section className="utilityGrid" id="booking">
-        {/* BOOKING */}
-        <div className="utilityCard">
-          <div className="utilityTitle">
-            <span>▣</span>
-            {t("tableBooking")}
-          </div>
-
-          <div className="utilitySub">{t("reserve")}</div>
-
-          <form onSubmit={saveReservation}>
-            <div className="formGrid">
-              <label className="field">
-                {t("name")}
-                <input
-                  value={bookingForm.name}
-                  onChange={(e) =>
-                    setBookingForm({
-                      ...bookingForm,
-                      name: e.target.value,
-                    })
-                  }
-                  placeholder="Your name"
-                />
-              </label>
-
-              <label className="field">
-                {t("phone")}
-                <input
-                  value={bookingForm.phone}
-                  onChange={(e) =>
-                    setBookingForm({
-                      ...bookingForm,
-                      phone: e.target.value,
-                    })
-                  }
-                  placeholder="Enter phone number"
-                />
-              </label>
-
-              <label className="field">
-                {t("email")}
-                <input
-                  type="email"
-                  value={bookingForm.email}
-                  onChange={(e) =>
-                    setBookingForm({
-                      ...bookingForm,
-                      email: e.target.value,
-                    })
-                  }
-                  placeholder="Enter email address"
-                />
-              </label>
-
-              <label className="field">
-                {t("date")}
-                <input
-                  type="date"
-                  value={bookingForm.date}
-                  onChange={(e) =>
-                    setBookingForm({
-                      ...bookingForm,
-                      date: e.target.value,
-                    })
-                  }
-                />
-              </label>
-
-              <label className="field">
-                {t("time")}
-                <input
-                  type="time"
-                  value={bookingForm.time}
-                  onChange={(e) =>
-                    setBookingForm({
-                      ...bookingForm,
-                      time: e.target.value,
-                    })
-                  }
-                />
-              </label>
-
-              <label className="field">
-                {t("persons")}
-                <select
-                  value={bookingForm.persons}
-                  onChange={(e) =>
-                    setBookingForm({
-                      ...bookingForm,
-                      persons: e.target.value,
-                    })
-                  }
-                >
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((number) => (
-                    <option key={number} value={number}>
-                      {number}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="field">
-                {t("category")}
-                <select
-                  value={bookingForm.category}
-                  onChange={(e) =>
-                    setBookingForm({
-                      ...bookingForm,
-                      category: e.target.value,
-                      item: "",
-                    })
-                  }
-                >
-                  {categories.map((category, index) => (
-                    <option key={`${category}-${index}`} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="field">
-                {t("item")}
-                <select
-                  value={bookingForm.item}
-                  onChange={(e) =>
-                    setBookingForm({
-                      ...bookingForm,
-                      item: e.target.value,
-                    })
-                  }
-                >
-                  <option value="">Select item</option>
-
-                  {menuItems
-                    .filter(
-                      (item) =>
-                        String(item.category || "").toLowerCase() ===
-                        bookingForm.category.toLowerCase()
-                    )
-                    .map((item, index) => (
-                      <option
-                        key={item.id || `${item.name}-${index}`}
-                        value={item.name || ""}
-                      >
-                        {item.name}
-                      </option>
-                    ))}
-                </select>
-              </label>
-
-              <label className="field full">
-                {t("special")}
-                <textarea
-                  value={bookingForm.note}
-                  onChange={(e) =>
-                    setBookingForm({
-                      ...bookingForm,
-                      note: e.target.value,
-                    })
-                  }
-                  placeholder="Write your request (Optional)"
-                />
-              </label>
-            </div>
-
-            <div className="formButtons">
-              <button className="goldButton" type="submit">
-                {t("confirm")}
-              </button>
-
-              <button
-                className="dangerButton"
-                type="button"
-                onClick={() =>
-                  setBookingForm({
-                    name: "",
-                    phone: "",
-                    email: "",
-                    date: "",
-                    time: "",
-                    persons: "2",
-                    category: "Biryani",
-                    item: "",
-                    note: "",
-                  })
-                }
-              >
-                {t("cancel")}
-              </button>
-            </div>
-
-            {bookingMessage && (
-              <div className="message">{bookingMessage}</div>
-            )}
-          </form>
-        </div>
-
-        {/* TRACK */}
-        <div className="utilityCard">
-          <div className="utilityTitle">
-            <span>⌘</span>
-            {t("track")}
-          </div>
-
-          <div className="utilitySub">{t("trackSub")}</div>
-
-          <form onSubmit={findBooking}>
-            <div className="trackButtons">
-              <button className="smallButton" type="button">
-                ☎ {t("phoneLogin")}
-              </button>
-
-              <button className="smallButton" type="button">
-                ✉ {t("emailLogin")}
-              </button>
-            </div>
-
-            <input
-              className="trackInput"
-              value={trackValue}
-              onChange={(e) => setTrackValue(e.target.value)}
-              placeholder="Phone / Email / Booking Code"
-            />
-
-            <button className="otpButton" type="submit">
-              {t("getOtp")}
-            </button>
-
-            {trackMessage && (
-              <div className="message">{trackMessage}</div>
-            )}
-          </form>
-        </div>
-
-        {/* DETAILS */}
-        <div className="utilityCard">
-          <div className="utilityTitle">
-            <span>▣</span>
-            {t("bookingDetails")}
-          </div>
-
-          <div className="utilitySub">{t("viewEditCancel")}</div>
-
-          {trackedBooking ? (
-            <>
-              <div className="bookingCodeBox">
-                <div style={{ fontSize: "10px" }}>
-                  {t("bookingCode")}
-                </div>
-
-                <div className="code">{trackedBooking.code}</div>
-              </div>
-
-              <div className="detailRows">
-                <div className="detailRow">
-                  <span>Name</span>
-                  <span>{trackedBooking.name}</span>
-                </div>
-
-                <div className="detailRow">
-                  <span>Date</span>
-                  <span>{trackedBooking.date}</span>
-                </div>
-
-                <div className="detailRow">
-                  <span>Time</span>
-                  <span>{trackedBooking.time}</span>
-                </div>
-
-                <div className="detailRow">
-                  <span>Persons</span>
-                  <span>{trackedBooking.persons}</span>
-                </div>
-
-                <div className="detailRow">
-                  <span>Category</span>
-                  <span>{trackedBooking.category}</span>
-                </div>
-
-                <div className="detailRow">
-                  <span>Item</span>
-                  <span>{trackedBooking.item || "-"}</span>
-                </div>
-
-                <div className="detailRow">
-                  <span>Status</span>
-                  <span className="status">
-                    {trackedBooking.status}
-                  </span>
-                </div>
-              </div>
-
-              <div className="formButtons">
-                <button
-                  className="goldButton"
-                  type="button"
-                  onClick={() => setTrackedBooking(null)}
-                >
-                  {t("viewDetails")}
-                </button>
-
-                <button
-                  className="blueButton"
-                  type="button"
-                  onClick={editTrackedBooking}
-                >
-                  {t("edit")}
-                </button>
-
-                <button
-                  className="dangerButton"
-                  type="button"
-                  onClick={cancelTrackedBooking}
-                >
-                  {t("cancel")}
-                </button>
-              </div>
-            </>
-          ) : (
-            <div
-              style={{
-                minHeight: "150px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                textAlign: "center",
-                opacity: 0.75,
-                fontSize: "12px",
-              }}
-            >
-              Enter your booking phone, email or code to see details.
-            </div>
-          )}
-        </div>
-
-        {/* GALLERY + REPORT */}
-        <div className="utilityStack">
-          <div className="utilityCard miniAction">
-            <div>
-              <div className="utilityTitle">
-                <span>▣</span>
-                {t("galleryTitle")}
-              </div>
-
-              <div className="utilitySub">
-                {t("gallerySub")}
-              </div>
-            </div>
-
-            {gallery.length > 0 ? (
-              <img
-                className="galleryPreview"
-                src={safeImage(gallery[0].image) || heroImage}
-                alt="Gallery"
-              />
-            ) : (
-              <img
-                className="galleryPreview"
-                src={heroImage}
-                alt="Gallery"
-              />
-            )}
-
-            <button
-              className="goldButton"
-              onClick={() => setGalleryOpen(true)}
-            >
-              {t("viewGallery")} →
-            </button>
-          </div>
-
-          <div className="utilityCard miniAction">
-            <div>
-              <div className="utilityTitle">
-                <span>➤</span>
-                {t("report")}
-              </div>
-
-              <div className="utilitySub">
-                {t("reportSub")}
-              </div>
-            </div>
-
-            <button
-              className="goldButton"
-              onClick={() => setReviewsOpen(true)}
-            >
-              {t("sendReport")} →
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* FOOTER */}
-      <footer className="footer" id="contact">
-        <div className="footerCol">
-          <div className="footerTitle">📍 {t("map")}</div>
-
-          <div className="footerLine">Google Maps</div>
-
-          <a
-            href={mapUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="goldButton"
-          >
-            {t("openMap")}
-          </a>
-        </div>
-
-        <div className="footerCol">
-          <div className="footerTitle">☎ {t("contactUs")}</div>
-
-          <div className="footerLine">
-            ☎{" "}
-            <a href={`tel:${phone}`} className="footerLink">
-              {phone}
-            </a>
-          </div>
-
-          <div className="footerLine">
-            🟢{" "}
-            <a
-              href={`https://wa.me/${whatsapp.replace(/\D/g, "")}`}
-              target="_blank"
-              rel="noreferrer"
-              className="footerLink"
-            >
-              WhatsApp
-            </a>
-          </div>
-
-          <div className="footerLine">
-            ✉{" "}
-            <a href={`mailto:${email}`} className="footerLink">
-              {email}
-            </a>
-          </div>
-
-          <div className="footerLine">📍 {address}</div>
-        </div>
-
-        <div className="footerCol">
-          <div className="footerTitle">◉ {t("follow")}</div>
-
-          {facebook && (
-            <div className="footerLine">
-              🔵{" "}
-              <a
-                href={facebook}
-                target="_blank"
-                rel="noreferrer"
-                className="footerLink"
-              >
-                Facebook
-              </a>
-            </div>
-          )}
-
-          {instagram && (
-            <div className="footerLine">
-              🟣{" "}
-              <a
-                href={instagram}
-                target="_blank"
-                rel="noreferrer"
-                className="footerLink"
-              >
-                Instagram
-              </a>
-            </div>
-          )}
-
-          {tiktok && (
-            <div className="footerLine">
-              ⚫{" "}
-              <a
-                href={tiktok}
-                target="_blank"
-                rel="noreferrer"
-                className="footerLink"
-              >
-                TikTok
-              </a>
-            </div>
-          )}
-
-          {youtube && (
-            <div className="footerLine">
-              🔴{" "}
-              <a
-                href={youtube}
-                target="_blank"
-                rel="noreferrer"
-                className="footerLink"
-              >
-                YouTube
-              </a>
-            </div>
-          )}
-
-          {!facebook && !instagram && !tiktok && !youtube && (
-            <div className="footerLine">
-              Social media links can be added from Admin.
-            </div>
-          )}
-        </div>
-
-        <div className="footerCol">
-          <div className="footerTitle">⚡ {t("quick")}</div>
-
-          <div className="footerLine">
-            <a href="#about" className="footerLink">
-              👥 {t("about")}
-            </a>
-          </div>
-
-          <div className="footerLine">
-            <a href="#menu" className="footerLink">
-              ✉ {t("menu")}
-            </a>
-          </div>
-
-          <div className="footerLine">
-            <button
-              onClick={() => setGalleryOpen(true)}
-              className="footerLink"
-              style={{
-                background: "transparent",
-                border: 0,
-                padding: 0,
-                color: "inherit",
-              }}
-            >
-              ▣ {t("gallery")}
-            </button>
-          </div>
-
-          <div className="footerLine">
-            <a href="#contact" className="footerLink">
-              ☎ {t("contact")}
-            </a>
-          </div>
-        </div>
-      </footer>
-
-      <div className="copyright">
-        <span>© 2025 {restaurantName}. All rights reserved.</span>
-
-        <span style={{ color: GOLD_LIGHT }}>
-          ❧ Good Food&nbsp; • &nbsp;Good Mood ❧
-        </span>
-      </div>
-
-      {/* REVIEWS MODAL */}
-      {reviewsOpen && (
-        <div
-          className="modalBackdrop"
-          onClick={() => setReviewsOpen(false)}
-        >
-          <div
-            className="modal"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modalHeader">
-              <div>
-                <h2>★ {t("reviews")}</h2>
-
-                <div style={{ marginTop: "4px" }}>
-                  <span className="stars">
-                    {totalReviews > 0 ? "★★★★★" : "☆☆☆☆☆"}
-                  </span>{" "}
-                  {averageRating}/5 · {totalReviews} reviews
-                </div>
-              </div>
-
-              <button
-                className="closeButton"
-                onClick={() => setReviewsOpen(false)}
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="reviewLayout">
-              {/* WRITE REVIEW */}
-              <form className="reviewForm" onSubmit={submitReview}>
-                <h3>{t("writeReview")}</h3>
-
-                <input
-                  placeholder={t("name")}
-                  value={reviewForm.name}
-                  onChange={(e) =>
-                    setReviewForm({
-                      ...reviewForm,
-                      name: e.target.value,
-                    })
-                  }
-                />
-
-                <input
-                  placeholder={t("phone")}
-                  value={reviewForm.phone}
-                  onChange={(e) =>
-                    setReviewForm({
-                      ...reviewForm,
-                      phone: e.target.value,
-                    })
-                  }
-                />
-
-                <input
-                  type="email"
-                  placeholder={t("email")}
-                  value={reviewForm.email}
-                  onChange={(e) =>
-                    setReviewForm({
-                      ...reviewForm,
-                      email: e.target.value,
-                    })
-                  }
-                />
-
-                <div>
-                  <div
-                    style={{
-                      fontSize: "11px",
-                      marginBottom: "4px",
-                    }}
-                  >
-                    {t("rating")}
-                  </div>
-
-                  <div className="ratingButtons">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        className={`starButton ${
-                          reviewForm.rating >= star ? "active" : ""
-                        }`}
-                        onClick={() =>
-                          setReviewForm({
-                            ...reviewForm,
-                            rating: star,
-                          })
-                        }
-                      >
-                        ★
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <textarea
-                  placeholder={t("reviewDetails")}
-                  value={reviewForm.review}
-                  onChange={(e) =>
-                    setReviewForm({
-                      ...reviewForm,
-                      review: e.target.value,
-                    })
-                  }
-                />
-
-                <button className="goldButton" type="submit">
-                  {t("submitReview")}
-                </button>
-
-                {reviewMessage && (
-                  <div className="message">{reviewMessage}</div>
-                )}
-              </form>
-
-              {/* ALL REVIEWS */}
-              <div className="reviewList">
-                <h3>{t("allReviews")}</h3>
-
-                {reviews.length > 0 ? (
-                  reviews.map((review) => (
-                    <div className="reviewItem" key={review.id}>
-                      <div className="reviewTop">
-                        <div className="reviewName">
-                          👤 {review.customerName}
-                        </div>
-
-                        <div className="reviewDate">
-                          {new Date(review.date).toLocaleDateString()}
-                        </div>
-                      </div>
-
-                      <div className="stars">
-                        {"★".repeat(
-                          Math.max(0, Math.min(5, Number(review.rating)))
-                        )}
-                        <span style={{ color: "#555" }}>
-                          {"★".repeat(
-                            Math.max(
-                              0,
-                              5 - Math.min(5, Number(review.rating))
-                            )
-                          )}
-                        </span>
-                      </div>
-
-                      <div className="reviewText">
-                        {review.review}
-                      </div>
-
-                      {review.replies?.map((reply) => (
-                        <div className="reply" key={reply.id}>
-                          <strong>Restaurant:</strong>{" "}
-                          {reply.text}
-                        </div>
-                      ))}
-                    </div>
-                  ))
-                ) : (
-                  <div
-                    style={{
-                      padding: "25px 5px",
-                      textAlign: "center",
-                      opacity: 0.7,
-                    }}
-                  >
-                    {t("noReviews")}
-                  </div>
-                )}
-              </div>
-
-              {/* REPORT */}
-              <form className="reportForm" onSubmit={submitReport}>
-                <h3>{t("reportReview")}</h3>
-
-                <input
-                  placeholder="Phone Number or Email"
-                  value={reportForm.contact}
-                  onChange={(e) =>
-                    setReportForm({
-                      ...reportForm,
-                      contact: e.target.value,
-                    })
-                  }
-                />
-
-                <textarea
-                  placeholder={t("reportDetails")}
-                  value={reportForm.details}
-                  onChange={(e) =>
-                    setReportForm({
-                      ...reportForm,
-                      details: e.target.value,
-                    })
-                  }
-                />
-
-                <button className="goldButton" type="submit">
-                  {t("submitReport")}
-                </button>
-
-                {reportMessage && (
-                  <div className="message">{reportMessage}</div>
-                )}
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* GALLERY MODAL */}
-      {galleryOpen && (
-        <div
-          className="modalBackdrop"
-          onClick={() => setGalleryOpen(false)}
-        >
-          <div
-            className="modal"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modalHeader">
-              <h2>▣ {t("galleryTitle")}</h2>
-
-              <button
-                className="closeButton"
-                onClick={() => setGalleryOpen(false)}
-              >
-                ×
-              </button>
-            </div>
-
-            {gallery.length > 0 ? (
-              <div className="galleryGrid">
-                {gallery.map((item, index) => (
-                  <img
-                    key={item.id || index}
-                    src={item.image || heroImage}
-                    alt={item.category || "Gallery"}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: "50px 20px",
-                  opacity: 0.75,
-                }}
-              >
-                {t("noGallery")}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </main>
   );
 }
