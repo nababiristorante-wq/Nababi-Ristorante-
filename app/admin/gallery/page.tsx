@@ -37,18 +37,26 @@ const DB_NAME = "nababi-gallery-db";
 const DB_VERSION = 1;
 const STORE_NAME = "gallery";
 
+/*
+ * We keep the existing database/store/schema.
+ * Only the image data is compressed before saving.
+ */
+
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
 
-// Stored images are deliberately kept small so the browser's
-// IndexedDB quota is not exhausted after only a few images.
-const TARGET_IMAGE_BYTES = 350 * 1024;
-const MAX_IMAGE_WIDTH = 1400;
+/*
+ * Target is deliberately below 500 KB.
+ * This gives a little safety margin for IndexedDB overhead.
+ */
+const TARGET_IMAGE_BYTES = 480 * 1024;
+
+const MAX_IMAGE_WIDTH = 1280;
+const MIN_IMAGE_WIDTH = 480;
 
 const GOLD = "#d9a441";
 const GOLD_LIGHT = "#f6cf70";
 const BG = "#070707";
 const CARD = "#101010";
-const CARD_2 = "#151515";
 const BORDER = "rgba(217,164,65,0.25)";
 const TEXT = "#f5f1e8";
 const MUTED = "#a9a39a";
@@ -59,7 +67,8 @@ const MUTED = "#a9a39a";
 
 function createId() {
   const random =
-    typeof crypto !== "undefined" && "getRandomValues" in crypto
+    typeof crypto !== "undefined" &&
+    "getRandomValues" in crypto
       ? (() => {
           const array = new Uint32Array(1);
           crypto.getRandomValues(array);
@@ -77,14 +86,18 @@ function isQuotaError(error: unknown) {
     typeof error === "object" &&
     error !== null &&
     "name" in error
-      ? String((error as { name?: unknown }).name || "")
+      ? String(
+          (error as { name?: unknown }).name || ""
+        )
       : "";
 
   const message =
     typeof error === "object" &&
     error !== null &&
     "message" in error
-      ? String((error as { message?: unknown }).message || "")
+      ? String(
+          (error as { message?: unknown }).message || ""
+        )
       : String(error);
 
   return (
@@ -94,7 +107,9 @@ function isQuotaError(error: unknown) {
 }
 
 function formatBytes(bytes: number) {
-  if (!Number.isFinite(bytes) || bytes <= 0) return "0 KB";
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    return "0 KB";
+  }
 
   if (bytes < 1024) {
     return `${bytes} B`;
@@ -113,17 +128,31 @@ function formatBytes(bytes: number) {
 
 function openGalleryDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    if (typeof window === "undefined" || !("indexedDB" in window)) {
-      reject(new Error("IndexedDB is not supported in this browser."));
+    if (
+      typeof window === "undefined" ||
+      !("indexedDB" in window)
+    ) {
+      reject(
+        new Error(
+          "IndexedDB is not supported in this browser."
+        )
+      );
       return;
     }
 
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    const request = indexedDB.open(
+      DB_NAME,
+      DB_VERSION
+    );
 
     request.onupgradeneeded = () => {
       const db = request.result;
 
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
+      if (
+        !db.objectStoreNames.contains(
+          STORE_NAME
+        )
+      ) {
         db.createObjectStore(STORE_NAME, {
           keyPath: "id",
         });
@@ -143,7 +172,9 @@ function openGalleryDB(): Promise<IDBDatabase> {
     request.onerror = () => {
       reject(
         request.error ||
-          new Error("Could not open the gallery database.")
+          new Error(
+            "Could not open the gallery database."
+          )
       );
     };
 
@@ -157,39 +188,51 @@ function openGalleryDB(): Promise<IDBDatabase> {
   });
 }
 
-function getAllStoredItems(): Promise<StoredGalleryItem[]> {
+function getAllStoredItems(): Promise<
+  StoredGalleryItem[]
+> {
   return new Promise(async (resolve, reject) => {
     let db: IDBDatabase | null = null;
 
     try {
       db = await openGalleryDB();
 
-      const transaction = db.transaction(STORE_NAME, "readonly");
-      const store = transaction.objectStore(STORE_NAME);
+      const transaction = db.transaction(
+        STORE_NAME,
+        "readonly"
+      );
+
+      const store =
+        transaction.objectStore(STORE_NAME);
+
       const request = store.getAll();
 
       request.onsuccess = () => {
-        resolve((request.result || []) as StoredGalleryItem[]);
+        resolve(
+          (request.result || []) as StoredGalleryItem[]
+        );
       };
 
       request.onerror = () => {
         reject(
           request.error ||
-            new Error("Could not read gallery images.")
+            new Error(
+              "Could not read gallery images."
+            )
         );
       };
 
       transaction.onabort = () => {
         reject(
           transaction.error ||
-            new Error("Could not read gallery images.")
+            new Error(
+              "Could not read gallery images."
+            )
         );
       };
     } catch (error) {
       reject(error);
     } finally {
-      // The transaction/request keeps the DB alive until completed.
-      // We close it shortly after request completion.
       setTimeout(() => {
         try {
           db?.close();
@@ -199,15 +242,22 @@ function getAllStoredItems(): Promise<StoredGalleryItem[]> {
   });
 }
 
-function saveStoredItem(item: StoredGalleryItem): Promise<void> {
+function saveStoredItem(
+  item: StoredGalleryItem
+): Promise<void> {
   return new Promise(async (resolve, reject) => {
     let db: IDBDatabase | null = null;
 
     try {
       db = await openGalleryDB();
 
-      const transaction = db.transaction(STORE_NAME, "readwrite");
-      const store = transaction.objectStore(STORE_NAME);
+      const transaction = db.transaction(
+        STORE_NAME,
+        "readwrite"
+      );
+
+      const store =
+        transaction.objectStore(STORE_NAME);
 
       store.put(item);
 
@@ -218,14 +268,18 @@ function saveStoredItem(item: StoredGalleryItem): Promise<void> {
       transaction.onerror = () => {
         reject(
           transaction.error ||
-            new Error("Could not save gallery image.")
+            new Error(
+              "Could not save gallery image."
+            )
         );
       };
 
       transaction.onabort = () => {
         reject(
           transaction.error ||
-            new Error("Could not save gallery image.")
+            new Error(
+              "Could not save gallery image."
+            )
         );
       };
     } catch (error) {
@@ -240,15 +294,22 @@ function saveStoredItem(item: StoredGalleryItem): Promise<void> {
   });
 }
 
-function deleteStoredItem(id: number): Promise<void> {
+function deleteStoredItem(
+  id: number
+): Promise<void> {
   return new Promise(async (resolve, reject) => {
     let db: IDBDatabase | null = null;
 
     try {
       db = await openGalleryDB();
 
-      const transaction = db.transaction(STORE_NAME, "readwrite");
-      const store = transaction.objectStore(STORE_NAME);
+      const transaction = db.transaction(
+        STORE_NAME,
+        "readwrite"
+      );
+
+      const store =
+        transaction.objectStore(STORE_NAME);
 
       store.delete(id);
 
@@ -259,14 +320,18 @@ function deleteStoredItem(id: number): Promise<void> {
       transaction.onerror = () => {
         reject(
           transaction.error ||
-            new Error("Could not delete gallery image.")
+            new Error(
+              "Could not delete gallery image."
+            )
         );
       };
 
       transaction.onabort = () => {
         reject(
           transaction.error ||
-            new Error("Could not delete gallery image.")
+            new Error(
+              "Could not delete gallery image."
+            )
         );
       };
     } catch (error) {
@@ -288,8 +353,13 @@ function clearStoredItems(): Promise<void> {
     try {
       db = await openGalleryDB();
 
-      const transaction = db.transaction(STORE_NAME, "readwrite");
-      const store = transaction.objectStore(STORE_NAME);
+      const transaction = db.transaction(
+        STORE_NAME,
+        "readwrite"
+      );
+
+      const store =
+        transaction.objectStore(STORE_NAME);
 
       store.clear();
 
@@ -300,14 +370,18 @@ function clearStoredItems(): Promise<void> {
       transaction.onerror = () => {
         reject(
           transaction.error ||
-            new Error("Could not clear gallery.")
+            new Error(
+              "Could not clear gallery."
+            )
         );
       };
 
       transaction.onabort = () => {
         reject(
           transaction.error ||
-            new Error("Could not clear gallery.")
+            new Error(
+              "Could not clear gallery."
+            )
         );
       };
     } catch (error) {
@@ -323,10 +397,12 @@ function clearStoredItems(): Promise<void> {
 }
 
 /* -------------------------------------------------------------------------- */
-/* LocalStorage migration                                                      */
+/* LocalStorage migration                                                     */
 /* -------------------------------------------------------------------------- */
 
-function dataUrlToBlob(dataUrl: string): Blob | null {
+function dataUrlToBlob(
+  dataUrl: string
+): Blob | null {
   try {
     const parts = dataUrl.split(",");
 
@@ -337,13 +413,23 @@ function dataUrlToBlob(dataUrl: string): Blob | null {
     const header = parts[0];
     const data = parts.slice(1).join(",");
 
-    const mimeMatch = header.match(/data:(.*?);base64/i);
-    const mime = mimeMatch?.[1] || "image/jpeg";
+    const mimeMatch =
+      header.match(/data:(.*?);base64/i);
+
+    const mime =
+      mimeMatch?.[1] || "image/jpeg";
 
     const binary = atob(data);
-    const bytes = new Uint8Array(binary.length);
 
-    for (let i = 0; i < binary.length; i++) {
+    const bytes = new Uint8Array(
+      binary.length
+    );
+
+    for (
+      let i = 0;
+      i < binary.length;
+      i++
+    ) {
       bytes[i] = binary.charCodeAt(i);
     }
 
@@ -357,7 +443,8 @@ function dataUrlToBlob(dataUrl: string): Blob | null {
 
 async function migrateOldLocalStorage() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw =
+      localStorage.getItem(STORAGE_KEY);
 
     if (!raw) {
       return;
@@ -365,29 +452,45 @@ async function migrateOldLocalStorage() {
 
     const parsed = JSON.parse(raw);
 
-    if (!Array.isArray(parsed) || parsed.length === 0) {
+    if (
+      !Array.isArray(parsed) ||
+      parsed.length === 0
+    ) {
       localStorage.removeItem(STORAGE_KEY);
       return;
     }
 
-    const existing = await getAllStoredItems();
+    const existing =
+      await getAllStoredItems();
 
     if (existing.length > 0) {
-      // IndexedDB already contains the gallery.
+      /*
+       * Existing IndexedDB gallery wins.
+       * We do not touch existing gallery data.
+       */
       localStorage.removeItem(STORAGE_KEY);
       return;
     }
 
-    const migrated: StoredGalleryItem[] = [];
+    const migrated: StoredGalleryItem[] =
+      [];
 
-    for (let index = 0; index < parsed.length; index++) {
+    for (
+      let index = 0;
+      index < parsed.length;
+      index++
+    ) {
       const item = parsed[index];
 
-      if (!item || typeof item.image !== "string") {
+      if (
+        !item ||
+        typeof item.image !== "string"
+      ) {
         continue;
       }
 
-      const blob = dataUrlToBlob(item.image);
+      const blob =
+        dataUrlToBlob(item.image);
 
       if (!blob) {
         continue;
@@ -398,35 +501,50 @@ async function migrateOldLocalStorage() {
           typeof item.id === "number"
             ? item.id
             : createId(),
+
         imageBlob: blob,
+
         category:
-          typeof item.category === "string"
+          typeof item.category ===
+          "string"
             ? item.category
             : "General",
+
         visible:
-          typeof item.visible === "boolean"
+          typeof item.visible ===
+          "boolean"
             ? item.visible
             : true,
+
         order:
-          typeof item.order === "number"
+          typeof item.order ===
+          "number"
             ? item.order
             : index,
       });
     }
 
+    /*
+     * Migration is deliberately sequential.
+     * We never use a single giant transaction.
+     */
     for (const item of migrated) {
       try {
         await saveStoredItem(item);
       } catch {
-        // If migration cannot finish because of quota,
-        // keep the original localStorage data.
+        /*
+         * Never delete the original localStorage
+         * if migration could not finish.
+         */
         return;
       }
     }
 
     localStorage.removeItem(STORAGE_KEY);
   } catch {
-    // Migration failure should not prevent the Gallery page from loading.
+    /*
+     * Migration failure must not stop the page.
+     */
   }
 }
 
@@ -434,124 +552,211 @@ async function migrateOldLocalStorage() {
 /* Image compression                                                          */
 /* -------------------------------------------------------------------------- */
 
-function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const objectUrl = URL.createObjectURL(blob);
-    const image = new Image();
+function loadImageFromBlob(
+  blob: Blob
+): Promise<HTMLImageElement> {
+  return new Promise(
+    (resolve, reject) => {
+      const objectUrl =
+        URL.createObjectURL(blob);
 
-    image.onload = () => {
-      URL.revokeObjectURL(objectUrl);
-      resolve(image);
-    };
+      const image = new Image();
 
-    image.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error("Could not read this image."));
-    };
+      image.onload = () => {
+        URL.revokeObjectURL(
+          objectUrl
+        );
 
-    image.src = objectUrl;
-  });
+        resolve(image);
+      };
+
+      image.onerror = () => {
+        URL.revokeObjectURL(
+          objectUrl
+        );
+
+        reject(
+          new Error(
+            "Could not read this image."
+          )
+        );
+      };
+
+      image.src = objectUrl;
+    }
+  );
 }
 
 function canvasToBlob(
   canvas: HTMLCanvasElement,
   quality: number
 ): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) {
-          reject(new Error("Could not compress image."));
-          return;
-        }
+  return new Promise(
+    (resolve, reject) => {
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(
+              new Error(
+                "Could not compress image."
+              )
+            );
+            return;
+          }
 
-        resolve(blob);
-      },
-      "image/jpeg",
-      quality
-    );
-  });
+          resolve(blob);
+        },
+        "image/jpeg",
+        quality
+      );
+    }
+  );
 }
 
-/**
- * Compresses an image until it is reasonably small.
+/*
+ * Returns several widths from large -> small.
+ */
+function buildWidths(
+  sourceWidth: number
+) {
+  const values = [
+    Math.min(
+      sourceWidth,
+      MAX_IMAGE_WIDTH
+    ),
+    1150,
+    1050,
+    950,
+    850,
+    750,
+    650,
+    560,
+    MIN_IMAGE_WIDTH,
+  ];
+
+  return values.filter(
+    (value, index, array) =>
+      value > 0 &&
+      value <= sourceWidth &&
+      array.indexOf(value) ===
+        index
+  );
+}
+
+/*
+ * Compression strategy:
  *
- * The goal is not to make the image tiny visually,
- * but to avoid browser IndexedDB quota problems.
+ * 1. Large image gets resized.
+ * 2. JPEG quality is reduced gradually.
+ * 3. We stop as soon as the result is <= 480 KB.
+ * 4. If impossible, the smallest generated result
+ *    is returned.
+ *
+ * This means a 5MB / 10MB / 15MB photo does not
+ * remain a multi-megabyte Blob in IndexedDB.
  */
 async function compressImageToTarget(
   source: Blob
 ): Promise<Blob> {
   if (!source.type.startsWith("image/")) {
-    throw new Error("Only image files are supported.");
+    throw new Error(
+      "Only image files are supported."
+    );
   }
 
-  // Already small enough.
   if (
-    source.size <= TARGET_IMAGE_BYTES &&
-    source.size < MAX_FILE_SIZE
+    source.size <=
+    TARGET_IMAGE_BYTES
   ) {
+    /*
+     * Small files are already safe enough.
+     * We do not recompress them unnecessarily.
+     */
     return source;
   }
 
-  const image = await loadImageFromBlob(source);
+  const image =
+    await loadImageFromBlob(source);
 
-  const sourceWidth = image.naturalWidth || image.width;
-  const sourceHeight = image.naturalHeight || image.height;
+  const sourceWidth =
+    image.naturalWidth ||
+    image.width;
 
-  if (!sourceWidth || !sourceHeight) {
-    throw new Error("Invalid image dimensions.");
+  const sourceHeight =
+    image.naturalHeight ||
+    image.height;
+
+  if (
+    !sourceWidth ||
+    !sourceHeight
+  ) {
+    throw new Error(
+      "Invalid image dimensions."
+    );
   }
 
-  const widths = [
-    Math.min(sourceWidth, MAX_IMAGE_WIDTH),
-    1200,
-    1050,
-    900,
-    800,
-    700,
-  ].filter((width, index, array) => {
-    return (
-      width > 0 &&
-      array.indexOf(width) === index
-    );
-  });
+  const widths =
+    buildWidths(sourceWidth);
 
   const qualities = [
-    0.78,
+    0.82,
+    0.76,
     0.70,
     0.64,
     0.58,
     0.52,
     0.46,
     0.40,
+    0.34,
   ];
 
-  let smallestBlob: Blob | null = null;
+  let smallestBlob: Blob | null =
+    null;
 
   for (const width of widths) {
     const height = Math.max(
       1,
-      Math.round((sourceHeight / sourceWidth) * width)
+      Math.round(
+        (sourceHeight /
+          sourceWidth) *
+          width
+      )
     );
 
-    const canvas = document.createElement("canvas");
+    const canvas =
+      document.createElement(
+        "canvas"
+      );
+
     canvas.width = width;
     canvas.height = height;
 
-    const context = canvas.getContext("2d");
+    const context =
+      canvas.getContext("2d");
 
     if (!context) {
       continue;
     }
 
-    // JPEG does not support transparency.
-    // Use a white background so transparent PNGs do not become black.
+    /*
+     * JPEG cannot store transparency.
+     * White background prevents transparent PNGs
+     * from becoming black.
+     */
     context.fillStyle = "#ffffff";
-    context.fillRect(0, 0, width, height);
 
-    context.imageSmoothingEnabled = true;
-    context.imageSmoothingQuality = "high";
+    context.fillRect(
+      0,
+      0,
+      width,
+      height
+    );
+
+    context.imageSmoothingEnabled =
+      true;
+
+    context.imageSmoothingQuality =
+      "high";
 
     context.drawImage(
       image,
@@ -562,16 +767,24 @@ async function compressImageToTarget(
     );
 
     for (const quality of qualities) {
-      const blob = await canvasToBlob(
-        canvas,
-        quality
-      );
+      const blob =
+        await canvasToBlob(
+          canvas,
+          quality
+        );
 
-      if (!smallestBlob || blob.size < smallestBlob.size) {
+      if (
+        !smallestBlob ||
+        blob.size <
+          smallestBlob.size
+      ) {
         smallestBlob = blob;
       }
 
-      if (blob.size <= TARGET_IMAGE_BYTES) {
+      if (
+        blob.size <=
+        TARGET_IMAGE_BYTES
+      ) {
         return blob;
       }
     }
@@ -581,27 +794,36 @@ async function compressImageToTarget(
     return smallestBlob;
   }
 
-  throw new Error("Could not compress image.");
+  throw new Error(
+    "Could not compress image."
+  );
 }
 
-async function compressFile(file: File): Promise<Blob> {
+async function compressFile(
+  file: File
+): Promise<Blob> {
   if (!file.type.startsWith("image/")) {
     throw new Error(
       `"${file.name}" is not an image file.`
     );
   }
 
-  if (file.size > MAX_FILE_SIZE) {
+  if (
+    file.size >
+    MAX_FILE_SIZE
+  ) {
     throw new Error(
       `"${file.name}" is larger than 15 MB.`
     );
   }
 
-  return compressImageToTarget(file);
+  return compressImageToTarget(
+    file
+  );
 }
 
 /* -------------------------------------------------------------------------- */
-/* Gallery conversion                                                          */
+/* Gallery conversion                                                         */
 /* -------------------------------------------------------------------------- */
 
 function storedItemToGalleryItem(
@@ -609,9 +831,16 @@ function storedItemToGalleryItem(
 ): GalleryItem {
   return {
     id: item.id,
-    image: URL.createObjectURL(item.imageBlob),
+
+    image:
+      URL.createObjectURL(
+        item.imageBlob
+      ),
+
     category: item.category,
+
     visible: item.visible,
+
     order: item.order,
   };
 }
@@ -621,140 +850,179 @@ function storedItemToGalleryItem(
 /* -------------------------------------------------------------------------- */
 
 export default function AdminGalleryPage() {
-  const [gallery, setGallery] = useState<GalleryItem[]>([]);
-  const [selectedImages, setSelectedImages] = useState<
-    SelectedImage[]
-  >([]);
+  const [gallery, setGallery] =
+    useState<GalleryItem[]>([]);
 
-  const [category, setCategory] = useState("General");
+  const [
+    selectedImages,
+    setSelectedImages,
+  ] = useState<SelectedImage[]>([]);
 
-  const [filter, setFilter] = useState<
-    "all" | "visible" | "hidden"
-  >("all");
+  const [category, setCategory] =
+    useState("General");
 
-  const [dragActive, setDragActive] = useState(false);
+  const [filter, setFilter] =
+    useState<
+      "all" | "visible" | "hidden"
+    >("all");
 
-  const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [optimizing, setOptimizing] = useState(false);
+  const [dragActive, setDragActive] =
+    useState(false);
 
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState<
-    "success" | "error" | "info"
-  >("info");
+  const [loading, setLoading] =
+    useState(true);
 
-  const [storageInfo, setStorageInfo] = useState<{
-    usage: number;
-    quota: number;
-  } | null>(null);
+  const [uploading, setUploading] =
+    useState(false);
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [optimizing, setOptimizing] =
+    useState(false);
+
+  const [message, setMessage] =
+    useState("");
+
+  const [messageType, setMessageType] =
+    useState<
+      "success" | "error" | "info"
+    >("info");
+
+  const [storageInfo, setStorageInfo] =
+    useState<{
+      usage: number;
+      quota: number;
+    } | null>(null);
+
+  const fileInputRef =
+    useRef<HTMLInputElement | null>(
+      null
+    );
 
   /* ---------------------------------------------------------------------- */
   /* Messages                                                               */
   /* ---------------------------------------------------------------------- */
 
-  const showMessage = useCallback(
-    (
-      text: string,
-      type: "success" | "error" | "info" = "info"
-    ) => {
-      setMessage(text);
-      setMessageType(type);
+  const showMessage =
+    useCallback(
+      (
+        text: string,
+        type:
+          | "success"
+          | "error"
+          | "info" = "info"
+      ) => {
+        setMessage(text);
+        setMessageType(type);
 
-      window.setTimeout(() => {
-        setMessage((current) =>
-          current === text ? "" : current
-        );
-      }, 5000);
-    },
-    []
-  );
+        window.setTimeout(() => {
+          setMessage(
+            (current) =>
+              current === text
+                ? ""
+                : current
+          );
+        }, 6000);
+      },
+      []
+    );
 
   /* ---------------------------------------------------------------------- */
   /* Storage information                                                    */
   /* ---------------------------------------------------------------------- */
 
-  const refreshStorageInfo = useCallback(async () => {
-    try {
-      if (
-        typeof navigator === "undefined" ||
-        !navigator.storage ||
-        !navigator.storage.estimate
-      ) {
-        return;
+  const refreshStorageInfo =
+    useCallback(async () => {
+      try {
+        if (
+          typeof navigator ===
+            "undefined" ||
+          !navigator.storage ||
+          !navigator.storage.estimate
+        ) {
+          return;
+        }
+
+        const estimate =
+          await navigator.storage.estimate();
+
+        setStorageInfo({
+          usage:
+            estimate.usage || 0,
+
+          quota:
+            estimate.quota || 0,
+        });
+      } catch {
+        // Optional information only.
       }
-
-      const estimate =
-        await navigator.storage.estimate();
-
-      setStorageInfo({
-        usage: estimate.usage || 0,
-        quota: estimate.quota || 0,
-      });
-    } catch {
-      // Optional information only.
-    }
-  }, []);
+    }, []);
 
   /* ---------------------------------------------------------------------- */
   /* Load gallery                                                           */
   /* ---------------------------------------------------------------------- */
 
-  const loadGallery = useCallback(async () => {
-    setLoading(true);
+  const loadGallery =
+    useCallback(async () => {
+      setLoading(true);
 
-    try {
-      await migrateOldLocalStorage();
+      try {
+        await migrateOldLocalStorage();
 
-      const stored = await getAllStoredItems();
+        const stored =
+          await getAllStoredItems();
 
-      stored.sort((a, b) => {
-        return (
-          (a.order || 0) -
-          (b.order || 0)
+        stored.sort(
+          (a, b) =>
+            (a.order || 0) -
+            (b.order || 0)
         );
-      });
 
-      const nextGallery = stored.map(
-        storedItemToGalleryItem
-      );
+        const nextGallery =
+          stored.map(
+            storedItemToGalleryItem
+          );
 
-      setGallery((previous) => {
-        for (const item of previous) {
-          try {
-            URL.revokeObjectURL(item.image);
-          } catch {}
-        }
+        setGallery(
+          (previous) => {
+            for (const item of previous) {
+              try {
+                URL.revokeObjectURL(
+                  item.image
+                );
+              } catch {}
+            }
 
-        return nextGallery;
-      });
+            return nextGallery;
+          }
+        );
 
-      await refreshStorageInfo();
-    } catch (error) {
-      console.error(error);
+        await refreshStorageInfo();
+      } catch (error) {
+        console.error(error);
 
-      showMessage(
-        error instanceof Error
-          ? error.message
-          : "Could not load gallery.",
-        "error"
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [refreshStorageInfo, showMessage]);
+        showMessage(
+          error instanceof Error
+            ? error.message
+            : "Could not load gallery.",
+          "error"
+        );
+      } finally {
+        setLoading(false);
+      }
+    }, [
+      refreshStorageInfo,
+      showMessage,
+    ]);
 
   useEffect(() => {
     loadGallery();
 
     return () => {
-      for (const item of gallery) {
-        try {
-          URL.revokeObjectURL(item.image);
-        } catch {}
-      }
+      /*
+       * The current gallery URLs are revoked
+       * by loadGallery before replacement.
+       */
     };
+
     // Initial load only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -763,43 +1031,61 @@ export default function AdminGalleryPage() {
   /* File selection                                                          */
   /* ---------------------------------------------------------------------- */
 
-  const addFiles = useCallback(
-    (files: File[]) => {
-      const imageFiles = files.filter((file) =>
-        file.type.startsWith("image/")
-      );
+  const addFiles =
+    useCallback(
+      (files: File[]) => {
+        const imageFiles =
+          files.filter((file) =>
+            file.type.startsWith(
+              "image/"
+            )
+          );
 
-      if (imageFiles.length === 0) {
-        showMessage(
-          "Please select image files only.",
-          "error"
+        if (
+          imageFiles.length === 0
+        ) {
+          showMessage(
+            "Please select image files only.",
+            "error"
+          );
+
+          return;
+        }
+
+        const newSelected: SelectedImage[] =
+          imageFiles.map((file) => ({
+            id: createId(),
+            file,
+            preview:
+              URL.createObjectURL(
+                file
+              ),
+          }));
+
+        /*
+         * NO 4-image limit.
+         * NO 10-image limit.
+         * NO 20-image limit.
+         */
+        setSelectedImages(
+          (previous) => [
+            ...previous,
+            ...newSelected,
+          ]
         );
-        return;
-      }
 
-      const newSelected: SelectedImage[] =
-        imageFiles.map((file) => ({
-          id: createId(),
-          file,
-          preview: URL.createObjectURL(file),
-        }));
-
-      // IMPORTANT:
-      // There is intentionally NO 4-image limit here.
-      setSelectedImages((previous) => [
-        ...previous,
-        ...newSelected,
-      ]);
-
-      showMessage(
-        `${newSelected.length} image${
-          newSelected.length === 1 ? "" : "s"
-        } added to the upload list.`,
-        "success"
-      );
-    },
-    [showMessage]
-  );
+        showMessage(
+          `${newSelected.length} image${
+            newSelected.length ===
+            1
+              ? ""
+              : "s"
+          } added to the upload list.`,
+          "success"
+        );
+      },
+      [showMessage]
+    );
 
   const handleFileChange = (
     event: ChangeEvent<HTMLInputElement>
@@ -812,7 +1098,6 @@ export default function AdminGalleryPage() {
       addFiles(files);
     }
 
-    // Allows selecting the same file again.
     event.target.value = "";
   };
 
@@ -833,33 +1118,49 @@ export default function AdminGalleryPage() {
     }
   };
 
-  const removeSelectedImage = (id: number) => {
-    setSelectedImages((previous) => {
-      const found = previous.find(
-        (item) => item.id === id
-      );
+  const removeSelectedImage = (
+    id: number
+  ) => {
+    setSelectedImages(
+      (previous) => {
+        const found =
+          previous.find(
+            (item) =>
+              item.id === id
+          );
 
-      if (found) {
-        try {
-          URL.revokeObjectURL(found.preview);
-        } catch {}
+        if (found) {
+          try {
+            URL.revokeObjectURL(
+              found.preview
+            );
+          } catch {}
+        }
+
+        return previous.filter(
+          (item) =>
+            item.id !== id
+        );
       }
+    );
+  };
 
-      return previous.filter(
-        (item) => item.id !== id
+  const clearSelectedImages =
+    useCallback(() => {
+      setSelectedImages(
+        (previous) => {
+          for (const item of previous) {
+            try {
+              URL.revokeObjectURL(
+                item.preview
+              );
+            } catch {}
+          }
+
+          return [];
+        }
       );
-    });
-  };
-
-  const clearSelectedImages = () => {
-    for (const item of selectedImages) {
-      try {
-        URL.revokeObjectURL(item.preview);
-      } catch {}
-    }
-
-    setSelectedImages([]);
-  };
+    }, []);
 
   /* ---------------------------------------------------------------------- */
   /* Optimize existing gallery                                              */
@@ -872,70 +1173,130 @@ export default function AdminGalleryPage() {
       setOptimizing(true);
 
       try {
-        const stored = await getAllStoredItems();
+        const stored =
+          await getAllStoredItems();
 
-        if (stored.length === 0) {
+        if (
+          stored.length === 0
+        ) {
           showMessage(
             "There are no existing gallery images to optimize.",
             "info"
           );
+
           return;
         }
 
         let optimizedCount = 0;
         let savedBytes = 0;
 
-        for (let index = 0; index < stored.length; index++) {
+        /*
+         * IMPORTANT:
+         *
+         * We do NOT automatically rewrite every old image.
+         *
+         * Replacing a large Blob inside IndexedDB can temporarily
+         * require additional quota. If the database is already full,
+         * that replacement itself can cause QuotaExceededError.
+         *
+         * Therefore optimization is done one image at a time and
+         * failures are reported without deleting the original first.
+         */
+        for (
+          let index = 0;
+          index < stored.length;
+          index++
+        ) {
           const item = stored[index];
 
-          if (item.imageBlob.size <= TARGET_IMAGE_BYTES) {
+          if (
+            item.imageBlob.size <=
+            TARGET_IMAGE_BYTES
+          ) {
             continue;
           }
 
-          const oldSize = item.imageBlob.size;
+          try {
+            const oldSize =
+              item.imageBlob.size;
 
-          const compressed =
-            await compressImageToTarget(
-              item.imageBlob
+            const compressed =
+              await compressImageToTarget(
+                item.imageBlob
+              );
+
+            if (
+              compressed.size >=
+              oldSize
+            ) {
+              continue;
+            }
+
+            /*
+             * Same id => existing record remains
+             * logically the same gallery item.
+             */
+            await saveStoredItem({
+              ...item,
+              imageBlob: compressed,
+            });
+
+            optimizedCount++;
+
+            savedBytes +=
+              oldSize -
+              compressed.size;
+          } catch (error) {
+            if (
+              isQuotaError(error)
+            ) {
+              /*
+               * Do not continue attempting more replacements
+               * when the browser is already out of quota.
+               */
+              throw new Error(
+                "Browser storage is too full to replace an existing image safely. Delete one old image first, then run Optimize Gallery again."
+              );
+            }
+
+            console.error(
+              "Could not optimize image:",
+              error
             );
-
-          if (compressed.size >= oldSize) {
-            continue;
           }
-
-          await saveStoredItem({
-            ...item,
-            imageBlob: compressed,
-          });
-
-          optimizedCount++;
-          savedBytes += oldSize - compressed.size;
         }
 
         await loadGallery();
         await refreshStorageInfo();
 
-        if (optimizedCount > 0) {
+        if (
+          optimizedCount > 0
+        ) {
           showMessage(
             `Optimized ${optimizedCount} image${
-              optimizedCount === 1 ? "" : "s"
-            } and freed approximately ${formatBytes(
+              optimizedCount ===
+              1
+                ? ""
+                : "s"
+            } and reduced approximately ${formatBytes(
               savedBytes
             )}.`,
             "success"
           );
         } else {
           showMessage(
-            "Existing gallery images are already optimized.",
-            "success"
+            "Existing gallery images are already optimized, or could not be safely replaced because of browser storage limits.",
+            "info"
           );
         }
       } catch (error) {
         console.error(error);
 
-        if (isQuotaError(error)) {
+        if (
+          isQuotaError(error)
+        ) {
           showMessage(
-            "The browser storage is already full. Delete one or more old images and try Optimize again.",
+            "Browser storage is full. Delete one or more old images and try Optimize Gallery again.",
             "error"
           );
         } else {
@@ -960,194 +1321,243 @@ export default function AdminGalleryPage() {
   /* Upload                                                                  */
   /* ---------------------------------------------------------------------- */
 
-  const uploadSelectedImages = async () => {
-    if (selectedImages.length === 0) {
-      showMessage(
-        "Please select at least one image.",
-        "error"
-      );
-      return;
-    }
-
-    if (uploading) {
-      return;
-    }
-
-    setUploading(true);
-
-    let quotaRecoveryAttempted = false;
-    let uploadedCount = 0;
-
-    try {
-      let stored = await getAllStoredItems();
-
-      let maxOrder = stored.reduce(
-        (max, item) =>
-          Math.max(max, Number(item.order) || 0),
+  const uploadSelectedImages =
+    async () => {
+      if (
+        selectedImages.length ===
         0
-      );
-
-      for (
-        let index = 0;
-        index < selectedImages.length;
-        index++
       ) {
-        const selected =
-          selectedImages[index];
-
         showMessage(
-          `Uploading image ${index + 1} of ${
-            selectedImages.length
-          }...`,
-          "info"
+          "Please select at least one image.",
+          "error"
         );
 
-        let compressed: Blob;
+        return;
+      }
 
-        try {
-          compressed = await compressFile(
-            selected.file
+      if (uploading) {
+        return;
+      }
+
+      setUploading(true);
+
+      let uploadedCount = 0;
+      let failedCount = 0;
+
+      try {
+        /*
+         * Read existing metadata once.
+         *
+         * We DO NOT keep all original selected files
+         * inside IndexedDB.
+         */
+        const stored =
+          await getAllStoredItems();
+
+        let maxOrder =
+          stored.reduce(
+            (max, item) =>
+              Math.max(
+                max,
+                Number(item.order) ||
+                  0
+              ),
+            0
           );
-        } catch (error) {
+
+        /*
+         * Each selected file is processed and saved
+         * individually.
+         *
+         * This is important for 10 / 20 / 50+ uploads:
+         * we never create one giant IndexedDB transaction.
+         */
+        for (
+          let index = 0;
+          index <
+          selectedImages.length;
+          index++
+        ) {
+          const selected =
+            selectedImages[index];
+
+          showMessage(
+            `Processing image ${
+              index + 1
+            } of ${
+              selectedImages.length
+            }: ${selected.file.name}`,
+            "info"
+          );
+
+          let compressed: Blob;
+
+          try {
+            compressed =
+              await compressFile(
+                selected.file
+              );
+          } catch (error) {
+            failedCount++;
+
+            console.error(
+              "Image compression failed:",
+              error
+            );
+
+            showMessage(
+              error instanceof Error
+                ? error.message
+                : `Could not process ${selected.file.name}.`,
+              "error"
+            );
+
+            /*
+             * Continue with the next image.
+             */
+            continue;
+          }
+
+          const newItem: StoredGalleryItem =
+            {
+              id: createId(),
+
+              imageBlob: compressed,
+
+              category:
+                category.trim() ||
+                "General",
+
+              visible: true,
+
+              order:
+                ++maxOrder,
+            };
+
+          try {
+            /*
+             * ONE image = ONE transaction.
+             */
+            await saveStoredItem(
+              newItem
+            );
+
+            stored.push(newItem);
+
+            uploadedCount++;
+          } catch (error) {
+            failedCount++;
+
+            console.error(
+              "Gallery save failed:",
+              error
+            );
+
+            if (
+              isQuotaError(error)
+            ) {
+              /*
+               * Do NOT start rewriting/deleting old
+               * gallery records automatically.
+               *
+               * Existing 4 images must not be destroyed
+               * just to make a new upload fit.
+               */
+              showMessage(
+                `Storage quota reached while saving "${selected.file.name}". ${uploadedCount} image${
+                  uploadedCount === 1
+                    ? ""
+                    : "s"
+                } were already saved successfully. Delete an old image or free browser storage before adding more.`,
+                "error"
+              );
+
+              /*
+               * Stop this batch cleanly.
+               * Already uploaded images remain intact.
+               */
+              break;
+            }
+
+            showMessage(
+              error instanceof Error
+                ? error.message
+                : `Could not save ${selected.file.name}.`,
+              "error"
+            );
+          }
+        }
+
+        await loadGallery();
+        await refreshStorageInfo();
+
+        /*
+         * Remove previews only after processing.
+         * Existing gallery data is untouched.
+         */
+        clearSelectedImages();
+
+        if (
+          uploadedCount > 0 &&
+          failedCount === 0
+        ) {
+          showMessage(
+            `${uploadedCount} image${
+              uploadedCount ===
+              1
+                ? ""
+                : "s"
+            } uploaded successfully.`,
+            "success"
+          );
+        } else if (
+          uploadedCount > 0
+        ) {
+          showMessage(
+            `${uploadedCount} image${
+              uploadedCount ===
+              1
+                ? ""
+                : "s"
+            } uploaded. ${failedCount} could not be saved.`,
+            "info"
+          );
+        } else {
+          showMessage(
+            "No images were uploaded. Check the storage error above.",
+            "error"
+          );
+        }
+      } catch (error) {
+        console.error(error);
+
+        if (
+          isQuotaError(error)
+        ) {
+          showMessage(
+            "Browser storage quota is full. Existing gallery images were not deleted automatically.",
+            "error"
+          );
+        } else {
           showMessage(
             error instanceof Error
               ? error.message
-              : `Could not process ${selected.file.name}.`,
+              : "Could not upload images.",
             "error"
           );
-          continue;
         }
-
-        const newItem: StoredGalleryItem = {
-          id: createId(),
-          imageBlob: compressed,
-          category:
-            category.trim() || "General",
-          visible: true,
-          order: ++maxOrder,
-        };
-
-        try {
-          await saveStoredItem(newItem);
-          stored.push(newItem);
-          uploadedCount++;
-        } catch (error) {
-          /*
-           * If browser quota is reached, optimize the existing
-           * large gallery images once, then retry this image.
-           */
-          if (
-            isQuotaError(error) &&
-            !quotaRecoveryAttempted
-          ) {
-            quotaRecoveryAttempted = true;
-
-            showMessage(
-              "Browser storage is nearly full. Optimizing existing gallery images and retrying...",
-              "info"
-            );
-
-            try {
-              for (const existing of stored) {
-                if (
-                  existing.imageBlob.size <=
-                  TARGET_IMAGE_BYTES
-                ) {
-                  continue;
-                }
-
-                const optimized =
-                  await compressImageToTarget(
-                    existing.imageBlob
-                  );
-
-                if (
-                  optimized.size <
-                  existing.imageBlob.size
-                ) {
-                  const optimizedItem = {
-                    ...existing,
-                    imageBlob: optimized,
-                  };
-
-                  await saveStoredItem(
-                    optimizedItem
-                  );
-
-                  const storedIndex =
-                    stored.findIndex(
-                      (item) =>
-                        item.id === existing.id
-                    );
-
-                  if (storedIndex !== -1) {
-                    stored[storedIndex] =
-                      optimizedItem;
-                  }
-                }
-              }
-
-              // Retry current image after optimization.
-              await saveStoredItem(newItem);
-              stored.push(newItem);
-              uploadedCount++;
-            } catch (retryError) {
-              console.error(retryError);
-
-              throw new Error(
-                "Browser storage is full. The existing images were optimized, but there is still not enough space for this image."
-              );
-            }
-          } else {
-            throw error;
-          }
-        }
+      } finally {
+        setUploading(false);
       }
-
-      await loadGallery();
-      await refreshStorageInfo();
-
-      clearSelectedImages();
-
-      if (uploadedCount > 0) {
-        showMessage(
-          `${uploadedCount} image${
-            uploadedCount === 1 ? "" : "s"
-          } uploaded successfully.`,
-          "success"
-        );
-      } else {
-        showMessage(
-          "No images were uploaded.",
-          "error"
-        );
-      }
-    } catch (error) {
-      console.error(error);
-
-      if (isQuotaError(error)) {
-        showMessage(
-          "Browser storage quota is full. Use Optimize Gallery or delete old images.",
-          "error"
-        );
-      } else {
-        showMessage(
-          error instanceof Error
-            ? error.message
-            : "Could not upload images.",
-          "error"
-        );
-      }
-    } finally {
-      setUploading(false);
-    }
-  };
+    };
 
   /* ---------------------------------------------------------------------- */
   /* Delete                                                                  */
   /* ---------------------------------------------------------------------- */
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (
+    id: number
+  ) => {
     const confirmed =
       window.confirm(
         "Delete this gallery image permanently?"
@@ -1160,20 +1570,26 @@ export default function AdminGalleryPage() {
     try {
       await deleteStoredItem(id);
 
-      const found = gallery.find(
-        (item) => item.id === id
-      );
+      const found =
+        gallery.find(
+          (item) =>
+            item.id === id
+        );
 
       if (found) {
         try {
-          URL.revokeObjectURL(found.image);
+          URL.revokeObjectURL(
+            found.image
+          );
         } catch {}
       }
 
-      setGallery((previous) =>
-        previous.filter(
-          (item) => item.id !== id
-        )
+      setGallery(
+        (previous) =>
+          previous.filter(
+            (item) =>
+              item.id !== id
+          )
       );
 
       await refreshStorageInfo();
@@ -1194,131 +1610,153 @@ export default function AdminGalleryPage() {
     }
   };
 
-  const handleDeleteAll = async () => {
-    if (gallery.length === 0) {
-      return;
-    }
-
-    const confirmed =
-      window.confirm(
-        `Delete all ${gallery.length} gallery images permanently?`
-      );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      await clearStoredItems();
-
-      for (const item of gallery) {
-        try {
-          URL.revokeObjectURL(item.image);
-        } catch {}
+  const handleDeleteAll =
+    async () => {
+      if (gallery.length === 0) {
+        return;
       }
 
-      setGallery([]);
+      const confirmed =
+        window.confirm(
+          `Delete all ${gallery.length} gallery images permanently?`
+        );
 
-      await refreshStorageInfo();
+      if (!confirmed) {
+        return;
+      }
 
-      showMessage(
-        "All gallery images have been deleted.",
-        "success"
-      );
-    } catch (error) {
-      console.error(error);
+      try {
+        await clearStoredItems();
 
-      showMessage(
-        error instanceof Error
-          ? error.message
-          : "Could not clear gallery.",
-        "error"
-      );
-    }
-  };
+        for (const item of gallery) {
+          try {
+            URL.revokeObjectURL(
+              item.image
+            );
+          } catch {}
+        }
+
+        setGallery([]);
+
+        await refreshStorageInfo();
+
+        showMessage(
+          "All gallery images have been deleted.",
+          "success"
+        );
+      } catch (error) {
+        console.error(error);
+
+        showMessage(
+          error instanceof Error
+            ? error.message
+            : "Could not clear gallery.",
+          "error"
+        );
+      }
+    };
 
   /* ---------------------------------------------------------------------- */
   /* Visibility                                                              */
   /* ---------------------------------------------------------------------- */
 
-  const toggleVisibility = async (
-    item: GalleryItem
-  ) => {
-    try {
-      const stored = await getAllStoredItems();
+  const toggleVisibility =
+    async (
+      item: GalleryItem
+    ) => {
+      try {
+        const stored =
+          await getAllStoredItems();
 
-      const found = stored.find(
-        (storedItem) =>
-          storedItem.id === item.id
-      );
+        const found =
+          stored.find(
+            (storedItem) =>
+              storedItem.id ===
+              item.id
+          );
 
-      if (!found) {
-        throw new Error(
-          "Gallery image could not be found."
+        if (!found) {
+          throw new Error(
+            "Gallery image could not be found."
+          );
+        }
+
+        const updated: StoredGalleryItem =
+          {
+            ...found,
+
+            visible:
+              !found.visible,
+          };
+
+        await saveStoredItem(
+          updated
+        );
+
+        setGallery(
+          (previous) =>
+            previous.map(
+              (galleryItem) =>
+                galleryItem.id ===
+                item.id
+                  ? {
+                      ...galleryItem,
+                      visible:
+                        updated.visible,
+                    }
+                  : galleryItem
+            )
+        );
+
+        showMessage(
+          updated.visible
+            ? "Image is now visible on the website."
+            : "Image is now hidden from the website.",
+          "success"
+        );
+      } catch (error) {
+        console.error(error);
+
+        showMessage(
+          error instanceof Error
+            ? error.message
+            : "Could not update image visibility.",
+          "error"
         );
       }
-
-      const updated: StoredGalleryItem = {
-        ...found,
-        visible: !found.visible,
-      };
-
-      await saveStoredItem(updated);
-
-      setGallery((previous) =>
-        previous.map((galleryItem) =>
-          galleryItem.id === item.id
-            ? {
-                ...galleryItem,
-                visible:
-                  updated.visible,
-              }
-            : galleryItem
-        )
-      );
-
-      showMessage(
-        updated.visible
-          ? "Image is now visible on the website."
-          : "Image is now hidden from the website.",
-        "success"
-      );
-    } catch (error) {
-      console.error(error);
-
-      showMessage(
-        error instanceof Error
-          ? error.message
-          : "Could not update image visibility.",
-        "error"
-      );
-    }
-  };
+    };
 
   /* ---------------------------------------------------------------------- */
   /* Derived values                                                          */
   /* ---------------------------------------------------------------------- */
 
-  const visibleCount = gallery.filter(
-    (item) => item.visible
-  ).length;
+  const visibleCount =
+    gallery.filter(
+      (item) => item.visible
+    ).length;
 
   const hiddenCount =
-    gallery.length - visibleCount;
+    gallery.length -
+    visibleCount;
 
-  const filteredGallery = gallery.filter(
-    (item) => {
-      if (filter === "visible") {
-        return item.visible;
+  const filteredGallery =
+    gallery.filter(
+      (item) => {
+        if (
+          filter === "visible"
+        ) {
+          return item.visible;
+        }
+
+        if (
+          filter === "hidden"
+        ) {
+          return !item.visible;
+        }
+
+        return true;
       }
-
-      if (filter === "hidden") {
-        return !item.visible;
-      }
-
-      return true;
-    }
-  );
+    );
 
   const storagePercent =
     storageInfo &&
@@ -1341,7 +1779,8 @@ export default function AdminGalleryPage() {
         minHeight: "100vh",
         background: BG,
         color: TEXT,
-        padding: "28px 18px 60px",
+        padding:
+          "28px 18px 60px",
         fontFamily:
           "Arial, Helvetica, sans-serif",
       }}
@@ -1357,8 +1796,10 @@ export default function AdminGalleryPage() {
         <div
           style={{
             display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
+            justifyContent:
+              "space-between",
+            alignItems:
+              "flex-start",
             gap: 20,
             flexWrap: "wrap",
             marginBottom: 26,
@@ -1370,7 +1811,8 @@ export default function AdminGalleryPage() {
                 color: GOLD,
                 fontSize: 12,
                 letterSpacing: 3,
-                textTransform: "uppercase",
+                textTransform:
+                  "uppercase",
                 marginBottom: 8,
                 fontWeight: 700,
               }}
@@ -1399,9 +1841,11 @@ export default function AdminGalleryPage() {
                 lineHeight: 1.6,
               }}
             >
-              Upload restaurant photos,
-              manage visibility, and keep
-              your public gallery updated.
+              Upload restaurant
+              photos, manage
+              visibility, and
+              keep your public
+              gallery updated.
             </p>
           </div>
 
@@ -1414,17 +1858,23 @@ export default function AdminGalleryPage() {
           >
             <StatCard
               label="Total"
-              value={gallery.length}
+              value={
+                gallery.length
+              }
             />
 
             <StatCard
               label="Visible"
-              value={visibleCount}
+              value={
+                visibleCount
+              }
             />
 
             <StatCard
               label="Hidden"
-              value={hiddenCount}
+              value={
+                hiddenCount
+              }
             />
           </div>
         </div>
@@ -1438,15 +1888,18 @@ export default function AdminGalleryPage() {
                 "13px 15px",
               borderRadius: 12,
               border:
-                messageType === "error"
+                messageType ===
+                "error"
                   ? "1px solid rgba(255,80,80,.35)"
                   : `1px solid ${BORDER}`,
               background:
-                messageType === "error"
+                messageType ===
+                "error"
                   ? "rgba(120,20,20,.18)"
                   : "rgba(217,164,65,.08)",
               color:
-                messageType === "error"
+                messageType ===
+                "error"
                   ? "#ffb0b0"
                   : GOLD_LIGHT,
               fontSize: 13,
@@ -1475,7 +1928,8 @@ export default function AdminGalleryPage() {
               display: "flex",
               justifyContent:
                 "space-between",
-              alignItems: "center",
+              alignItems:
+                "center",
               gap: 12,
               flexWrap: "wrap",
               marginBottom: 18,
@@ -1499,9 +1953,10 @@ export default function AdminGalleryPage() {
                   fontSize: 12,
                 }}
               >
-                There is no 4-image limit.
-                Select as many images as
-                your browser storage allows.
+                No 4-image limit.
+                Images are
+                compressed before
+                IndexedDB storage.
               </p>
             </div>
 
@@ -1520,7 +1975,8 @@ export default function AdminGalleryPage() {
                   `1px solid ${BORDER}`,
                 background:
                   "rgba(217,164,65,.08)",
-                color: GOLD_LIGHT,
+                color:
+                  GOLD_LIGHT,
                 borderRadius: 10,
                 padding:
                   "10px 14px",
@@ -1558,7 +2014,8 @@ export default function AdminGalleryPage() {
             <div>
               <label
                 style={{
-                  display: "block",
+                  display:
+                    "block",
                   color: MUTED,
                   fontSize: 12,
                   marginBottom: 7,
@@ -1571,13 +2028,15 @@ export default function AdminGalleryPage() {
                 value={category}
                 onChange={(event) =>
                   setCategory(
-                    event.target.value
+                    event.target
+                      .value
                   )
                 }
                 placeholder="e.g. Restaurant, Food, Interior"
                 style={{
                   width: "100%",
-                  boxSizing: "border-box",
+                  boxSizing:
+                    "border-box",
                   background:
                     "#0b0b0b",
                   color: TEXT,
@@ -1595,7 +2054,8 @@ export default function AdminGalleryPage() {
             <div
               style={{
                 display: "flex",
-                alignItems: "flex-end",
+                alignItems:
+                  "flex-end",
               }}
             >
               <button
@@ -1612,7 +2072,8 @@ export default function AdminGalleryPage() {
                   background: GOLD,
                   color: "#080808",
                   fontWeight: 800,
-                  cursor: "pointer",
+                  cursor:
+                    "pointer",
                   fontSize: 13,
                 }}
               >
@@ -1626,26 +2087,42 @@ export default function AdminGalleryPage() {
             type="file"
             accept="image/*"
             multiple
-            onChange={handleFileChange}
-            style={{ display: "none" }}
+            onChange={
+              handleFileChange
+            }
+            style={{
+              display: "none",
+            }}
           />
 
           {/* Drop zone */}
           <div
-            onDragEnter={(event) => {
+            onDragEnter={(
+              event
+            ) => {
               event.preventDefault();
               event.stopPropagation();
-              setDragActive(true);
+              setDragActive(
+                true
+              );
             }}
-            onDragOver={(event) => {
+            onDragOver={(
+              event
+            ) => {
               event.preventDefault();
               event.stopPropagation();
-              setDragActive(true);
+              setDragActive(
+                true
+              );
             }}
-            onDragLeave={(event) => {
+            onDragLeave={(
+              event
+            ) => {
               event.preventDefault();
               event.stopPropagation();
-              setDragActive(false);
+              setDragActive(
+                false
+              );
             }}
             onDrop={handleDrop}
             onClick={() =>
@@ -1663,9 +2140,12 @@ export default function AdminGalleryPage() {
                   ? "rgba(217,164,65,.08)"
                   : "#0b0b0b",
               borderRadius: 14,
-              padding: "28px 18px",
-              textAlign: "center",
-              cursor: "pointer",
+              padding:
+                "28px 18px",
+              textAlign:
+                "center",
+              cursor:
+                "pointer",
               transition:
                 "all .2s ease",
             }}
@@ -1685,7 +2165,8 @@ export default function AdminGalleryPage() {
                 fontSize: 14,
               }}
             >
-              Drag & Drop Images Here
+              Drag & Drop
+              Images Here
             </div>
 
             <div
@@ -1695,7 +2176,8 @@ export default function AdminGalleryPage() {
                 marginTop: 7,
               }}
             >
-              or click to select multiple
+              or click to
+              select multiple
               images
             </div>
 
@@ -1707,13 +2189,16 @@ export default function AdminGalleryPage() {
                 marginTop: 9,
               }}
             >
-              Images are automatically
-              compressed before saving.
+              Images are
+              automatically
+              compressed before
+              saving.
             </div>
           </div>
 
           {/* Selected images */}
-          {selectedImages.length > 0 && (
+          {selectedImages.length >
+            0 && (
             <div
               style={{
                 marginTop: 18,
@@ -1721,10 +2206,12 @@ export default function AdminGalleryPage() {
             >
               <div
                 style={{
-                  display: "flex",
+                  display:
+                    "flex",
                   justifyContent:
                     "space-between",
-                  alignItems: "center",
+                  alignItems:
+                    "center",
                   gap: 10,
                   marginBottom: 10,
                 }}
@@ -1735,7 +2222,8 @@ export default function AdminGalleryPage() {
                     fontWeight: 700,
                   }}
                 >
-                  Selected Images (
+                  Selected
+                  Images (
                   {
                     selectedImages.length
                   }
@@ -1747,15 +2235,18 @@ export default function AdminGalleryPage() {
                   onClick={
                     clearSelectedImages
                   }
-                  disabled={uploading}
+                  disabled={
+                    uploading
+                  }
                   style={{
                     background:
                       "transparent",
                     border: "none",
                     color: MUTED,
-                    cursor: uploading
-                      ? "not-allowed"
-                      : "pointer",
+                    cursor:
+                      uploading
+                        ? "not-allowed"
+                        : "pointer",
                     fontSize: 12,
                   }}
                 >
@@ -1765,7 +2256,8 @@ export default function AdminGalleryPage() {
 
               <div
                 style={{
-                  display: "grid",
+                  display:
+                    "grid",
                   gridTemplateColumns:
                     "repeat(auto-fill, minmax(150px, 1fr))",
                   gap: 10,
@@ -1778,7 +2270,8 @@ export default function AdminGalleryPage() {
                       style={{
                         position:
                           "relative",
-                        borderRadius: 12,
+                        borderRadius:
+                          12,
                         overflow:
                           "hidden",
                         border:
@@ -1788,14 +2281,20 @@ export default function AdminGalleryPage() {
                       }}
                     >
                       <img
-                        src={item.preview}
-                        alt={item.file.name}
+                        src={
+                          item.preview
+                        }
+                        alt={
+                          item.file.name
+                        }
                         style={{
-                          width: "100%",
+                          width:
+                            "100%",
                           height: 120,
                           objectFit:
                             "cover",
-                          display: "block",
+                          display:
+                            "block",
                         }}
                       />
 
@@ -1804,7 +2303,8 @@ export default function AdminGalleryPage() {
                           padding:
                             "8px 9px",
                           fontSize: 10,
-                          color: MUTED,
+                          color:
+                            MUTED,
                           overflow:
                             "hidden",
                           whiteSpace:
@@ -1813,18 +2313,26 @@ export default function AdminGalleryPage() {
                             "ellipsis",
                         }}
                       >
-                        {item.file.name}
+                        {
+                          item.file
+                            .name
+                        }
                       </div>
 
                       <button
                         type="button"
-                        onClick={(event) => {
+                        onClick={(
+                          event
+                        ) => {
                           event.stopPropagation();
+
                           removeSelectedImage(
                             item.id
                           );
                         }}
-                        disabled={uploading}
+                        disabled={
+                          uploading
+                        }
                         style={{
                           position:
                             "absolute",
@@ -1838,7 +2346,8 @@ export default function AdminGalleryPage() {
                             "1px solid rgba(255,255,255,.15)",
                           background:
                             "rgba(0,0,0,.72)",
-                          color: "#fff",
+                          color:
+                            "#fff",
                           cursor:
                             uploading
                               ? "not-allowed"
@@ -1865,7 +2374,8 @@ export default function AdminGalleryPage() {
                     0
                 }
                 style={{
-                  width: "100%",
+                  width:
+                    "100%",
                   marginTop: 16,
                   border: "none",
                   borderRadius: 11,
@@ -1875,8 +2385,10 @@ export default function AdminGalleryPage() {
                     uploading
                       ? "#5d4b25"
                       : GOLD,
-                  color: "#080808",
-                  fontWeight: 900,
+                  color:
+                    "#080808",
+                  fontWeight:
+                    900,
                   cursor:
                     uploading ||
                     optimizing
@@ -1887,7 +2399,9 @@ export default function AdminGalleryPage() {
               >
                 {uploading
                   ? "Uploading & Compressing..."
-                  : `Upload ${selectedImages.length} Image${
+                  : `Upload ${
+                      selectedImages.length
+                    } Image${
                       selectedImages.length ===
                       1
                         ? ""
@@ -1912,11 +2426,13 @@ export default function AdminGalleryPage() {
           >
             <div
               style={{
-                display: "flex",
+                display:
+                  "flex",
                 justifyContent:
                   "space-between",
                 gap: 12,
-                flexWrap: "wrap",
+                flexWrap:
+                  "wrap",
                 marginBottom: 9,
               }}
             >
@@ -1938,7 +2454,8 @@ export default function AdminGalleryPage() {
                 {formatBytes(
                   storageInfo.usage
                 )}{" "}
-                used of approximately{" "}
+                used of
+                approximately{" "}
                 {formatBytes(
                   storageInfo.quota
                 )}
@@ -1948,10 +2465,12 @@ export default function AdminGalleryPage() {
             <div
               style={{
                 height: 6,
-                borderRadius: 99,
+                borderRadius:
+                  99,
                 background:
                   "#222",
-                overflow: "hidden",
+                overflow:
+                  "hidden",
               }}
             >
               <div
@@ -1959,10 +2478,12 @@ export default function AdminGalleryPage() {
                   width: `${storagePercent}%`,
                   height: "100%",
                   background:
-                    storagePercent > 85
+                    storagePercent >
+                    85
                       ? "#b94a48"
                       : GOLD,
-                  borderRadius: 99,
+                  borderRadius:
+                    99,
                   transition:
                     "width .25s ease",
                 }}
@@ -1974,13 +2495,21 @@ export default function AdminGalleryPage() {
                 marginTop: 8,
                 color: MUTED,
                 fontSize: 11,
-                lineHeight: 1.5,
+                lineHeight:
+                  1.5,
               }}
             >
-              Gallery images are stored in
-              IndexedDB, not localStorage.
-              Each new image is compressed to
-              keep storage usage low.
+              Gallery images
+              are stored in
+              IndexedDB. New
+              images are
+              compressed before
+              they are saved.
+              Existing images
+              are never
+              automatically
+              deleted to make
+              room.
             </div>
           </section>
         )}
@@ -1989,12 +2518,15 @@ export default function AdminGalleryPage() {
         <section>
           <div
             style={{
-              display: "flex",
+              display:
+                "flex",
               justifyContent:
                 "space-between",
-              alignItems: "center",
+              alignItems:
+                "center",
               gap: 14,
-              flexWrap: "wrap",
+              flexWrap:
+                "wrap",
               marginBottom: 14,
             }}
           >
@@ -2005,7 +2537,8 @@ export default function AdminGalleryPage() {
                   fontSize: 22,
                 }}
               >
-                All Gallery Images
+                All Gallery
+                Images
               </h2>
 
               <p
@@ -2016,53 +2549,74 @@ export default function AdminGalleryPage() {
                   fontSize: 12,
                 }}
               >
-                Visible images appear on
-                the public website.
+                Visible
+                images appear
+                on the public
+                website.
               </p>
             </div>
 
             <div
               style={{
-                display: "flex",
+                display:
+                  "flex",
                 gap: 7,
-                flexWrap: "wrap",
+                flexWrap:
+                  "wrap",
               }}
             >
               {(
                 [
                   ["all", "All"],
-                  ["visible", "Visible"],
-                  ["hidden", "Hidden"],
+                  [
+                    "visible",
+                    "Visible",
+                  ],
+                  [
+                    "hidden",
+                    "Hidden",
+                  ],
                 ] as const
               ).map(
-                ([value, label]) => (
+                ([
+                  value,
+                  label,
+                ]) => (
                   <button
                     key={value}
                     type="button"
                     onClick={() =>
-                      setFilter(value)
+                      setFilter(
+                        value
+                      )
                     }
                     style={{
                       border:
                         `1px solid ${
-                          filter === value
+                          filter ===
+                          value
                             ? GOLD
                             : BORDER
                         }`,
                       background:
-                        filter === value
+                        filter ===
+                        value
                           ? "rgba(217,164,65,.14)"
                           : CARD,
                       color:
-                        filter === value
+                        filter ===
+                        value
                           ? GOLD_LIGHT
                           : MUTED,
-                      borderRadius: 9,
+                      borderRadius:
+                        9,
                       padding:
                         "8px 11px",
-                      cursor: "pointer",
+                      cursor:
+                        "pointer",
                       fontSize: 11,
-                      fontWeight: 700,
+                      fontWeight:
+                        700,
                     }}
                   >
                     {label}
@@ -2072,29 +2626,37 @@ export default function AdminGalleryPage() {
 
               <button
                 type="button"
-                onClick={handleDeleteAll}
+                onClick={
+                  handleDeleteAll
+                }
                 disabled={
-                  gallery.length === 0
+                  gallery.length ===
+                  0
                 }
                 style={{
                   border:
                     "1px solid rgba(255,80,80,.28)",
                   background:
                     "rgba(120,20,20,.08)",
-                  color: "#ff9d9d",
-                  borderRadius: 9,
+                  color:
+                    "#ff9d9d",
+                  borderRadius:
+                    9,
                   padding:
                     "8px 11px",
                   cursor:
-                    gallery.length === 0
+                    gallery.length ===
+                    0
                       ? "not-allowed"
                       : "pointer",
                   opacity:
-                    gallery.length === 0
+                    gallery.length ===
+                    0
                       ? 0.45
                       : 1,
                   fontSize: 11,
-                  fontWeight: 700,
+                  fontWeight:
+                    700,
                 }}
               >
                 Delete All
@@ -2107,11 +2669,14 @@ export default function AdminGalleryPage() {
             <div
               style={{
                 padding: 50,
-                textAlign: "center",
-                background: CARD,
+                textAlign:
+                  "center",
+                background:
+                  CARD,
                 border:
                   `1px solid ${BORDER}`,
-                borderRadius: 16,
+                borderRadius:
+                  16,
                 color: MUTED,
               }}
             >
@@ -2126,17 +2691,21 @@ export default function AdminGalleryPage() {
               <div
                 style={{
                   padding: 55,
-                  textAlign: "center",
-                  background: CARD,
+                  textAlign:
+                    "center",
+                  background:
+                    CARD,
                   border:
                     `1px solid ${BORDER}`,
-                  borderRadius: 16,
+                  borderRadius:
+                    16,
                 }}
               >
                 <div
                   style={{
                     fontSize: 35,
-                    marginBottom: 10,
+                    marginBottom:
+                      10,
                   }}
                 >
                   ◇
@@ -2144,22 +2713,30 @@ export default function AdminGalleryPage() {
 
                 <div
                   style={{
-                    fontWeight: 700,
-                    fontSize: 16,
+                    fontWeight:
+                      700,
+                    fontSize:
+                      16,
                   }}
                 >
-                  No images found
+                  No images
+                  found
                 </div>
 
                 <div
                   style={{
-                    color: MUTED,
-                    fontSize: 12,
-                    marginTop: 7,
+                    color:
+                      MUTED,
+                    fontSize:
+                      12,
+                    marginTop:
+                      7,
                   }}
                 >
-                  Upload some restaurant
-                  photos to build your
+                  Upload some
+                  restaurant
+                  photos to
+                  build your
                   gallery.
                 </div>
               </div>
@@ -2171,7 +2748,8 @@ export default function AdminGalleryPage() {
               0 && (
               <div
                 style={{
-                  display: "grid",
+                  display:
+                    "grid",
                   gridTemplateColumns:
                     "repeat(auto-fill, minmax(240px, 1fr))",
                   gap: 16,
@@ -2180,16 +2758,20 @@ export default function AdminGalleryPage() {
                 {filteredGallery.map(
                   (item) => (
                     <article
-                      key={item.id}
+                      key={
+                        item.id
+                      }
                       style={{
-                        background: CARD,
+                        background:
+                          CARD,
                         border:
                           `1px solid ${
                             item.visible
                               ? BORDER
                               : "rgba(255,255,255,.08)"
                           }`,
-                        borderRadius: 16,
+                        borderRadius:
+                          16,
                         overflow:
                           "hidden",
                         opacity:
@@ -2207,7 +2789,9 @@ export default function AdminGalleryPage() {
                         }}
                       >
                         <img
-                          src={item.image}
+                          src={
+                            item.image
+                          }
                           alt={
                             item.category ||
                             "Gallery image"
@@ -2215,7 +2799,8 @@ export default function AdminGalleryPage() {
                           style={{
                             display:
                               "block",
-                            width: "100%",
+                            width:
+                              "100%",
                             height: 220,
                             objectFit:
                               "cover",
@@ -2230,15 +2815,18 @@ export default function AdminGalleryPage() {
                             left: 10,
                             padding:
                               "5px 8px",
-                            borderRadius: 99,
+                            borderRadius:
+                              99,
                             background:
                               item.visible
                                 ? "rgba(20,100,50,.86)"
                                 : "rgba(100,30,30,.86)",
                             color:
                               "#fff",
-                            fontSize: 10,
-                            fontWeight: 800,
+                            fontSize:
+                              10,
+                            fontWeight:
+                              800,
                           }}
                         >
                           {item.visible
@@ -2249,7 +2837,8 @@ export default function AdminGalleryPage() {
 
                       <div
                         style={{
-                          padding: 13,
+                          padding:
+                            13,
                         }}
                       >
                         <div
@@ -2261,20 +2850,24 @@ export default function AdminGalleryPage() {
                             alignItems:
                               "center",
                             gap: 10,
-                            marginBottom: 12,
+                            marginBottom:
+                              12,
                           }}
                         >
                           <div
                             style={{
-                              minWidth: 0,
+                              minWidth:
+                                0,
                             }}
                           >
                             <div
                               style={{
                                 color:
                                   GOLD_LIGHT,
-                                fontSize: 12,
-                                fontWeight: 800,
+                                fontSize:
+                                  12,
+                                fontWeight:
+                                  800,
                                 overflow:
                                   "hidden",
                                 whiteSpace:
@@ -2291,12 +2884,16 @@ export default function AdminGalleryPage() {
                               style={{
                                 color:
                                   MUTED,
-                                fontSize: 10,
-                                marginTop: 4,
+                                fontSize:
+                                  10,
+                                marginTop:
+                                  4,
                               }}
                             >
                               Order:{" "}
-                              {item.order}
+                              {
+                                item.order
+                              }
                             </div>
                           </div>
                         </div>
@@ -2315,7 +2912,8 @@ export default function AdminGalleryPage() {
                             onClick={() =>
                               toggleVisibility(
                                 item
-                              )}
+                              )
+                            }
                             style={{
                               border:
                                 `1px solid ${BORDER}`,
@@ -2329,7 +2927,8 @@ export default function AdminGalleryPage() {
                                 "9px 8px",
                               cursor:
                                 "pointer",
-                              fontSize: 11,
+                              fontSize:
+                                11,
                               fontWeight:
                                 700,
                             }}
@@ -2344,7 +2943,8 @@ export default function AdminGalleryPage() {
                             onClick={() =>
                               handleDelete(
                                 item.id
-                              )}
+                              )
+                            }
                             style={{
                               border:
                                 "1px solid rgba(255,80,80,.25)",
@@ -2358,7 +2958,8 @@ export default function AdminGalleryPage() {
                                 "9px 8px",
                               cursor:
                                 "pointer",
-                              fontSize: 11,
+                              fontSize:
+                                11,
                               fontWeight:
                                 700,
                             }}
@@ -2391,16 +2992,20 @@ export default function AdminGalleryPage() {
         >
           <strong
             style={{
-              color: GOLD_LIGHT,
+              color:
+                GOLD_LIGHT,
             }}
           >
             Storage note:
           </strong>{" "}
-          Gallery images are saved in
-          IndexedDB. The upload system
-          automatically compresses images
-          before saving them and can optimize
-          older images when browser storage
+          Gallery images are
+          stored in IndexedDB.
+          New images are
+          compressed before
+          saving. Existing
+          gallery records are
+          not automatically
+          deleted when storage
           becomes full.
         </div>
       </div>
@@ -2429,12 +3034,14 @@ function StatCard({
         border:
           `1px solid ${BORDER}`,
         background: CARD,
-        textAlign: "center",
+        textAlign:
+          "center",
       }}
     >
       <div
         style={{
-          color: GOLD_LIGHT,
+          color:
+            GOLD_LIGHT,
           fontSize: 19,
           fontWeight: 800,
         }}
