@@ -3,6 +3,7 @@
 import {
   ChangeEvent,
   DragEvent,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -16,204 +17,466 @@ type GalleryItem = {
   order: number;
 };
 
+type StoredGalleryItem = {
+  id: number;
+  imageBlob: Blob;
+  category: string;
+  visible: boolean;
+  order: number;
+};
+
+type SelectedImage = {
+  id: number;
+  file: File;
+  preview: string;
+};
+
 const STORAGE_KEY = "nababi-gallery";
 
-const MAX_FILE_SIZE = 8 * 1024 * 1024;
-const MAX_IMAGE_WIDTH = 1600;
-const JPEG_QUALITY = 0.76;
+const DB_NAME = "nababi-gallery-db";
+const DB_VERSION = 1;
+const STORE_NAME = "gallery";
+
+const MAX_FILE_SIZE = 15 * 1024 * 1024;
+const MAX_IMAGE_WIDTH = 2200;
+const JPEG_QUALITY = 0.86;
+
+const GOLD = "#d9a441";
+const GOLD_LIGHT = "#f6cf70";
+const BG = "#070707";
+const CARD = "#101010";
+const CARD_2 = "#151515";
+const BORDER = "rgba(217,164,65,0.25)";
+const TEXT = "#f5f1e8";
+const MUTED = "#a9a39a";
 
 function createId() {
-  return (
-    Date.now() +
-    Math.floor(Math.random() * 100000)
-  );
+  return Date.now() + Math.floor(Math.random() * 1000000);
 }
 
-function compressImage(
-  file: File
-): Promise<string> {
-  return new Promise(
-    (resolve, reject) => {
-      const reader =
-        new FileReader();
+function openGalleryDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === "undefined" || !("indexedDB" in window)) {
+      reject(new Error("IndexedDB is not supported in this browser."));
+      return;
+    }
 
-      reader.onerror = () =>
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+    request.onerror = () => {
+      reject(
+        request.error ||
+          new Error("Unable to open gallery database.")
+      );
+    };
+
+    request.onupgradeneeded = () => {
+      const db = request.result;
+
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        const store = db.createObjectStore(STORE_NAME, {
+          keyPath: "id",
+        });
+
+        store.createIndex("order", "order", {
+          unique: false,
+        });
+      }
+    };
+
+    request.onsuccess = () => {
+      resolve(request.result);
+    };
+  });
+}
+
+function getAllStoredItems(): Promise<StoredGalleryItem[]> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const db = await openGalleryDB();
+
+      const transaction = db.transaction(STORE_NAME, "readonly");
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.getAll();
+
+      request.onerror = () => {
+        db.close();
+        reject(
+          request.error ||
+            new Error("Unable to read gallery.")
+        );
+      };
+
+      request.onsuccess = () => {
+        const result = Array.isArray(request.result)
+          ? (request.result as StoredGalleryItem[])
+          : [];
+
+        db.close();
+
+        result.sort((a, b) => {
+          const orderA =
+            typeof a.order === "number" ? a.order : 0;
+          const orderB =
+            typeof b.order === "number" ? b.order : 0;
+
+          return orderA - orderB;
+        });
+
+        resolve(result);
+      };
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+function saveStoredItems(
+  items: StoredGalleryItem[]
+): Promise<void> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const db = await openGalleryDB();
+
+      const transaction = db.transaction(
+        STORE_NAME,
+        "readwrite"
+      );
+
+      const store = transaction.objectStore(STORE_NAME);
+
+      for (const item of items) {
+        store.put(item);
+      }
+
+      transaction.onerror = () => {
+        db.close();
+        reject(
+          transaction.error ||
+            new Error("Unable to save gallery images.")
+        );
+      };
+
+      transaction.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+function deleteStoredItem(id: number): Promise<void> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const db = await openGalleryDB();
+
+      const transaction = db.transaction(
+        STORE_NAME,
+        "readwrite"
+      );
+
+      const store = transaction.objectStore(STORE_NAME);
+
+      store.delete(id);
+
+      transaction.onerror = () => {
+        db.close();
+        reject(
+          transaction.error ||
+            new Error("Unable to delete image.")
+        );
+      };
+
+      transaction.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+function clearStoredItems(): Promise<void> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const db = await openGalleryDB();
+
+      const transaction = db.transaction(
+        STORE_NAME,
+        "readwrite"
+      );
+
+      const store = transaction.objectStore(STORE_NAME);
+
+      store.clear();
+
+      transaction.onerror = () => {
+        db.close();
+        reject(
+          transaction.error ||
+            new Error("Unable to clear gallery.")
+        );
+      };
+
+      transaction.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+function dataUrlToBlob(dataUrl: string): Blob | null {
+  try {
+    const parts = dataUrl.split(",");
+
+    if (parts.length < 2) {
+      return null;
+    }
+
+    const mimeMatch = parts[0].match(
+      /data:(.*?);base64/
+    );
+
+    const mime =
+      mimeMatch?.[1] || "image/jpeg";
+
+    const binary = atob(parts[1]);
+
+    const length = binary.length;
+    const bytes = new Uint8Array(length);
+
+    for (let i = 0; i < length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+
+    return new Blob([bytes], {
+      type: mime,
+    });
+  } catch {
+    return null;
+  }
+}
+
+function compressImage(file: File): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith("image/")) {
+      reject(
+        new Error(
+          `${file.name} is not a supported image file.`
+        )
+      );
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      reject(
+        new Error(
+          `${file.name} is larger than 15 MB.`
+        )
+      );
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onerror = () => {
+      reject(
+        new Error(
+          `Unable to read ${file.name}.`
+        )
+      );
+    };
+
+    reader.onload = () => {
+      const img = new Image();
+
+      img.onerror = () => {
         reject(
           new Error(
-            "Unable to read image."
+            `Unable to process ${file.name}.`
           )
         );
+      };
 
-      reader.onload = () => {
-        const img =
-          new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
 
-        img.onerror = () =>
+        if (
+          width > MAX_IMAGE_WIDTH
+        ) {
+          const ratio =
+            MAX_IMAGE_WIDTH / width;
+
+          width = MAX_IMAGE_WIDTH;
+          height = Math.round(
+            height * ratio
+          );
+        }
+
+        const canvas =
+          document.createElement(
+            "canvas"
+          );
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const context =
+          canvas.getContext("2d");
+
+        if (!context) {
           reject(
             new Error(
               "Unable to process image."
             )
           );
+          return;
+        }
 
-        img.onload = () => {
-          let width =
-            img.width;
+        context.drawImage(
+          img,
+          0,
+          0,
+          width,
+          height
+        );
 
-          let height =
-            img.height;
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(
+                new Error(
+                  `Unable to compress ${file.name}.`
+                )
+              );
+              return;
+            }
 
-          if (
-            width >
-            MAX_IMAGE_WIDTH
-          ) {
-            const ratio =
-              MAX_IMAGE_WIDTH /
-              width;
-
-            width =
-              MAX_IMAGE_WIDTH;
-
-            height = Math.round(
-              height * ratio
-            );
-          }
-
-          const canvas =
-            document.createElement(
-              "canvas"
-            );
-
-          canvas.width = width;
-          canvas.height = height;
-
-          const context =
-            canvas.getContext(
-              "2d"
-            );
-
-          if (!context) {
-            reject(
-              new Error(
-                "Unable to process image."
-              )
-            );
-            return;
-          }
-
-          context.fillStyle =
-            "#ffffff";
-
-          context.fillRect(
-            0,
-            0,
-            width,
-            height
-          );
-
-          context.drawImage(
-            img,
-            0,
-            0,
-            width,
-            height
-          );
-
-          const result =
-            canvas.toDataURL(
-              "image/jpeg",
-              JPEG_QUALITY
-            );
-
-          resolve(result);
-        };
-
-        img.src = String(
-          reader.result
+            resolve(blob);
+          },
+          "image/jpeg",
+          JPEG_QUALITY
         );
       };
 
-      reader.readAsDataURL(file);
-    }
-  );
+      img.src = String(
+        reader.result
+      );
+    };
+
+    reader.readAsDataURL(file);
+  });
 }
 
-function readStoredGallery(): GalleryItem[] {
+async function migrateOldLocalStorage(): Promise<number> {
   try {
-    const stored =
+    const raw =
       localStorage.getItem(
         STORAGE_KEY
       );
 
-    if (!stored) {
-      return [];
+    if (!raw) {
+      return 0;
     }
 
     const parsed =
-      JSON.parse(stored);
+      JSON.parse(raw);
 
     if (!Array.isArray(parsed)) {
-      return [];
+      localStorage.removeItem(
+        STORAGE_KEY
+      );
+
+      return 0;
     }
 
-    return parsed
-      .filter(
-        (item) =>
-          item &&
-          typeof item ===
-            "object" &&
-          typeof item.image ===
-            "string"
-      )
-      .map(
-        (
-          item: any,
-          index
-        ) => ({
-          id:
-            Number(
-              item.id
-            ) ||
-            createId() +
-              index,
-          image:
-            String(
-              item.image
-            ),
-          category:
-            String(
-              item.category ||
-                "Restaurant"
-            ),
-          visible:
-            item.visible !==
-            false,
-          order:
-            Number(
-              item.order
-            ) ||
-            index + 1,
-        })
-      )
-      .sort(
-        (a, b) =>
-          a.order -
-          b.order
+    const existing =
+      await getAllStoredItems();
+
+    const existingIds =
+      new Set(
+        existing.map(
+          (item) => item.id
+        )
       );
+
+    const migrated: StoredGalleryItem[] =
+      [];
+
+    for (const item of parsed) {
+      if (
+        !item ||
+        !item.image ||
+        typeof item.image !== "string"
+      ) {
+        continue;
+      }
+
+      const id =
+        typeof item.id === "number"
+          ? item.id
+          : createId();
+
+      if (existingIds.has(id)) {
+        continue;
+      }
+
+      const blob =
+        dataUrlToBlob(item.image);
+
+      if (!blob) {
+        continue;
+      }
+
+      migrated.push({
+        id,
+        imageBlob: blob,
+        category:
+          typeof item.category ===
+          "string"
+            ? item.category
+            : "Restaurant",
+        visible:
+          item.visible !== false,
+        order:
+          typeof item.order ===
+          "number"
+            ? item.order
+            : migrated.length,
+      });
+    }
+
+    if (migrated.length > 0) {
+      await saveStoredItems(
+        migrated
+      );
+    }
+
+    localStorage.removeItem(
+      STORAGE_KEY
+    );
+
+    return migrated.length;
   } catch {
-    return [];
+    return 0;
   }
 }
 
-export default function GalleryPage() {
+export default function AdminGalleryPage() {
   const [items, setItems] =
-    useState<GalleryItem[]>(
-      []
-    );
+    useState<GalleryItem[]>([]);
 
   const [
     selectedImages,
     setSelectedImages,
-  ] = useState<string[]>([]);
+  ] = useState<SelectedImage[]>([]);
 
   const [
     isDragging,
@@ -221,299 +484,412 @@ export default function GalleryPage() {
   ] = useState(false);
 
   const [
+    isLoading,
+    setIsLoading,
+  ] = useState(true);
+
+  const [
     isUploading,
     setIsUploading,
   ] = useState(false);
 
   const [
-    uploadMessage,
-    setUploadMessage,
+    isDeletingAll,
+    setIsDeletingAll,
+  ] = useState(false);
+
+  const [
+    message,
+    setMessage,
   ] = useState("");
+
+  const [
+    messageType,
+    setMessageType,
+  ] = useState<
+    "success" | "error" | ""
+  >("");
 
   const [
     filter,
     setFilter,
   ] = useState<
-    "All" | "Visible" | "Hidden"
-  >("All");
+    "all" | "visible" | "hidden"
+  >("all");
 
   const [
-    storageWarning,
-    setStorageWarning,
-  ] = useState("");
+    selectedCategory,
+    setSelectedCategory,
+  ] = useState("Restaurant");
 
-  const fileInputRef =
-    useRef<HTMLInputElement | null>(
-      null
-    );
+  const inputRef =
+    useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const loaded =
-      readStoredGallery();
+  const objectUrlsRef =
+    useRef<string[]>([]);
 
-    setItems(loaded);
+  const selectedUrlsRef =
+    useRef<string[]>([]);
 
-    if (loaded.length > 0) {
-      setStorageWarning(
-        "Gallery বর্তমানে browser storage ব্যবহার করছে। অনেক বেশি ছবি যোগ করলে storage limit হতে পারে।"
-      );
-    }
-  }, []);
+  const showMessage = useCallback(
+    (
+      text: string,
+      type:
+        | "success"
+        | "error"
+    ) => {
+      setMessage(text);
+      setMessageType(type);
 
-  const saveItems = (
-    nextItems: GalleryItem[]
-  ) => {
-    try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(nextItems)
-      );
+      window.setTimeout(() => {
+        setMessage("");
+        setMessageType("");
+      }, 4500);
+    },
+    []
+  );
 
-      setItems(nextItems);
+  const loadGallery =
+    useCallback(async () => {
+      try {
+        setIsLoading(true);
 
-      return true;
-    } catch {
-      setStorageWarning(
-        "Gallery storage পূর্ণ হয়ে গেছে। নতুন ছবি save করতে server-side image storage প্রয়োজন।"
-      );
+        await migrateOldLocalStorage();
 
-      return false;
-    }
-  };
+        const stored =
+          await getAllStoredItems();
 
-  const processFiles = async (
-    files: File[]
-  ) => {
-    if (!files.length) {
-      return;
-    }
+        objectUrlsRef.current.forEach(
+          (url) => {
+            URL.revokeObjectURL(
+              url
+            );
+          }
+        );
 
-    const imageFiles =
-      files.filter((file) =>
-        file.type.startsWith(
-          "image/"
-        )
-      );
+        objectUrlsRef.current = [];
 
-    if (!imageFiles.length) {
-      setUploadMessage(
-        "Please select image files only."
-      );
-      return;
-    }
+        const loaded: GalleryItem[] =
+          stored.map((item) => {
+            const url =
+              URL.createObjectURL(
+                item.imageBlob
+              );
 
-    const oversized =
-      imageFiles.filter(
-        (file) =>
-          file.size >
-          MAX_FILE_SIZE
-      );
-
-    if (
-      oversized.length > 0
-    ) {
-      setUploadMessage(
-        `${oversized.length} image${
-          oversized.length >
-          1
-            ? "s were"
-            : " was"
-        } larger than 8MB and skipped.`
-      );
-    }
-
-    const validFiles =
-      imageFiles.filter(
-        (file) =>
-          file.size <=
-          MAX_FILE_SIZE
-      );
-
-    if (!validFiles.length) {
-      return;
-    }
-
-    setIsUploading(true);
-
-    try {
-      const compressedImages: string[] =
-        [];
-
-      for (
-        const file of validFiles
-      ) {
-        try {
-          const compressed =
-            await compressImage(
-              file
+            objectUrlsRef.current.push(
+              url
             );
 
-          compressedImages.push(
-            compressed
+            return {
+              id: item.id,
+              image: url,
+              category:
+                item.category ||
+                "Restaurant",
+              visible:
+                item.visible !== false,
+              order:
+                typeof item.order ===
+                "number"
+                  ? item.order
+                  : 0,
+            };
+          });
+
+        setItems(loaded);
+      } catch (error) {
+        console.error(
+          "Gallery load error:",
+          error
+        );
+
+        showMessage(
+          "Unable to load gallery images.",
+          "error"
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    }, [showMessage]);
+
+  useEffect(() => {
+    loadGallery();
+
+    return () => {
+      objectUrlsRef.current.forEach(
+        (url) => {
+          URL.revokeObjectURL(
+            url
           );
-        } catch {
-          // Skip invalid files.
         }
+      );
+
+      selectedUrlsRef.current.forEach(
+        (url) => {
+          URL.revokeObjectURL(
+            url
+          );
+        }
+      );
+    };
+  }, [loadGallery]);
+
+  const addFiles = useCallback(
+    (files: FileList | File[]) => {
+      const fileArray =
+        Array.from(files);
+
+      if (!fileArray.length) {
+        return;
       }
 
-      if (
-        compressedImages.length
-      ) {
-        setSelectedImages(
-          (previous) => [
-            ...previous,
-            ...compressedImages,
-          ]
+      const imageFiles =
+        fileArray.filter((file) =>
+          file.type.startsWith(
+            "image/"
+          )
         );
 
-        setUploadMessage(
-          `${compressedImages.length} image${
-            compressedImages.length !==
-            1
-              ? "s"
-              : ""
-          } selected successfully.`
+      if (!imageFiles.length) {
+        showMessage(
+          "Please select image files only.",
+          "error"
         );
-      } else {
-        setUploadMessage(
-          "No valid image could be processed."
-        );
+        return;
       }
-    } finally {
-      setIsUploading(false);
+
+      const newSelections: SelectedImage[] =
+        [];
+
+      for (const file of imageFiles) {
+        if (
+          file.size >
+          MAX_FILE_SIZE
+        ) {
+          showMessage(
+            `${file.name} is larger than 15 MB and was skipped.`,
+            "error"
+          );
+          continue;
+        }
+
+        const preview =
+          URL.createObjectURL(file);
+
+        selectedUrlsRef.current.push(
+          preview
+        );
+
+        newSelections.push({
+          id: createId(),
+          file,
+          preview,
+        });
+      }
+
+      if (!newSelections.length) {
+        return;
+      }
+
+      setSelectedImages(
+        (previous) => [
+          ...previous,
+          ...newSelections,
+        ]
+      );
+    },
+    [showMessage]
+  );
+
+  const handleFileChange = (
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    if (event.target.files) {
+      addFiles(
+        event.target.files
+      );
+    }
+
+    event.target.value = "";
+  };
+
+  const handleDrop = (
+    event: DragEvent<HTMLDivElement>
+  ) => {
+    event.preventDefault();
+
+    setIsDragging(false);
+
+    if (event.dataTransfer.files) {
+      addFiles(
+        event.dataTransfer.files
+      );
     }
   };
 
-  const handleFileChange =
-    async (
-      e: ChangeEvent<HTMLInputElement>
-    ) => {
-      const files =
-        Array.from(
-          e.target.files || []
+  const handleDragOver = (
+    event: DragEvent<HTMLDivElement>
+  ) => {
+    event.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (
+    event: DragEvent<HTMLDivElement>
+  ) => {
+    event.preventDefault();
+    setIsDragging(false);
+  };
+
+  const removeSelectedImage = (
+    id: number
+  ) => {
+    setSelectedImages(
+      (previous) => {
+        const found =
+          previous.find(
+            (item) => item.id === id
+          );
+
+        if (found) {
+          URL.revokeObjectURL(
+            found.preview
+          );
+
+          selectedUrlsRef.current =
+            selectedUrlsRef.current.filter(
+              (url) =>
+                url !== found.preview
+            );
+        }
+
+        return previous.filter(
+          (item) => item.id !== id
         );
-
-      await processFiles(
-        files
-      );
-
-      e.target.value = "";
-    };
-
-  const handleDrop =
-    async (
-      e: DragEvent<HTMLDivElement>
-    ) => {
-      e.preventDefault();
-
-      setIsDragging(false);
-
-      const files =
-        Array.from(
-          e.dataTransfer.files ||
-            []
-        );
-
-      await processFiles(
-        files
-      );
-    };
-
-  const removeSelectedImage =
-    (index: number) => {
-      setSelectedImages(
-        (previous) =>
-          previous.filter(
-            (
-              _,
-              imageIndex
-            ) =>
-              imageIndex !==
-              index
-          )
-      );
-    };
-
-  const clearSelectedImages =
-    () => {
-      setSelectedImages(
-        []
-      );
-
-      setUploadMessage("");
-    };
-
-  const uploadAllImages = () => {
-    if (
-      !selectedImages.length
-    ) {
-      setUploadMessage(
-        "Please select one or more images first."
-      );
-      return;
-    }
-
-    const existingOrders =
-      items.map(
-        (item) =>
-          item.order
-      );
-
-    const startingOrder =
-      existingOrders.length >
-      0
-        ? Math.max(
-            ...existingOrders
-          ) + 1
-        : 1;
-
-    const newItems: GalleryItem[] =
-      selectedImages.map(
-        (
-          image,
-          index
-        ) => ({
-          id:
-            createId() +
-            index,
-          image,
-          category:
-            "Restaurant",
-          visible: true,
-          order:
-            startingOrder +
-            index,
-        })
-      );
-
-    const nextItems = [
-      ...items,
-      ...newItems,
-    ];
-
-    const saved =
-      saveItems(nextItems);
-
-    if (!saved) {
-      setUploadMessage(
-        "সব ছবি save করা যায়নি। Browser storage full হতে পারে।"
-      );
-      return;
-    }
-
-    setSelectedImages([]);
-
-    setUploadMessage(
-      `${newItems.length} image${
-        newItems.length !==
-        1
-          ? "s"
-          : ""
-      } uploaded successfully.`
+      }
     );
   };
 
-  const deleteImage = (
+  const clearSelectedImages = () => {
+    selectedImages.forEach(
+      (item) => {
+        URL.revokeObjectURL(
+          item.preview
+        );
+      }
+    );
+
+    selectedUrlsRef.current = [];
+
+    setSelectedImages([]);
+  };
+
+  const uploadSelectedImages =
+    async () => {
+      if (
+        !selectedImages.length
+      ) {
+        showMessage(
+          "Please select at least one image.",
+          "error"
+        );
+        return;
+      }
+
+      try {
+        setIsUploading(true);
+
+        const stored =
+          await getAllStoredItems();
+
+        const newItems: StoredGalleryItem[] =
+          [];
+
+        let currentMaxOrder =
+          stored.reduce(
+            (max, item) =>
+              Math.max(
+                max,
+                typeof item.order ===
+                  "number"
+                  ? item.order
+                  : 0
+              ),
+            -1
+          );
+
+        for (
+          let index = 0;
+          index <
+          selectedImages.length;
+          index++
+        ) {
+          const selected =
+            selectedImages[index];
+
+          const blob =
+            await compressImage(
+              selected.file
+            );
+
+          currentMaxOrder += 1;
+
+          newItems.push({
+            id: createId(),
+            imageBlob: blob,
+            category:
+              selectedCategory.trim() ||
+              "Restaurant",
+            visible: true,
+            order:
+              currentMaxOrder,
+          });
+        }
+
+        await saveStoredItems(
+          newItems
+        );
+
+        selectedImages.forEach(
+          (item) => {
+            URL.revokeObjectURL(
+              item.preview
+            );
+          }
+        );
+
+        selectedUrlsRef.current = [];
+
+        setSelectedImages([]);
+
+        await loadGallery();
+
+        showMessage(
+          `${newItems.length} image${
+            newItems.length === 1
+              ? ""
+              : "s"
+          } uploaded successfully.`,
+          "success"
+        );
+      } catch (error) {
+        console.error(
+          "Gallery upload error:",
+          error
+        );
+
+        showMessage(
+          error instanceof Error
+            ? error.message
+            : "Unable to save gallery images.",
+          "error"
+        );
+      } finally {
+        setIsUploading(false);
+      }
+    };
+
+  const deleteImage = async (
     id: number
   ) => {
     const confirmed =
@@ -525,622 +901,1253 @@ export default function GalleryPage() {
       return;
     }
 
-    const updatedItems =
-      items.filter(
-        (item) =>
-          item.id !== id
+    try {
+      await deleteStoredItem(id);
+
+      const item =
+        items.find(
+          (galleryItem) =>
+            galleryItem.id === id
+        );
+
+      if (item) {
+        URL.revokeObjectURL(
+          item.image
+        );
+
+        objectUrlsRef.current =
+          objectUrlsRef.current.filter(
+            (url) =>
+              url !== item.image
+          );
+      }
+
+      setItems(
+        (previous) =>
+          previous.filter(
+            (galleryItem) =>
+              galleryItem.id !== id
+          )
       );
 
-    const saved =
-      saveItems(updatedItems);
+      showMessage(
+        "Image deleted successfully.",
+        "success"
+      );
+    } catch (error) {
+      console.error(
+        "Delete gallery image error:",
+        error
+      );
 
-    if (saved) {
-      setUploadMessage(
-        "Image deleted successfully."
+      showMessage(
+        "Unable to delete image.",
+        "error"
       );
     }
   };
 
   const deleteAllImages =
-    () => {
+    async () => {
       if (!items.length) {
         return;
       }
 
       const confirmed =
         window.confirm(
-          "Are you sure you want to delete all gallery images?"
+          `Delete all ${items.length} gallery images? This cannot be undone.`
         );
 
       if (!confirmed) {
         return;
       }
 
-      const saved =
-        saveItems([]);
+      try {
+        setIsDeletingAll(true);
 
-      if (saved) {
-        setUploadMessage(
-          "All gallery images deleted."
+        await clearStoredItems();
+
+        objectUrlsRef.current.forEach(
+          (url) => {
+            URL.revokeObjectURL(
+              url
+            );
+          }
+        );
+
+        objectUrlsRef.current = [];
+
+        setItems([]);
+
+        showMessage(
+          "All gallery images deleted.",
+          "success"
+        );
+      } catch (error) {
+        console.error(
+          "Delete all gallery images error:",
+          error
+        );
+
+        showMessage(
+          "Unable to delete all images.",
+          "error"
+        );
+      } finally {
+        setIsDeletingAll(false);
+      }
+    };
+
+  const toggleVisibility =
+    async (id: number) => {
+      try {
+        const stored =
+          await getAllStoredItems();
+
+        const target =
+          stored.find(
+            (item) =>
+              item.id === id
+          );
+
+        if (!target) {
+          return;
+        }
+
+        target.visible =
+          !target.visible;
+
+        await saveStoredItems([
+          target,
+        ]);
+
+        setItems(
+          (previous) =>
+            previous.map(
+              (item) =>
+                item.id === id
+                  ? {
+                      ...item,
+                      visible:
+                        target.visible,
+                    }
+                  : item
+            )
+        );
+
+        showMessage(
+          target.visible
+            ? "Image is now visible."
+            : "Image is now hidden.",
+          "success"
+        );
+      } catch (error) {
+        console.error(
+          "Visibility update error:",
+          error
+        );
+
+        showMessage(
+          "Unable to update image visibility.",
+          "error"
         );
       }
     };
 
-  const toggleVisibility = (
-    id: number
-  ) => {
-    const next =
-      items.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              visible:
-                !item.visible,
-            }
-          : item
-      );
-
-    const saved =
-      saveItems(next);
-
-    if (saved) {
-      setUploadMessage(
-        "Gallery visibility updated."
-      );
-    }
-  };
-
   const filteredItems =
-    items.filter(
-      (item) => {
-        if (
-          filter ===
-          "Visible"
-        ) {
-          return (
-            item.visible !==
-            false
-          );
-        }
-
-        if (
-          filter ===
-          "Hidden"
-        ) {
-          return (
-            item.visible ===
-            false
-          );
-        }
-
-        return true;
+    items.filter((item) => {
+      if (filter === "visible") {
+        return item.visible;
       }
-    );
+
+      if (filter === "hidden") {
+        return !item.visible;
+      }
+
+      return true;
+    });
 
   const visibleCount =
     items.filter(
-      (item) =>
-        item.visible !==
-        false
+      (item) => item.visible
     ).length;
 
   const hiddenCount =
     items.filter(
-      (item) =>
-        item.visible ===
-        false
+      (item) => !item.visible
     ).length;
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#050505] text-white">
-      {/* BACKGROUND */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-amber-500/10 blur-3xl" />
-
-        <div className="absolute right-[-120px] top-20 h-[450px] w-[450px] rounded-full bg-yellow-600/10 blur-3xl" />
-
-        <div className="absolute bottom-[-150px] left-1/3 h-[450px] w-[450px] rounded-full bg-amber-700/10 blur-3xl" />
-      </div>
-
-      <div className="relative mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8">
+    <div
+      style={{
+        minHeight: "100vh",
+        background: BG,
+        color: TEXT,
+        padding: "28px",
+        fontFamily:
+          "Arial, Helvetica, sans-serif",
+      }}
+    >
+      <div
+        style={{
+          maxWidth: "1400px",
+          margin: "0 auto",
+        }}
+      >
         {/* HEADER */}
-        <header className="mb-6">
-          <div className="rounded-[28px] border border-amber-400/15 bg-gradient-to-r from-[#11110f] via-[#0b0b0a] to-[#12100a] p-6 shadow-2xl shadow-black/40">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-amber-400/20 bg-amber-400/5 px-3 py-1.5">
-                  <span className="h-2 w-2 rounded-full bg-amber-400 shadow-lg shadow-amber-400/60" />
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent:
+              "space-between",
+            gap: "20px",
+            marginBottom: "28px",
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                color: GOLD,
+                fontSize: "12px",
+                fontWeight: 800,
+                letterSpacing:
+                  "3px",
+                textTransform:
+                  "uppercase",
+                marginBottom: "8px",
+              }}
+            >
+              Nababi Ristorante
+            </div>
 
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-300">
-                    Nababi Ristorante
-                  </span>
-                </div>
+            <h1
+              style={{
+                margin: 0,
+                fontSize:
+                  "clamp(28px, 4vw, 42px)",
+                fontWeight: 800,
+                letterSpacing:
+                  "-1px",
+              }}
+            >
+              Gallery
+            </h1>
 
-                <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                  Gallery
-                </h1>
+            <p
+              style={{
+                margin:
+                  "10px 0 0",
+                color: MUTED,
+                fontSize: "14px",
+                lineHeight: 1.7,
+                maxWidth: "700px",
+              }}
+            >
+              Upload and manage
+              restaurant gallery
+              images. Images are
+              stored separately from
+              menu products.
+            </p>
+          </div>
 
-                <p className="mt-2 max-w-2xl text-sm text-white/45">
-                  Upload and manage your restaurant photos.
-                </p>
+          <div
+            style={{
+              display: "flex",
+              gap: "10px",
+              flexWrap: "wrap",
+            }}
+          >
+            <div
+              style={{
+                border:
+                  `1px solid ${BORDER}`,
+                background:
+                  "rgba(217,164,65,0.08)",
+                borderRadius:
+                  "12px",
+                padding:
+                  "12px 16px",
+                minWidth: "90px",
+                textAlign:
+                  "center",
+              }}
+            >
+              <div
+                style={{
+                  color: GOLD_LIGHT,
+                  fontSize:
+                    "22px",
+                  fontWeight: 800,
+                }}
+              >
+                {items.length}
               </div>
 
-              <div className="flex flex-wrap gap-3">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3 text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-white/35">
-                    Total
-                  </p>
+              <div
+                style={{
+                  color: MUTED,
+                  fontSize:
+                    "11px",
+                  marginTop: "3px",
+                }}
+              >
+                Total
+              </div>
+            </div>
 
-                  <p className="mt-1 text-2xl font-bold text-amber-300">
-                    {items.length}
-                  </p>
-                </div>
+            <div
+              style={{
+                border:
+                  "1px solid rgba(80,180,110,0.25)",
+                background:
+                  "rgba(80,180,110,0.07)",
+                borderRadius:
+                  "12px",
+                padding:
+                  "12px 16px",
+                minWidth: "90px",
+                textAlign:
+                  "center",
+              }}
+            >
+              <div
+                style={{
+                  color:
+                    "#78d99a",
+                  fontSize:
+                    "22px",
+                  fontWeight: 800,
+                }}
+              >
+                {visibleCount}
+              </div>
 
-                <div className="rounded-2xl border border-green-400/10 bg-green-500/5 px-5 py-3 text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-white/35">
-                    Visible
-                  </p>
+              <div
+                style={{
+                  color: MUTED,
+                  fontSize:
+                    "11px",
+                  marginTop: "3px",
+                }}
+              >
+                Visible
+              </div>
+            </div>
 
-                  <p className="mt-1 text-2xl font-bold text-green-300">
-                    {visibleCount}
-                  </p>
-                </div>
+            <div
+              style={{
+                border:
+                  "1px solid rgba(220,100,100,0.25)",
+                background:
+                  "rgba(220,100,100,0.07)",
+                borderRadius:
+                  "12px",
+                padding:
+                  "12px 16px",
+                minWidth: "90px",
+                textAlign:
+                  "center",
+              }}
+            >
+              <div
+                style={{
+                  color:
+                    "#e58b8b",
+                  fontSize:
+                    "22px",
+                  fontWeight: 800,
+                }}
+              >
+                {hiddenCount}
+              </div>
 
-                <div className="rounded-2xl border border-red-400/10 bg-red-500/5 px-5 py-3 text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-white/35">
-                    Hidden
-                  </p>
-
-                  <p className="mt-1 text-2xl font-bold text-red-300">
-                    {hiddenCount}
-                  </p>
-                </div>
+              <div
+                style={{
+                  color: MUTED,
+                  fontSize:
+                    "11px",
+                  marginTop: "3px",
+                }}
+              >
+                Hidden
               </div>
             </div>
           </div>
-        </header>
+        </div>
 
-        {/* STORAGE WARNING */}
-        {storageWarning && (
-          <div className="mb-6 rounded-2xl border border-yellow-500/20 bg-yellow-500/5 px-5 py-4 text-sm leading-6 text-yellow-200">
-            <strong>
-              ⚠ Storage Notice:
-            </strong>{" "}
-            {storageWarning}
+        {/* MESSAGE */}
+        {message && (
+          <div
+            style={{
+              marginBottom: "20px",
+              padding:
+                "13px 16px",
+              borderRadius:
+                "10px",
+              border:
+                messageType ===
+                "success"
+                  ? "1px solid rgba(90,190,120,0.35)"
+                  : "1px solid rgba(220,100,100,0.35)",
+              background:
+                messageType ===
+                "success"
+                  ? "rgba(90,190,120,0.09)"
+                  : "rgba(220,100,100,0.09)",
+              color:
+                messageType ===
+                "success"
+                  ? "#9be3b2"
+                  : "#f1aaaa",
+              fontSize: "14px",
+              fontWeight: 600,
+            }}
+          >
+            {message}
           </div>
         )}
 
-        {/* UPLOAD SECTION */}
-        <section className="mb-6 rounded-[28px] border border-amber-400/15 bg-[#0b0b0a] p-4 shadow-2xl shadow-black/30 sm:p-6">
-          <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        {/* UPLOAD AREA */}
+        <div
+          style={{
+            background: CARD,
+            border:
+              `1px solid ${BORDER}`,
+            borderRadius: "18px",
+            padding: "22px",
+            marginBottom: "26px",
+            boxShadow:
+              "0 20px 60px rgba(0,0,0,0.25)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent:
+                "space-between",
+              alignItems:
+                "flex-start",
+              gap: "20px",
+              flexWrap: "wrap",
+              marginBottom:
+                "18px",
+            }}
+          >
             <div>
-              <h2 className="text-xl font-bold text-white sm:text-2xl">
+              <h2
+                style={{
+                  margin: 0,
+                  fontSize: "20px",
+                }}
+              >
                 Upload Images
               </h2>
 
-              <p className="mt-1 text-sm text-white/40">
-                Select multiple photos at once.
+              <p
+                style={{
+                  margin:
+                    "7px 0 0",
+                  color: MUTED,
+                  fontSize: "13px",
+                  lineHeight: 1.6,
+                }}
+              >
+                You can select many
+                images at once. There
+                is no 4-image upload
+                limitation.
               </p>
             </div>
 
-            {selectedImages.length >
-              0 && (
-              <div className="rounded-full border border-amber-400/20 bg-amber-400/5 px-4 py-2 text-xs font-semibold text-amber-300">
-                {
-                  selectedImages.length
-                }{" "}
-                selected
-              </div>
-            )}
+            <div
+              style={{
+                display: "flex",
+                alignItems:
+                  "center",
+                gap: "10px",
+              }}
+            >
+              <label
+                style={{
+                  color: MUTED,
+                  fontSize: "13px",
+                  fontWeight: 600,
+                }}
+              >
+                Category
+              </label>
+
+              <input
+                value={
+                  selectedCategory
+                }
+                onChange={(event) =>
+                  setSelectedCategory(
+                    event.target.value
+                  )
+                }
+                placeholder="Restaurant"
+                style={{
+                  width: "180px",
+                  background:
+                    "#080808",
+                  color: TEXT,
+                  border:
+                    `1px solid ${BORDER}`,
+                  borderRadius:
+                    "9px",
+                  padding:
+                    "10px 12px",
+                  outline: "none",
+                }}
+              />
+            </div>
           </div>
 
-          <div className="grid gap-5 lg:grid-cols-[1fr_1.2fr]">
-            {/* UPLOAD BOX */}
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-
-                setIsDragging(
-                  true
-                );
-              }}
-              onDragLeave={() =>
-                setIsDragging(
-                  false
-                )
-              }
-              onDrop={
-                handleDrop
-              }
-              className={`relative flex min-h-[300px] cursor-pointer flex-col items-center justify-center rounded-[24px] border border-dashed p-8 text-center transition ${
+          <div
+            onClick={() =>
+              inputRef.current?.click()
+            }
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragEnter={handleDragOver}
+            onDragLeave={handleDragLeave}
+            style={{
+              border:
                 isDragging
-                  ? "border-amber-300 bg-amber-400/10"
-                  : "border-amber-400/30 bg-white/[0.02] hover:border-amber-300/60 hover:bg-amber-400/[0.04]"
-              }`}
-              onClick={() =>
-                fileInputRef.current?.click()
-              }
-            >
-              <input
-                ref={
-                  fileInputRef
-                }
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={
-                  handleFileChange
-                }
-                className="hidden"
-              />
-
-              <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-3xl border border-amber-400/20 bg-amber-400/10 text-4xl shadow-xl shadow-amber-900/10">
-                🖼️
+                  ? `2px solid ${GOLD}`
+                  : "2px dashed rgba(217,164,65,0.35)",
+              borderRadius:
+                "15px",
+              minHeight: "190px",
+              display: "flex",
+              alignItems:
+                "center",
+              justifyContent:
+                "center",
+              textAlign: "center",
+              cursor: "pointer",
+              background:
+                isDragging
+                  ? "rgba(217,164,65,0.09)"
+                  : "rgba(255,255,255,0.015)",
+              transition:
+                "all 0.2s ease",
+              padding: "25px",
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  width: "58px",
+                  height: "58px",
+                  borderRadius:
+                    "50%",
+                  border:
+                    `1px solid ${BORDER}`,
+                  background:
+                    "rgba(217,164,65,0.08)",
+                  display: "flex",
+                  alignItems:
+                    "center",
+                  justifyContent:
+                    "center",
+                  margin:
+                    "0 auto 14px",
+                  color: GOLD_LIGHT,
+                  fontSize:
+                    "25px",
+                }}
+              >
+                ↑
               </div>
 
-              <h3 className="text-lg font-bold text-white">
-                Upload Multiple Images
-              </h3>
+              <div
+                style={{
+                  color:
+                    GOLD_LIGHT,
+                  fontSize:
+                    "16px",
+                  fontWeight: 700,
+                }}
+              >
+                Click to select
+                images
+              </div>
 
-              <p className="mt-2 max-w-md text-sm leading-6 text-white/40">
-                Drag and drop your images here, or click to select
-                multiple photos.
-              </p>
+              <div
+                style={{
+                  color: MUTED,
+                  fontSize:
+                    "13px",
+                  marginTop: "6px",
+                }}
+              >
+                or drag and drop
+                multiple images here
+              </div>
+
+              <div
+                style={{
+                  color:
+                    "#77736c",
+                  fontSize:
+                    "11px",
+                  marginTop:
+                    "10px",
+                }}
+              >
+                JPG, JPEG, PNG, WEBP
+                • Maximum 15 MB per
+                image
+              </div>
+            </div>
+          </div>
+
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleFileChange}
+            style={{
+              display: "none",
+            }}
+          />
+
+          {/* SELECTED PREVIEWS */}
+          {selectedImages.length >
+            0 && (
+            <div
+              style={{
+                marginTop: "20px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent:
+                    "space-between",
+                  alignItems:
+                    "center",
+                  gap: "15px",
+                  marginBottom:
+                    "12px",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize:
+                      "14px",
+                    fontWeight: 700,
+                  }}
+                >
+                  Selected Images (
+                  {
+                    selectedImages.length
+                  }
+                  )
+                </div>
+
+                <button
+                  type="button"
+                  onClick={
+                    clearSelectedImages
+                  }
+                  disabled={
+                    isUploading
+                  }
+                  style={{
+                    border: "none",
+                    background:
+                      "transparent",
+                    color:
+                      "#e7a0a0",
+                    cursor:
+                      "pointer",
+                    fontSize:
+                      "12px",
+                    fontWeight: 700,
+                  }}
+                >
+                  Clear All
+                </button>
+              </div>
+
+              <div
+                style={{
+                  display:
+                    "grid",
+                  gridTemplateColumns:
+                    "repeat(auto-fill, minmax(150px, 1fr))",
+                  gap: "12px",
+                }}
+              >
+                {selectedImages.map(
+                  (item) => (
+                    <div
+                      key={item.id}
+                      style={{
+                        position:
+                          "relative",
+                        border:
+                          `1px solid ${BORDER}`,
+                        borderRadius:
+                          "12px",
+                        overflow:
+                          "hidden",
+                        background:
+                          "#090909",
+                      }}
+                    >
+                      <img
+                        src={
+                          item.preview
+                        }
+                        alt={
+                          item.file.name
+                        }
+                        style={{
+                          width: "100%",
+                          height: "130px",
+                          objectFit:
+                            "cover",
+                          display:
+                            "block",
+                        }}
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          removeSelectedImage(
+                            item.id
+                          )
+                        }
+                        disabled={
+                          isUploading
+                        }
+                        style={{
+                          position:
+                            "absolute",
+                          top: "7px",
+                          right: "7px",
+                          width: "28px",
+                          height: "28px",
+                          borderRadius:
+                            "50%",
+                          border:
+                            "1px solid rgba(255,255,255,0.2)",
+                          background:
+                            "rgba(0,0,0,0.75)",
+                          color:
+                            "#fff",
+                          cursor:
+                            "pointer",
+                          fontSize:
+                            "16px",
+                        }}
+                      >
+                        ×
+                      </button>
+
+                      <div
+                        style={{
+                          padding:
+                            "8px",
+                          color:
+                            MUTED,
+                          fontSize:
+                            "11px",
+                          whiteSpace:
+                            "nowrap",
+                          overflow:
+                            "hidden",
+                          textOverflow:
+                            "ellipsis",
+                        }}
+                      >
+                        {
+                          item.file
+                            .name
+                        }
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
 
               <button
                 type="button"
+                onClick={
+                  uploadSelectedImages
+                }
                 disabled={
                   isUploading
                 }
-                onClick={(e) => {
-                  e.stopPropagation();
-
-                  fileInputRef.current?.click();
+                style={{
+                  width: "100%",
+                  marginTop: "18px",
+                  border: "none",
+                  borderRadius:
+                    "10px",
+                  padding:
+                    "14px 18px",
+                  background:
+                    isUploading
+                      ? "#6e5422"
+                      : `linear-gradient(135deg, ${GOLD}, ${GOLD_LIGHT})`,
+                  color: "#090909",
+                  cursor:
+                    isUploading
+                      ? "not-allowed"
+                      : "pointer",
+                  fontWeight: 900,
+                  fontSize: "14px",
+                  boxShadow:
+                    "0 8px 25px rgba(217,164,65,0.18)",
                 }}
-                className="mt-6 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-6 py-3 text-sm font-bold text-black shadow-lg shadow-amber-900/20 transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isUploading
-                  ? "Processing..."
-                  : "Select Images"}
+                  ? "Uploading & Saving..."
+                  : `Upload ${selectedImages.length} Image${
+                      selectedImages.length ===
+                      1
+                        ? ""
+                        : "s"
+                    }`}
               </button>
-
-              <p className="mt-4 text-[11px] text-white/25">
-                JPG, PNG, WEBP · Maximum 8MB per image
-              </p>
-            </div>
-
-            {/* SELECTED PREVIEW */}
-            <div className="rounded-[24px] border border-white/10 bg-white/[0.02] p-4 sm:p-5">
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-white">
-                    Selected Images
-                  </h3>
-
-                  <p className="mt-1 text-xs text-white/35">
-                    Preview before uploading
-                  </p>
-                </div>
-
-                {selectedImages.length >
-                  0 && (
-                  <button
-                    type="button"
-                    onClick={
-                      clearSelectedImages
-                    }
-                    className="text-xs font-medium text-red-300 transition hover:text-red-200"
-                  >
-                    Clear All
-                  </button>
-                )}
-              </div>
-
-              {selectedImages.length ===
-              0 ? (
-                <div className="flex min-h-[220px] items-center justify-center rounded-2xl border border-white/5 bg-black/20">
-                  <div className="text-center">
-                    <div className="mb-3 text-3xl opacity-40">
-                      📷
-                    </div>
-
-                    <p className="text-sm text-white/35">
-                      No images selected
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid max-h-[300px] grid-cols-3 gap-3 overflow-y-auto pr-1 sm:grid-cols-4">
-                  {selectedImages.map(
-                    (
-                      image,
-                      index
-                    ) => (
-                      <div
-                        key={`${image}-${index}`}
-                        className="group relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-black"
-                      >
-                        <img
-                          src={
-                            image
-                          }
-                          alt={`Selected ${
-                            index +
-                            1
-                          }`}
-                          className="h-full w-full object-cover"
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            removeSelectedImage(
-                              index
-                            )
-                          }
-                          className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/80 text-sm text-white transition hover:bg-red-500"
-                          aria-label="Remove selected image"
-                        >
-                          ×
-                        </button>
-
-                        <div className="absolute bottom-1.5 left-1.5 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] text-white/70">
-                          {
-                            index +
-                            1
-                          }
-                        </div>
-                      </div>
-                    )
-                  )}
-                </div>
-              )}
-
-              {selectedImages.length >
-                0 && (
-                <button
-                  type="button"
-                  onClick={
-                    uploadAllImages
-                  }
-                  className="mt-4 w-full rounded-xl bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 px-5 py-3.5 text-sm font-bold text-black shadow-lg shadow-amber-900/20 transition hover:scale-[1.01]"
-                >
-                  Upload All{" "}
-                  {
-                    selectedImages.length
-                  }{" "}
-                  Images
-                </button>
-              )}
-            </div>
-          </div>
-
-          {uploadMessage && (
-            <div className="mt-4 rounded-xl border border-amber-400/10 bg-amber-400/5 px-4 py-3 text-center text-sm text-amber-200">
-              {
-                uploadMessage
-              }
             </div>
           )}
-        </section>
+        </div>
 
-        {/* GALLERY SECTION */}
-        <section className="rounded-[28px] border border-amber-400/15 bg-[#0b0b0a] p-4 shadow-2xl shadow-black/30 sm:p-6">
-          <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-white sm:text-2xl">
-                Gallery Images
-              </h2>
-
-              <p className="mt-1 text-sm text-white/40">
-                Your uploaded restaurant photos.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() =>
-                  setFilter(
-                    "All"
-                  )
-                }
-                className={`rounded-xl px-4 py-2 text-xs font-semibold transition ${
-                  filter ===
-                  "All"
-                    ? "bg-amber-400 text-black"
-                    : "border border-white/10 bg-white/[0.03] text-white/50 hover:bg-white/[0.06]"
-                }`}
-              >
-                All (
-                {
-                  items.length
-                }
-                )
-              </button>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setFilter(
-                    "Visible"
-                  )
-                }
-                className={`rounded-xl px-4 py-2 text-xs font-semibold transition ${
-                  filter ===
-                  "Visible"
-                    ? "bg-green-500 text-white"
-                    : "border border-white/10 bg-white/[0.03] text-white/50 hover:bg-white/[0.06]"
-                }`}
-              >
-                Visible (
-                {
-                  visibleCount
-                }
-                )
-              </button>
-
-              {hiddenCount >
-                0 && (
+        {/* FILTER BAR */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent:
+              "space-between",
+            alignItems:
+              "center",
+            gap: "15px",
+            marginBottom:
+              "18px",
+            flexWrap: "wrap",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              gap: "8px",
+              flexWrap: "wrap",
+            }}
+          >
+            {(
+              [
+                ["all", "All"],
+                ["visible", "Visible"],
+                ["hidden", "Hidden"],
+              ] as const
+            ).map(
+              ([value, label]) => (
                 <button
+                  key={value}
                   type="button"
                   onClick={() =>
-                    setFilter(
-                      "Hidden"
-                    )
+                    setFilter(value)
                   }
-                  className={`rounded-xl px-4 py-2 text-xs font-semibold transition ${
-                    filter ===
-                    "Hidden"
-                      ? "bg-red-500 text-white"
-                      : "border border-white/10 bg-white/[0.03] text-white/50 hover:bg-white/[0.06]"
-                  }`}
+                  style={{
+                    border:
+                      filter === value
+                        ? `1px solid ${GOLD}`
+                        : `1px solid ${BORDER}`,
+                    background:
+                      filter === value
+                        ? "rgba(217,164,65,0.13)"
+                        : CARD,
+                    color:
+                      filter === value
+                        ? GOLD_LIGHT
+                        : MUTED,
+                    borderRadius:
+                      "9px",
+                    padding:
+                      "9px 14px",
+                    cursor:
+                      "pointer",
+                    fontSize:
+                      "12px",
+                    fontWeight: 700,
+                  }}
                 >
-                  Hidden (
-                  {
-                    hiddenCount
-                  }
-                  )
+                  {label}
                 </button>
-              )}
-
-              {items.length >
-                0 && (
-                <button
-                  type="button"
-                  onClick={
-                    deleteAllImages
-                  }
-                  className="rounded-xl border border-red-400/10 bg-red-500/5 px-4 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/10"
-                >
-                  Delete All
-                </button>
-              )}
-            </div>
+              )
+            )}
           </div>
 
-          {filteredItems.length ===
-          0 ? (
-            <div className="flex min-h-[380px] items-center justify-center rounded-[24px] border border-dashed border-white/10 bg-white/[0.02]">
-              <div className="text-center">
-                <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-amber-400/5 text-4xl opacity-70">
-                  🖼️
-                </div>
+          {items.length > 0 && (
+            <button
+              type="button"
+              onClick={
+                deleteAllImages
+              }
+              disabled={
+                isDeletingAll
+              }
+              style={{
+                border:
+                  "1px solid rgba(220,100,100,0.3)",
+                background:
+                  "rgba(220,100,100,0.07)",
+                color:
+                  "#e7a0a0",
+                borderRadius:
+                  "9px",
+                padding:
+                  "9px 14px",
+                cursor:
+                  isDeletingAll
+                    ? "not-allowed"
+                    : "pointer",
+                fontSize:
+                  "12px",
+                fontWeight: 700,
+              }}
+            >
+              {isDeletingAll
+                ? "Deleting..."
+                : "Delete All"}
+            </button>
+          )}
+        </div>
 
-                <h3 className="text-lg font-semibold text-white/70">
-                  No Gallery Images
-                </h3>
+        {/* GALLERY */}
+        <div
+          style={{
+            background: CARD,
+            border:
+              `1px solid ${BORDER}`,
+            borderRadius: "18px",
+            padding: "20px",
+          }}
+        >
+          {isLoading ? (
+            <div
+              style={{
+                minHeight:
+                  "300px",
+                display: "flex",
+                alignItems:
+                  "center",
+                justifyContent:
+                  "center",
+                color: MUTED,
+                fontSize:
+                  "14px",
+              }}
+            >
+              Loading gallery...
+            </div>
+          ) : filteredItems.length ===
+            0 ? (
+            <div
+              style={{
+                minHeight:
+                  "300px",
+                display: "flex",
+                flexDirection:
+                  "column",
+                alignItems:
+                  "center",
+                justifyContent:
+                  "center",
+                textAlign:
+                  "center",
+                color: MUTED,
+              }}
+            >
+              <div
+                style={{
+                  fontSize:
+                    "45px",
+                  marginBottom:
+                    "12px",
+                  opacity: 0.55,
+                }}
+              >
+                ◇
+              </div>
 
-                <p className="mt-2 text-sm text-white/30">
-                  Upload multiple restaurant photos to get started.
-                </p>
+              <div
+                style={{
+                  color: TEXT,
+                  fontSize:
+                    "18px",
+                  fontWeight: 700,
+                }}
+              >
+                No gallery images
+              </div>
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    fileInputRef.current?.click()
-                  }
-                  className="mt-5 rounded-xl bg-amber-400 px-5 py-3 text-sm font-bold text-black transition hover:bg-yellow-300"
-                >
-                  Upload Images
-                </button>
+              <div
+                style={{
+                  marginTop:
+                    "7px",
+                  fontSize:
+                    "13px",
+                }}
+              >
+                Upload your first
+                restaurant image
+                above.
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-              {[
-                ...filteredItems,
-              ]
-                .sort(
-                  (a, b) =>
-                    a.order -
-                    b.order
-                )
-                .map(
-                  (item) => (
+            <div
+              style={{
+                display:
+                  "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fill, minmax(220px, 1fr))",
+                gap: "16px",
+              }}
+            >
+              {filteredItems.map(
+                (item) => (
+                  <div
+                    key={item.id}
+                    style={{
+                      position:
+                        "relative",
+                      overflow:
+                        "hidden",
+                      border:
+                        `1px solid ${
+                          item.visible
+                            ? BORDER
+                            : "rgba(255,255,255,0.08)"
+                        }`,
+                      borderRadius:
+                        "14px",
+                      background:
+                        CARD_2,
+                    }}
+                  >
                     <div
-                      key={
-                        item.id
-                      }
-                      className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black shadow-lg transition duration-300 hover:-translate-y-1 hover:border-amber-400/30 hover:shadow-amber-900/10"
+                      style={{
+                        position:
+                          "relative",
+                        height:
+                          "220px",
+                        background:
+                          "#080808",
+                      }}
                     >
-                      <div className="relative aspect-square overflow-hidden">
-                        <img
-                          src={
-                            item.image
-                          }
-                          alt="Restaurant gallery"
-                          className={`h-full w-full object-cover transition duration-500 group-hover:scale-105 ${
-                            item.visible ===
-                            false
-                              ? "opacity-40 grayscale"
-                              : ""
-                          }`}
-                        />
+                      <img
+                        src={item.image}
+                        alt={
+                          item.category ||
+                          "Gallery image"
+                        }
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit:
+                            "cover",
+                          display:
+                            "block",
+                          opacity:
+                            item.visible
+                              ? 1
+                              : 0.42,
+                        }}
+                      />
 
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/10 opacity-0 transition group-hover:opacity-100" />
-
-                        {/* DELETE */}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            deleteImage(
-                              item.id
-                            )
-                          }
-                          className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-black/75 text-lg text-white shadow-lg backdrop-blur-md transition hover:bg-red-500"
-                          aria-label="Delete image"
+                      <div
+                        style={{
+                          position:
+                            "absolute",
+                          top: "10px",
+                          left: "10px",
+                          display:
+                            "flex",
+                          gap: "6px",
+                          flexWrap:
+                            "wrap",
+                        }}
+                      >
+                        <span
+                          style={{
+                            background:
+                              "rgba(0,0,0,0.75)",
+                            color:
+                              GOLD_LIGHT,
+                            border:
+                              `1px solid ${BORDER}`,
+                            borderRadius:
+                              "999px",
+                            padding:
+                              "5px 9px",
+                            fontSize:
+                              "10px",
+                            fontWeight:
+                              800,
+                          }}
                         >
-                          ×
-                        </button>
+                          {item.category ||
+                            "Restaurant"}
+                        </span>
 
-                        {/* VISIBILITY */}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            toggleVisibility(
-                              item.id
-                            )
-                          }
-                          className="absolute left-2 top-2 rounded-full border border-white/10 bg-black/75 px-3 py-1.5 text-[10px] font-semibold text-white shadow-lg backdrop-blur-md transition hover:bg-amber-400 hover:text-black"
+                        <span
+                          style={{
+                            background:
+                              item.visible
+                                ? "rgba(70,170,100,0.85)"
+                                : "rgba(160,80,80,0.85)",
+                            color:
+                              "#fff",
+                            borderRadius:
+                              "999px",
+                            padding:
+                              "5px 9px",
+                            fontSize:
+                              "10px",
+                            fontWeight:
+                              800,
+                          }}
                         >
-                          {item.visible !==
-                          false
-                            ? "Hide"
-                            : "Show"}
-                        </button>
-
-                        {/* STATUS */}
-                        <div className="absolute bottom-2 left-2">
-                          <span
-                            className={`rounded-full px-2.5 py-1 text-[10px] font-semibold backdrop-blur-md ${
-                              item.visible !==
-                              false
-                                ? "bg-green-500/80 text-white"
-                                : "bg-red-500/80 text-white"
-                            }`}
-                          >
-                            {item.visible !==
-                            false
-                              ? "Visible"
-                              : "Hidden"}
-                          </span>
-                        </div>
+                          {item.visible
+                            ? "Visible"
+                            : "Hidden"}
+                        </span>
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          deleteImage(
+                            item.id
+                          )
+                        }
+                        style={{
+                          position:
+                            "absolute",
+                          right: "10px",
+                          top: "10px",
+                          width: "34px",
+                          height: "34px",
+                          borderRadius:
+                            "50%",
+                          border:
+                            "1px solid rgba(255,255,255,0.18)",
+                          background:
+                            "rgba(0,0,0,0.78)",
+                          color:
+                            "#fff",
+                          cursor:
+                            "pointer",
+                          fontSize:
+                            "17px",
+                          display:
+                            "flex",
+                          alignItems:
+                            "center",
+                          justifyContent:
+                            "center",
+                        }}
+                        aria-label="Delete image"
+                      >
+                        ×
+                      </button>
                     </div>
-                  )
-                )}
+
+                    <div
+                      style={{
+                        padding:
+                          "12px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          color:
+                            MUTED,
+                          fontSize:
+                            "11px",
+                          marginBottom:
+                            "10px",
+                        }}
+                      >
+                        Gallery Image
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          toggleVisibility(
+                            item.id
+                          )
+                        }
+                        style={{
+                          width: "100%",
+                          border:
+                            `1px solid ${BORDER}`,
+                          background:
+                            "rgba(217,164,65,0.05)",
+                          color:
+                            GOLD_LIGHT,
+                          borderRadius:
+                            "8px",
+                          padding:
+                            "9px 10px",
+                          cursor:
+                            "pointer",
+                          fontSize:
+                            "12px",
+                          fontWeight:
+                            700,
+                        }}
+                      >
+                        {item.visible
+                          ? "Hide Image"
+                          : "Show Image"}
+                      </button>
+                    </div>
+                  </div>
+                )
+              )}
             </div>
           )}
-        </section>
+        </div>
 
-        {/* BOTTOM NOTE */}
-        <footer className="py-8 text-center">
-          <p className="text-xs text-white/20">
-            Nababi Ristorante · Gallery Management
-          </p>
-        </footer>
+        {/* STORAGE NOTE */}
+        <div
+          style={{
+            marginTop: "18px",
+            padding:
+              "13px 15px",
+            borderRadius:
+              "10px",
+            border:
+              "1px solid rgba(255,255,255,0.07)",
+            background:
+              "rgba(255,255,255,0.025)",
+            color: "#85817a",
+            fontSize: "11px",
+            lineHeight: 1.7,
+          }}
+        >
+          Gallery images are now
+          stored in browser IndexedDB
+          instead of localStorage, so
+          the old small localStorage
+          quota will not stop the
+          gallery after a few images.
+        </div>
       </div>
-    </main>
+    </div>
   );
 }
