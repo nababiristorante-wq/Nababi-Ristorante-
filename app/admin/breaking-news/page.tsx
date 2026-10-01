@@ -35,6 +35,7 @@ const MEDIA_STORE_NAME = "media";
 
 const MAX_IMAGE_SIZE = 8 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 50 * 1024 * 1024;
+const TARGET_IMAGE_SIZE = 500 * 1024;
 
 const SUPPORTED_IMAGES = [
   "image/jpeg",
@@ -49,11 +50,16 @@ const SUPPORTED_VIDEOS = [
 ];
 
 /* =========================================================
-   MEDIA DATABASE
+   INDEXEDDB
 ========================================================= */
 
 function openMediaDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
+    if (typeof window === "undefined" || !("indexedDB" in window)) {
+      reject(new Error("IndexedDB is not available in this browser."));
+      return;
+    }
+
     const request = indexedDB.open(
       MEDIA_DB_NAME,
       MEDIA_DB_VERSION
@@ -82,28 +88,16 @@ function openMediaDB(): Promise<IDBDatabase> {
   });
 }
 
-function saveMedia(
-  media: StoredMedia
-): Promise<void> {
-  return new Promise(async (resolve, reject) => {
-    let db: IDBDatabase;
+async function saveMedia(media: StoredMedia): Promise<void> {
+  const db = await openMediaDB();
 
-    try {
-      db = await openMediaDB();
-    } catch (error) {
-      reject(error);
-      return;
-    }
-
+  return new Promise((resolve, reject) => {
     const transaction = db.transaction(
       MEDIA_STORE_NAME,
       "readwrite"
     );
 
-    const store =
-      transaction.objectStore(MEDIA_STORE_NAME);
-
-    store.put(media);
+    transaction.objectStore(MEDIA_STORE_NAME).put(media);
 
     transaction.oncomplete = () => {
       db.close();
@@ -112,50 +106,38 @@ function saveMedia(
 
     transaction.onerror = () => {
       const error = transaction.error;
-
       db.close();
 
       reject(
-        error ||
-          new Error("Could not save media.")
+        error || new Error("Could not save media.")
       );
     };
 
     transaction.onabort = () => {
       const error = transaction.error;
-
       db.close();
 
       reject(
-        error ||
-          new Error("Media save was aborted.")
+        error || new Error("Media save was aborted.")
       );
     };
   });
 }
 
-function getMedia(
+async function getMedia(
   id: string
 ): Promise<StoredMedia | null> {
-  return new Promise(async (resolve, reject) => {
-    let db: IDBDatabase;
+  const db = await openMediaDB();
 
-    try {
-      db = await openMediaDB();
-    } catch (error) {
-      reject(error);
-      return;
-    }
-
+  return new Promise((resolve, reject) => {
     const transaction = db.transaction(
       MEDIA_STORE_NAME,
       "readonly"
     );
 
-    const request =
-      transaction
-        .objectStore(MEDIA_STORE_NAME)
-        .get(id);
+    const request = transaction
+      .objectStore(MEDIA_STORE_NAME)
+      .get(id);
 
     request.onsuccess = () => {
       resolve(request.result || null);
@@ -178,19 +160,10 @@ function getMedia(
   });
 }
 
-function deleteMedia(
-  id: string
-): Promise<void> {
-  return new Promise(async (resolve, reject) => {
-    let db: IDBDatabase;
+async function deleteMedia(id: string): Promise<void> {
+  const db = await openMediaDB();
 
-    try {
-      db = await openMediaDB();
-    } catch (error) {
-      reject(error);
-      return;
-    }
-
+  return new Promise((resolve, reject) => {
     const transaction = db.transaction(
       MEDIA_STORE_NAME,
       "readwrite"
@@ -207,12 +180,10 @@ function deleteMedia(
 
     transaction.onerror = () => {
       const error = transaction.error;
-
       db.close();
 
       reject(
-        error ||
-          new Error("Could not delete media.")
+        error || new Error("Could not delete media.")
       );
     };
   });
@@ -233,6 +204,10 @@ function createMediaId() {
   );
 }
 
+function createNewsId() {
+  return Date.now();
+}
+
 function formatFileSize(bytes: number) {
   if (bytes < 1024) {
     return `${bytes} B`;
@@ -249,7 +224,7 @@ function formatFileSize(bytes: number) {
 }
 
 /* =========================================================
-   FILE PROGRESS READER
+   FILE READER
 ========================================================= */
 
 function readFileWithProgress(
@@ -272,20 +247,16 @@ function readFileWithProgress(
     reader.onload = () => {
       onProgress(100);
 
-      const result = reader.result;
-
-      if (!(result instanceof ArrayBuffer)) {
+      if (!(reader.result instanceof ArrayBuffer)) {
         reject(
-          new Error(
-            "Could not read the selected file."
-          )
+          new Error("Could not read the selected file.")
         );
 
         return;
       }
 
       resolve(
-        new Blob([result], {
+        new Blob([reader.result], {
           type: file.type,
         })
       );
@@ -294,9 +265,7 @@ function readFileWithProgress(
     reader.onerror = () => {
       reject(
         reader.error ||
-          new Error(
-            "Could not read the selected file."
-          )
+          new Error("Could not read the selected file.")
       );
     };
 
@@ -320,8 +289,7 @@ async function compressImage(
 ): Promise<Blob> {
   onProgress(5);
 
-  const objectUrl =
-    URL.createObjectURL(file);
+  const objectUrl = URL.createObjectURL(file);
 
   try {
     const image =
@@ -398,12 +366,13 @@ async function compressImage(
     onProgress(40);
 
     const qualities = [
-      0.78,
-      0.68,
+      0.82,
+      0.74,
+      0.66,
       0.58,
-      0.48,
-      0.4,
-      0.32,
+      0.50,
+      0.42,
+      0.34,
     ];
 
     for (
@@ -427,7 +396,7 @@ async function compressImage(
 
       if (!blob) continue;
 
-      const compressionProgress =
+      const progress =
         45 +
         Math.round(
           ((index + 1) /
@@ -435,15 +404,13 @@ async function compressImage(
             45
         );
 
-      onProgress(
-        compressionProgress
-      );
+      onProgress(progress);
 
       if (
         blob.size <=
-        500 * 1024
+        TARGET_IMAGE_SIZE
       ) {
-        onProgress(92);
+        onProgress(95);
 
         return blob;
       }
@@ -455,7 +422,7 @@ async function compressImage(
           canvas.toBlob(
             resolve,
             "image/jpeg",
-            0.25
+            0.28
           );
         }
       );
@@ -466,7 +433,7 @@ async function compressImage(
       );
     }
 
-    onProgress(92);
+    onProgress(95);
 
     return finalBlob;
   } finally {
@@ -538,13 +505,13 @@ export default function BreakingNewsPage() {
           STORAGE_KEY
         );
 
-      if (stored) {
-        const parsed =
-          JSON.parse(stored);
+      if (!stored) return;
 
-        if (Array.isArray(parsed)) {
-          setNewsList(parsed);
-        }
+      const parsed =
+        JSON.parse(stored);
+
+      if (Array.isArray(parsed)) {
+        setNewsList(parsed);
       }
     } catch {
       setNewsList([]);
@@ -552,7 +519,7 @@ export default function BreakingNewsPage() {
   }, []);
 
   /* =========================================================
-     CLEANUP
+     CLEAN PREVIEW URLS WHEN COMPONENT UNMOUNTS
   ========================================================= */
 
   useEffect(() => {
@@ -578,7 +545,7 @@ export default function BreakingNewsPage() {
   }, []);
 
   /* =========================================================
-     SAVE NEWS
+     SAVE LIST
   ========================================================= */
 
   const saveNewsList = (
@@ -613,6 +580,7 @@ export default function BreakingNewsPage() {
     setVisible(true);
     setStartDate("");
     setEndDate("");
+
     setEditingId(null);
 
     setMediaType("none");
@@ -657,7 +625,7 @@ export default function BreakingNewsPage() {
   };
 
   /* =========================================================
-     FILE SELECT
+     FILE CHANGE
   ========================================================= */
 
   const handleFileChange = (
@@ -796,6 +764,7 @@ export default function BreakingNewsPage() {
     setUploading(true);
     setSaved(false);
     setMediaError("");
+
     setUploadProgress(
       mediaType === "none"
         ? 50
@@ -808,7 +777,7 @@ export default function BreakingNewsPage() {
         | undefined;
 
       /* =====================================================
-         SAVE NEW MEDIA
+         SAVE MEDIA
       ===================================================== */
 
       if (
@@ -838,7 +807,7 @@ export default function BreakingNewsPage() {
             );
         } else {
           setUploadStage(
-            "Uploading video..."
+            "Reading video..."
           );
 
           blobToSave =
@@ -852,7 +821,7 @@ export default function BreakingNewsPage() {
             );
         }
 
-        setUploadProgress(95);
+        setUploadProgress(96);
 
         setUploadStage(
           "Saving media..."
@@ -873,7 +842,7 @@ export default function BreakingNewsPage() {
       }
 
       /* =====================================================
-         EDIT
+         EDIT EXISTING NEWS
       ===================================================== */
 
       if (
@@ -917,11 +886,6 @@ export default function BreakingNewsPage() {
 
         saveNewsList(updated);
 
-        /*
-         * Remove old media only after
-         * new media has been successfully saved.
-         */
-
         if (
           mediaId &&
           oldMediaId &&
@@ -932,7 +896,7 @@ export default function BreakingNewsPage() {
               oldMediaId
             );
           } catch {
-            // Ignore cleanup failure.
+            // Ignore cleanup errors.
           }
         }
 
@@ -946,7 +910,7 @@ export default function BreakingNewsPage() {
               oldMediaId
             );
           } catch {
-            // Ignore cleanup failure.
+            // Ignore cleanup errors.
           }
         }
       } else {
@@ -956,7 +920,7 @@ export default function BreakingNewsPage() {
 
         const newNews:
           BreakingNews = {
-          id: Date.now(),
+          id: createNewsId(),
           text: cleanText,
           visible,
           startDate,
@@ -982,12 +946,12 @@ export default function BreakingNewsPage() {
       setSaved(true);
 
       setTimeout(() => {
-        setSaved(false);
-      }, 2500);
+        resetForm();
+      }, 700);
 
       setTimeout(() => {
-        resetForm();
-      }, 500);
+        setSaved(false);
+      }, 2500);
     } catch (error) {
       console.error(error);
 
@@ -1003,12 +967,12 @@ export default function BreakingNewsPage() {
     } finally {
       setTimeout(() => {
         setUploading(false);
-      }, 600);
+      }, 800);
     }
   };
 
   /* =========================================================
-     EDIT NEWS
+     EDIT
   ========================================================= */
 
   const editNews = async (
@@ -1065,6 +1029,10 @@ export default function BreakingNewsPage() {
         }
       } catch (error) {
         console.error(error);
+
+        setMediaError(
+          "Could not load the existing media."
+        );
       }
     }
 
@@ -1217,23 +1185,44 @@ export default function BreakingNewsPage() {
                 );
             }
           } catch {
-            // Ignore missing media.
+            // Missing media is ignored.
           }
         }
 
-        if (!cancelled) {
-          setPreviewUrls(
-            nextUrls
-          );
-        } else {
+        if (cancelled) {
           Object.values(
             nextUrls
           ).forEach((url) =>
-            URL.revokeObjectURL(
-              url
-            )
+            URL.revokeObjectURL(url)
           );
+
+          return;
         }
+
+        setPreviewUrls(
+          (previous) => {
+            Object.entries(
+              previous
+            ).forEach(
+              ([id, url]) => {
+                const numericId =
+                  Number(id);
+
+                if (
+                  !nextUrls[
+                    numericId
+                  ]
+                ) {
+                  URL.revokeObjectURL(
+                    url
+                  );
+                }
+              }
+            );
+
+            return nextUrls;
+          }
+        );
       };
 
     loadPreviews();
@@ -1250,8 +1239,9 @@ export default function BreakingNewsPage() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#080706] text-white">
 
-      {/* NEW BACKGROUND */}
+      {/* BACKGROUND */}
       <div className="pointer-events-none absolute inset-0">
+
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_10%,rgba(245,158,11,0.16),transparent_28%),radial-gradient(circle_at_90%_15%,rgba(234,88,12,0.14),transparent_30%),radial-gradient(circle_at_50%_100%,rgba(120,53,15,0.16),transparent_35%)]" />
 
         <div className="absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full bg-amber-500/10 blur-[130px]" />
@@ -1264,10 +1254,12 @@ export default function BreakingNewsPage() {
       </div>
 
       <div className="relative flex min-h-screen items-center justify-center px-4 py-8 sm:px-6">
+
         <div className="w-full max-w-6xl">
 
           {/* HEADER */}
           <div className="mb-7 text-center">
+
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-400/10 px-5 py-2 text-xs font-semibold tracking-widest text-amber-200 backdrop-blur-xl">
               <span>✦</span>
               NABABI RISTORANTE
@@ -1289,12 +1281,11 @@ export default function BreakingNewsPage() {
 
             <div className="grid gap-6 lg:grid-cols-[410px_1fr]">
 
-              {/* =================================================
-                  LEFT FORM
-              ================================================= */}
+              {/* LEFT */}
               <section className="rounded-[26px] border border-white/10 bg-black/25 p-5">
 
                 <div className="mb-6">
+
                   <h2 className="text-xl font-semibold">
                     {editingId !== null
                       ? "Edit Breaking News"
@@ -1311,6 +1302,7 @@ export default function BreakingNewsPage() {
 
                   {/* TEXT */}
                   <div>
+
                     <label className="mb-2 block text-sm font-medium text-white/80">
                       News Text
                     </label>
@@ -1326,10 +1318,12 @@ export default function BreakingNewsPage() {
                       placeholder="Write your breaking news..."
                       className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-white/25 focus:border-amber-400/50 focus:bg-white/[0.055]"
                     />
+
                   </div>
 
-                  {/* MEDIA SELECTOR */}
+                  {/* NEWS TYPE */}
                   <div>
+
                     <label className="mb-3 block text-sm font-medium text-white/80">
                       Choose News Type
                     </label>
@@ -1351,6 +1345,7 @@ export default function BreakingNewsPage() {
                             : "border-white/10 bg-white/[0.025] hover:border-white/20 hover:bg-white/[0.05]"
                         }`}
                       >
+
                         <div className="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-xl bg-white/5 text-2xl">
                           📝
                         </div>
@@ -1358,6 +1353,7 @@ export default function BreakingNewsPage() {
                         <p className="text-xs font-medium">
                           Text
                         </p>
+
                       </button>
 
                       {/* IMAGE */}
@@ -1375,6 +1371,7 @@ export default function BreakingNewsPage() {
                             : "border-white/10 bg-white/[0.025] hover:border-white/20 hover:bg-white/[0.05]"
                         }`}
                       >
+
                         <div className="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/10 text-2xl">
                           🖼️
                         </div>
@@ -1382,6 +1379,7 @@ export default function BreakingNewsPage() {
                         <p className="text-xs font-medium">
                           Image
                         </p>
+
                       </button>
 
                       {/* VIDEO */}
@@ -1399,6 +1397,7 @@ export default function BreakingNewsPage() {
                             : "border-white/10 bg-white/[0.025] hover:border-white/20 hover:bg-white/[0.05]"
                         }`}
                       >
+
                         <div className="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-xl bg-red-500/10 text-2xl">
                           🎬
                         </div>
@@ -1406,14 +1405,15 @@ export default function BreakingNewsPage() {
                         <p className="text-xs font-medium">
                           Video
                         </p>
+
                       </button>
+
                     </div>
                   </div>
 
-                  {/* =================================================
-                      IMAGE / VIDEO UPLOAD BOX
-                  ================================================= */}
-                  {mediaType !== "none" && (
+                  {/* UPLOAD */}
+                  {mediaType !==
+                    "none" && (
                     <div>
 
                       <label className="mb-2 block text-sm font-medium text-white/80">
@@ -1465,6 +1465,7 @@ export default function BreakingNewsPage() {
                               ? "Maximum 8MB"
                               : "Maximum 50MB"}
                           </p>
+
                         </div>
                       </label>
 
@@ -1482,6 +1483,7 @@ export default function BreakingNewsPage() {
                             </div>
 
                             <div className="min-w-0 flex-1">
+
                               <p className="truncate text-xs font-medium text-white/80">
                                 {
                                   selectedFile.name
@@ -1493,11 +1495,13 @@ export default function BreakingNewsPage() {
                                   selectedFile.size
                                 )}
                               </p>
+
                             </div>
 
                             <span className="rounded-full bg-green-500/10 px-2 py-1 text-[10px] text-green-300">
                               Ready
                             </span>
+
                           </div>
                         </div>
                       )}
@@ -1514,7 +1518,7 @@ export default function BreakingNewsPage() {
                                 selectedPreview ||
                                 existingMediaUrl
                               }
-                              alt="Preview"
+                              alt="Breaking news preview"
                               className="max-h-64 w-full object-cover"
                             />
                           )}
@@ -1531,18 +1535,18 @@ export default function BreakingNewsPage() {
                               className="max-h-64 w-full bg-black object-contain"
                             />
                           )}
+
                         </div>
                       )}
 
-                      {/* =================================================
-                          UPLOAD PROGRESS
-                      ================================================= */}
+                      {/* PROGRESS */}
                       {uploading && (
                         <div className="mt-4 rounded-2xl border border-amber-400/20 bg-amber-500/[0.06] p-4">
 
                           <div className="mb-2 flex items-center justify-between">
 
                             <div className="flex items-center gap-2">
+
                               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-500/10 text-sm">
                                 ⬆️
                               </span>
@@ -1551,11 +1555,13 @@ export default function BreakingNewsPage() {
                                 {uploadStage ||
                                   "Uploading..."}
                               </span>
+
                             </div>
 
                             <span className="text-sm font-bold text-amber-300">
                               {uploadProgress}%
                             </span>
+
                           </div>
 
                           <div className="h-3 overflow-hidden rounded-full bg-white/10">
@@ -1566,6 +1572,7 @@ export default function BreakingNewsPage() {
                                 width: `${uploadProgress}%`,
                               }}
                             />
+
                           </div>
 
                           <div className="mt-2 flex justify-between text-[10px] text-white/35">
@@ -1584,6 +1591,7 @@ export default function BreakingNewsPage() {
                               100%
                             </span>
                           </div>
+
                         </div>
                       )}
 
@@ -1593,6 +1601,7 @@ export default function BreakingNewsPage() {
                           ⚠️ {mediaError}
                         </div>
                       )}
+
                     </div>
                   )}
 
@@ -1600,6 +1609,7 @@ export default function BreakingNewsPage() {
                   <div className="grid gap-3 sm:grid-cols-2">
 
                     <div>
+
                       <label className="mb-2 block text-xs font-medium text-white/70">
                         Start Date
                       </label>
@@ -1614,9 +1624,11 @@ export default function BreakingNewsPage() {
                         }
                         className="w-full rounded-xl border border-white/10 bg-white/[0.035] px-3 py-3 text-sm text-white outline-none focus:border-amber-400/50"
                       />
+
                     </div>
 
                     <div>
+
                       <label className="mb-2 block text-xs font-medium text-white/70">
                         End Date
                       </label>
@@ -1631,13 +1643,16 @@ export default function BreakingNewsPage() {
                         }
                         className="w-full rounded-xl border border-white/10 bg-white/[0.035] px-3 py-3 text-sm text-white outline-none focus:border-amber-400/50"
                       />
+
                     </div>
+
                   </div>
 
                   {/* VISIBILITY */}
                   <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3">
 
                     <div>
+
                       <p className="text-sm font-medium">
                         Show on Website
                       </p>
@@ -1645,6 +1660,7 @@ export default function BreakingNewsPage() {
                       <p className="mt-1 text-[11px] text-white/35">
                         Display this breaking news
                       </p>
+
                     </div>
 
                     <button
@@ -1660,6 +1676,7 @@ export default function BreakingNewsPage() {
                           : "bg-white/20"
                       }`}
                     >
+
                       <span
                         className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition ${
                           visible
@@ -1667,15 +1684,18 @@ export default function BreakingNewsPage() {
                             : "left-1"
                         }`}
                       />
+
                     </button>
+
                   </div>
 
-                  {/* SAVE BUTTON */}
+                  {/* SAVE */}
                   <button
                     type="submit"
                     disabled={uploading}
                     className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 px-5 py-3.5 text-sm font-bold text-white shadow-xl shadow-orange-950/30 transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
                   >
+
                     {uploading ? (
                       <>
                         <span className="animate-spin">
@@ -1703,8 +1723,10 @@ export default function BreakingNewsPage() {
                           : "Upload & Save Breaking News"}
                       </>
                     )}
+
                   </button>
 
+                  {/* CANCEL */}
                   {editingId !== null && (
                     <button
                       type="button"
@@ -1720,33 +1742,36 @@ export default function BreakingNewsPage() {
                     </button>
                   )}
 
+                  {/* SUCCESS */}
                   {saved && (
                     <div className="rounded-xl border border-green-400/20 bg-green-500/10 px-4 py-3 text-center text-sm text-green-200">
                       ✓ Breaking news uploaded successfully.
                     </div>
                   )}
+
                 </form>
               </section>
 
-              {/* =================================================
-                  RIGHT NEWS LIST
-              ================================================= */}
+              {/* RIGHT */}
               <section className="rounded-[26px] border border-white/10 bg-black/25 p-5">
 
                 <div className="mb-5 flex items-center justify-between">
 
                   <div>
+
                     <h2 className="text-xl font-semibold">
                       News List
                     </h2>
 
                     <div className="mt-2 h-1 w-16 rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-red-500" />
+
                   </div>
 
                   <div className="rounded-full border border-green-400/20 bg-green-500/10 px-3 py-1.5 text-xs text-green-200">
                     Active:{" "}
                     {activeNews.length}
                   </div>
+
                 </div>
 
                 {/* LIVE PREVIEW */}
@@ -1755,11 +1780,13 @@ export default function BreakingNewsPage() {
                   <div className="mb-5 overflow-hidden rounded-2xl border border-amber-400/20 bg-black/30">
 
                     <div className="flex items-center gap-2 border-b border-white/10 bg-amber-500/[0.06] px-4 py-3">
+
                       <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/10 text-lg">
                         🚨
                       </span>
 
                       <div>
+
                         <p className="text-xs font-semibold uppercase tracking-wider text-amber-200">
                           Live Preview
                         </p>
@@ -1767,7 +1794,9 @@ export default function BreakingNewsPage() {
                         <p className="text-[10px] text-white/35">
                           Currently visible
                         </p>
+
                       </div>
+
                     </div>
 
                     <div className="p-4">
@@ -1824,6 +1853,7 @@ export default function BreakingNewsPage() {
                           }
                         </p>
                       )}
+
                     </div>
                   </div>
                 )}
@@ -1847,6 +1877,7 @@ export default function BreakingNewsPage() {
                         Upload text, image or video
                         from the left panel.
                       </p>
+
                     </div>
                   </div>
                 ) : (
@@ -1859,7 +1890,7 @@ export default function BreakingNewsPage() {
                           className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] transition hover:border-amber-300/20"
                         >
 
-                          {/* MEDIA PREVIEW */}
+                          {/* MEDIA */}
                           {item.mediaType ===
                             "image" &&
                             item.mediaId &&
@@ -1965,6 +1996,7 @@ export default function BreakingNewsPage() {
                                       }
                                     </span>
                                   )}
+
                                 </div>
                               </div>
                             </div>
@@ -2009,14 +2041,18 @@ export default function BreakingNewsPage() {
                               >
                                 🗑️ Delete
                               </button>
+
                             </div>
                           </div>
                         </div>
                       )
                     )}
+
                   </div>
                 )}
+
               </section>
+
             </div>
           </div>
         </div>
