@@ -18,11 +18,19 @@ type MenuItem = {
   available: boolean;
 };
 
+type MenuCategory = {
+  id: string;
+  name: string;
+  image: string;
+  order: number;
+  visible: boolean;
+};
+
 const MENU_KEY = "nababi-menu";
 const CATEGORY_KEY = "nababi-categories";
 const BACKGROUND_KEY = "nababi-menu-background";
 
-const defaultCategories = [
+const defaultCategoryNames = [
   "Biryani",
   "Starters",
   "Main Course",
@@ -34,6 +42,18 @@ const defaultCategories = [
   "Desserts",
 ];
 
+const defaultCategoryImages = [
+  "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=900&q=85",
+  "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=85",
+  "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=85",
+  "https://images.unsplash.com/photo-1606728035253-49e8a231f1ac?auto=format&fit=crop&w=900&q=85",
+  "https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&w=900&q=85",
+  "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=900&q=85",
+  "https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=900&q=85",
+  "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=900&q=85",
+  "https://images.unsplash.com/photo-1551024506-0bccd828d307?auto=format&fit=crop&w=900&q=85",
+];
+
 const emptyForm = {
   name: "",
   description: "",
@@ -43,54 +63,219 @@ const emptyForm = {
   available: true,
 };
 
+function createCategoryId() {
+  return `category-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
+}
+
+function createProductId() {
+  return Date.now();
+}
+
+function defaultImageForCategory(index: number) {
+  return (
+    defaultCategoryImages[index % defaultCategoryImages.length] || ""
+  );
+}
+
+function normalizeCategory(
+  value: unknown,
+  index: number
+): MenuCategory | null {
+  if (typeof value === "string") {
+    const name = value.trim();
+
+    if (!name) return null;
+
+    return {
+      id: createCategoryId(),
+      name,
+      image: defaultImageForCategory(index),
+      order: index + 1,
+      visible: true,
+    };
+  }
+
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const raw = value as Record<string, unknown>;
+
+  const name = String(
+    raw.name ??
+      raw.nameEnglish ??
+      raw.title ??
+      ""
+  ).trim();
+
+  if (!name) return null;
+
+  return {
+    id: String(raw.id || createCategoryId()),
+    name,
+    image: String(raw.image || ""),
+    order:
+      typeof raw.order === "number"
+        ? raw.order
+        : Number(raw.order) || index + 1,
+    visible: raw.visible !== false,
+  };
+}
+
+function normalizeCategories(
+  raw: unknown
+): MenuCategory[] {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return defaultCategoryNames.map(
+      (name, index) => ({
+        id: `default-${name
+          .toLowerCase()
+          .replace(/\s+/g, "-")}`,
+        name,
+        image: defaultImageForCategory(index),
+        order: index + 1,
+        visible: true,
+      })
+    );
+  }
+
+  const result: MenuCategory[] = [];
+  const names = new Set<string>();
+
+  raw.forEach((item, index) => {
+    const category = normalizeCategory(item, index);
+
+    if (!category) return;
+
+    const key = category.name.toLowerCase();
+
+    if (names.has(key)) return;
+
+    names.add(key);
+    result.push(category);
+  });
+
+  if (!result.length) {
+    return defaultCategoryNames.map(
+      (name, index) => ({
+        id: `default-${name
+          .toLowerCase()
+          .replace(/\s+/g, "-")}`,
+        name,
+        image: defaultImageForCategory(index),
+        order: index + 1,
+        visible: true,
+      })
+    );
+  }
+
+  return result.sort(
+    (a, b) => a.order - b.order
+  );
+}
+
 export default function MenuManagementPage() {
   const [items, setItems] = useState<MenuItem[]>([]);
-  const [categories, setCategories] = useState<string[]>(defaultCategories);
+
+  const [categories, setCategories] =
+    useState<MenuCategory[]>([]);
+
   const [form, setForm] = useState(emptyForm);
-  const [editingId, setEditingId] = useState<number | null>(null);
+
+  const [editingId, setEditingId] =
+    useState<number | null>(null);
+
   const [search, setSearch] = useState("");
-  const [newCategory, setNewCategory] = useState("");
-  const [showCategoryInput, setShowCategoryInput] = useState(false);
-  const [background, setBackground] = useState("");
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+
+  const [newCategory, setNewCategory] =
+    useState("");
+
+  const [showCategoryInput, setShowCategoryInput] =
+    useState(false);
+
+  const [background, setBackground] =
+    useState("");
+
+  const [message, setMessage] =
+    useState("");
+
+  const [error, setError] =
+    useState("");
+
+  const [selectedCategoryName, setSelectedCategoryName] =
+    useState("Biryani");
+
+  const [categoryImageUploading, setCategoryImageUploading] =
+    useState(false);
+
+  const selectedCategory = useMemo(() => {
+    return (
+      categories.find(
+        (category) =>
+          category.name.toLowerCase() ===
+          selectedCategoryName.toLowerCase()
+      ) ||
+      categories[0] ||
+      null
+    );
+  }, [categories, selectedCategoryName]);
 
   useEffect(() => {
     try {
-      const savedItems = localStorage.getItem(MENU_KEY);
-      const savedCategories = localStorage.getItem(CATEGORY_KEY);
-      const savedBackground = localStorage.getItem(BACKGROUND_KEY);
+      const savedItems =
+        localStorage.getItem(MENU_KEY);
+
+      const savedCategories =
+        localStorage.getItem(CATEGORY_KEY);
+
+      const savedBackground =
+        localStorage.getItem(BACKGROUND_KEY);
 
       if (savedItems) {
         const parsed = JSON.parse(savedItems);
-        if (Array.isArray(parsed)) setItems(parsed);
+
+        if (Array.isArray(parsed)) {
+          setItems(parsed);
+        }
       }
 
       if (savedCategories) {
         const parsed = JSON.parse(savedCategories);
 
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const names = parsed
-            .map((item: unknown) => {
-              if (typeof item === "string") return item;
+        const normalized =
+          normalizeCategories(parsed);
 
-              if (
-                item &&
-                typeof item === "object" &&
-                "nameEnglish" in item
-              ) {
-                return String(
-                  (item as { nameEnglish?: string }).nameEnglish || ""
-                );
-              }
+        setCategories(normalized);
 
-              return "";
-            })
-            .filter(Boolean);
+        if (normalized.length > 0) {
+          setSelectedCategoryName(
+            normalized[0].name
+          );
 
-          if (names.length > 0) {
-            setCategories(Array.from(new Set(names)));
-          }
+          setForm((prev) => ({
+            ...prev,
+            category:
+              normalized[0].name,
+          }));
+        }
+      } else {
+        const normalized =
+          normalizeCategories([]);
+
+        setCategories(normalized);
+
+        if (normalized.length > 0) {
+          setSelectedCategoryName(
+            normalized[0].name
+          );
+
+          setForm((prev) => ({
+            ...prev,
+            category:
+              normalized[0].name,
+          }));
         }
       }
 
@@ -98,36 +283,74 @@ export default function MenuManagementPage() {
         setBackground(savedBackground);
       }
     } catch {
-      setError("Saved data load করা যায়নি।");
+      setError(
+        "Saved data load করা যায়নি।"
+      );
     }
   }, []);
 
   const saveItems = (next: MenuItem[]) => {
     setItems(next);
-    localStorage.setItem(MENU_KEY, JSON.stringify(next));
+
+    try {
+      localStorage.setItem(
+        MENU_KEY,
+        JSON.stringify(next)
+      );
+    } catch {
+      fail(
+        "Product save করা যায়নি। Browser storage full হতে পারে।"
+      );
+    }
   };
 
-  const saveCategories = (next: string[]) => {
-    setCategories(next);
-    localStorage.setItem(CATEGORY_KEY, JSON.stringify(next));
+  const saveCategories = (
+    next: MenuCategory[]
+  ) => {
+    const sorted = [...next].sort(
+      (a, b) => a.order - b.order
+    );
+
+    setCategories(sorted);
+
+    try {
+      localStorage.setItem(
+        CATEGORY_KEY,
+        JSON.stringify(sorted)
+      );
+    } catch {
+      fail(
+        "Category save করা যায়নি। Browser storage full হতে পারে।"
+      );
+    }
   };
 
   const success = (text: string) => {
     setMessage(text);
     setError("");
 
-    window.setTimeout(() => setMessage(""), 2500);
+    window.setTimeout(
+      () => setMessage(""),
+      2500
+    );
   };
 
   const fail = (text: string) => {
     setError(text);
     setMessage("");
 
-    window.setTimeout(() => setError(""), 3000);
+    window.setTimeout(
+      () => setError(""),
+      3000
+    );
   };
 
   const handleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: ChangeEvent<
+      HTMLInputElement |
+        HTMLTextAreaElement |
+        HTMLSelectElement
+    >
   ) => {
     const { name, value } = e.target;
 
@@ -137,28 +360,46 @@ export default function MenuManagementPage() {
     }));
   };
 
-  const readImage = (file: File, callback: (image: string) => void) => {
+  const readImage = (
+    file: File,
+    callback: (image: string) => void
+  ) => {
     if (!file.type.startsWith("image/")) {
-      fail("শুধু Image file upload করুন।");
+      fail(
+        "শুধু Image file upload করুন।"
+      );
       return;
     }
 
     if (file.size > 8 * 1024 * 1024) {
-      fail("Image সর্বোচ্চ 8MB হতে পারবে।");
+      fail(
+        "Image সর্বোচ্চ 8MB হতে পারবে।"
+      );
       return;
     }
 
     const reader = new FileReader();
 
+    reader.onerror = () => {
+      fail(
+        "Image read করা যায়নি।"
+      );
+    };
+
     reader.onload = () => {
-      callback(String(reader.result));
+      callback(
+        String(reader.result)
+      );
     };
 
     reader.readAsDataURL(file);
   };
 
-  const handleProductImage = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleProductImage = (
+    e: ChangeEvent<HTMLInputElement>
+  ) => {
+    const file =
+      e.target.files?.[0];
 
     if (!file) return;
 
@@ -168,18 +409,92 @@ export default function MenuManagementPage() {
         image,
       }));
     });
+
+    e.target.value = "";
   };
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleCategoryImage = (
+    e: ChangeEvent<HTMLInputElement>
+  ) => {
+    const file =
+      e.target.files?.[0];
+
+    if (!file || !selectedCategory) {
+      return;
+    }
+
+    setCategoryImageUploading(true);
+
+    readImage(file, (image) => {
+      const updated =
+        categories.map(
+          (category) =>
+            category.id ===
+            selectedCategory.id
+              ? {
+                  ...category,
+                  image,
+                }
+              : category
+        );
+
+      saveCategories(updated);
+
+      success(
+        `${selectedCategory.name} Category image পরিবর্তন হয়েছে।`
+      );
+
+      setCategoryImageUploading(false);
+    });
+
+    e.target.value = "";
+  };
+
+  const removeCategoryImage = () => {
+    if (!selectedCategory) return;
+
+    const confirmed =
+      window.confirm(
+        `${selectedCategory.name} Category-এর image remove করতে চান?`
+      );
+
+    if (!confirmed) return;
+
+    const updated =
+      categories.map(
+        (category) =>
+          category.id ===
+          selectedCategory.id
+            ? {
+                ...category,
+                image: "",
+              }
+            : category
+      );
+
+    saveCategories(updated);
+
+    success(
+      `${selectedCategory.name} Category image remove হয়েছে।`
+    );
+  };
+
+  const handleSubmit = (
+    e: FormEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
 
     if (!form.name.trim()) {
-      fail("Product Name লিখুন।");
+      fail(
+        "Product Name লিখুন।"
+      );
       return;
     }
 
     if (!form.description.trim()) {
-      fail("Description লিখুন।");
+      fail(
+        "Description লিখুন।"
+      );
       return;
     }
 
@@ -189,61 +504,95 @@ export default function MenuManagementPage() {
     }
 
     if (!form.category) {
-      fail("Category নির্বাচন করুন।");
+      fail(
+        "Category নির্বাচন করুন।"
+      );
       return;
     }
 
     if (editingId !== null) {
-      const updated = items.map((item) =>
-        item.id === editingId
-          ? {
-              ...item,
-              name: form.name.trim(),
-              description: form.description.trim(),
-              price: form.price.trim(),
-              category: form.category,
-              image: form.image,
-              available: form.available,
-            }
-          : item
-      );
+      const updated =
+        items.map((item) =>
+          item.id === editingId
+            ? {
+                ...item,
+                name:
+                  form.name.trim(),
+                description:
+                  form.description.trim(),
+                price:
+                  form.price.trim(),
+                category:
+                  form.category,
+                image:
+                  form.image,
+                available:
+                  form.available,
+              }
+            : item
+        );
 
       saveItems(updated);
-      success("Product সফলভাবে Update হয়েছে।");
+
+      success(
+        "Product সফলভাবে Update হয়েছে।"
+      );
     } else {
       const newItem: MenuItem = {
-        id: Date.now(),
-        name: form.name.trim(),
-        description: form.description.trim(),
-        price: form.price.trim(),
-        category: form.category,
-        image: form.image,
-        available: form.available,
+        id: createProductId(),
+        name:
+          form.name.trim(),
+        description:
+          form.description.trim(),
+        price:
+          form.price.trim(),
+        category:
+          form.category,
+        image:
+          form.image,
+        available:
+          form.available,
       };
 
-      saveItems([...items, newItem]);
-      success("Product সফলভাবে Save হয়েছে।");
+      saveItems([
+        ...items,
+        newItem,
+      ]);
+
+      success(
+        "Product সফলভাবে Save হয়েছে।"
+      );
     }
 
     setForm({
       ...emptyForm,
-      category: form.category,
+      category:
+        form.category,
     });
 
     setEditingId(null);
   };
 
-  const editProduct = (item: MenuItem) => {
+  const editProduct = (
+    item: MenuItem
+  ) => {
     setEditingId(item.id);
 
     setForm({
       name: item.name,
-      description: item.description,
+      description:
+        item.description,
       price: item.price,
-      category: item.category,
+      category:
+        item.category,
       image: item.image,
-      available: item.available,
+      available:
+        item.available,
     });
+
+    setSelectedCategoryName(
+      item.category
+    );
 
     window.scrollTo({
       top: 0,
@@ -251,25 +600,51 @@ export default function MenuManagementPage() {
     });
   };
 
-  const deleteProduct = (id: number) => {
-    if (!window.confirm("এই Product-টি Delete করতে চান?")) return;
+  const deleteProduct = (
+    id: number
+  ) => {
+    if (
+      !window.confirm(
+        "এই Product-টি Delete করতে চান?"
+      )
+    ) {
+      return;
+    }
 
-    saveItems(items.filter((item) => item.id !== id));
+    const next =
+      items.filter(
+        (item) =>
+          item.id !== id
+      );
+
+    saveItems(next);
 
     if (editingId === id) {
       cancelEdit();
     }
 
-    success("Product Delete হয়েছে।");
+    success(
+      "Product Delete হয়েছে।"
+    );
   };
 
-  const toggleAvailability = (id: number) => {
+  const toggleAvailability = (
+    id: number
+  ) => {
     saveItems(
       items.map((item) =>
         item.id === id
-          ? { ...item, available: !item.available }
+          ? {
+              ...item,
+              available:
+                !item.available,
+            }
           : item
       )
+    );
+
+    success(
+      "Product visibility পরিবর্তন হয়েছে।"
     );
   };
 
@@ -278,40 +653,78 @@ export default function MenuManagementPage() {
 
     setForm({
       ...emptyForm,
-      category: categories[0] || "Biryani",
+      category:
+        selectedCategory?.name ||
+        categories[0]?.name ||
+        "Biryani",
     });
   };
 
   const addCategory = () => {
-    const value = newCategory.trim();
+    const value =
+      newCategory.trim();
 
     if (!value) {
-      fail("Category Name লিখুন।");
+      fail(
+        "Category Name লিখুন।"
+      );
       return;
     }
 
-    const exists = categories.some(
-      (category) => category.toLowerCase() === value.toLowerCase()
-    );
+    const exists =
+      categories.find(
+        (category) =>
+          category.name.toLowerCase() ===
+          value.toLowerCase()
+      );
 
     if (exists) {
+      setSelectedCategoryName(
+        exists.name
+      );
+
       setForm((prev) => ({
         ...prev,
         category:
-          categories.find(
-            (category) =>
-              category.toLowerCase() === value.toLowerCase()
-          ) || value,
+          exists.name,
       }));
 
       setNewCategory("");
-      setShowCategoryInput(false);
+      setShowCategoryInput(
+        false
+      );
+
       return;
     }
 
-    const next = [...categories, value];
+    const nextOrder =
+      categories.length > 0
+        ? Math.max(
+            ...categories.map(
+              (category) =>
+                category.order
+            )
+          ) + 1
+        : 1;
+
+    const newItem: MenuCategory = {
+      id: createCategoryId(),
+      name: value,
+      image: "",
+      order: nextOrder,
+      visible: true,
+    };
+
+    const next = [
+      ...categories,
+      newItem,
+    ];
 
     saveCategories(next);
+
+    setSelectedCategoryName(
+      value
+    );
 
     setForm((prev) => ({
       ...prev,
@@ -319,54 +732,113 @@ export default function MenuManagementPage() {
     }));
 
     setNewCategory("");
-    setShowCategoryInput(false);
+    setShowCategoryInput(
+      false
+    );
 
-    success("নতুন Category যোগ হয়েছে।");
+    success(
+      "নতুন Category যোগ হয়েছে। এখন Category image আলাদাভাবে upload করতে পারবেন।"
+    );
   };
 
   const handleBackgroundUpload = (
     e: ChangeEvent<HTMLInputElement>
   ) => {
-    const file = e.target.files?.[0];
+    const file =
+      e.target.files?.[0];
 
     if (!file) return;
 
     readImage(file, (image) => {
       setBackground(image);
-      localStorage.setItem(BACKGROUND_KEY, image);
-      success("Background পরিবর্তন হয়েছে।");
+
+      try {
+        localStorage.setItem(
+          BACKGROUND_KEY,
+          image
+        );
+
+        success(
+          "Background পরিবর্তন হয়েছে।"
+        );
+      } catch {
+        fail(
+          "Background save করা যায়নি। Browser storage full হতে পারে।"
+        );
+      }
     });
+
+    e.target.value = "";
   };
 
   const removeBackground = () => {
     setBackground("");
-    localStorage.removeItem(BACKGROUND_KEY);
-    success("Background remove হয়েছে।");
+
+    localStorage.removeItem(
+      BACKGROUND_KEY
+    );
+
+    success(
+      "Background remove হয়েছে।"
+    );
+  };
+
+  const selectCategory = (
+    category: MenuCategory
+  ) => {
+    setSelectedCategoryName(
+      category.name
+    );
+
+    setForm((prev) => ({
+      ...prev,
+      category:
+        category.name,
+    }));
+
+    setEditingId(null);
   };
 
   const filteredItems = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q =
+      search.trim().toLowerCase();
 
     if (!q) return items;
 
     return items.filter(
       (item) =>
-        item.name.toLowerCase().includes(q) ||
-        item.description.toLowerCase().includes(q) ||
-        item.category.toLowerCase().includes(q)
+        item.name
+          .toLowerCase()
+          .includes(q) ||
+        item.description
+          .toLowerCase()
+          .includes(q) ||
+        item.category
+          .toLowerCase()
+          .includes(q)
     );
   }, [items, search]);
 
   const groupedItems = useMemo(() => {
-    const groups: Record<string, MenuItem[]> = {};
+    const groups: Record<
+      string,
+      MenuItem[]
+    > = {};
 
-    filteredItems.forEach((item) => {
-      if (!groups[item.category]) {
-        groups[item.category] = [];
+    filteredItems.forEach(
+      (item) => {
+        if (
+          !groups[item.category]
+        ) {
+          groups[item.category] =
+            [];
+        }
+
+        groups[
+          item.category
+        ].push(item);
       }
-
-      groups[item.category].push(item);
-    });
+    );
 
     return groups;
   }, [filteredItems]);
@@ -400,18 +872,23 @@ export default function MenuManagementPage() {
           <div className="flex flex-wrap gap-2">
             <label className="cursor-pointer rounded-2xl bg-white/20 px-5 py-3 font-bold text-white backdrop-blur transition hover:bg-white/30">
               🖼️ Change Background
+
               <input
                 type="file"
                 accept="image/*"
                 className="hidden"
-                onChange={handleBackgroundUpload}
+                onChange={
+                  handleBackgroundUpload
+                }
               />
             </label>
 
             {background && (
               <button
                 type="button"
-                onClick={removeBackground}
+                onClick={
+                  removeBackground
+                }
                 className="rounded-2xl bg-black/20 px-5 py-3 font-bold text-white backdrop-blur"
               >
                 Remove
@@ -435,34 +912,122 @@ export default function MenuManagementPage() {
 
       {/* CATEGORY BAR */}
       <div className="mx-auto mb-5 w-full max-w-[1800px] rounded-[28px] border border-white/70 bg-white/75 p-5 shadow-xl backdrop-blur-xl">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex flex-wrap gap-2">
-            {categories.map((category) => (
-              <button
-                key={category}
-                type="button"
-                onClick={() =>
-                  setForm((prev) => ({
-                    ...prev,
-                    category,
-                  }))
-                }
-                className={`rounded-full px-5 py-2.5 text-sm font-black transition ${
-                  form.category === category
-                    ? "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg"
-                    : "bg-white text-orange-700 shadow hover:bg-orange-50"
-                }`}
-              >
-                {category}
-              </button>
-            ))}
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="mb-3 flex flex-wrap gap-2">
+              {categories
+                .filter(
+                  (category) =>
+                    category.visible !==
+                    false
+                )
+                .map(
+                  (category) => (
+                    <button
+                      key={
+                        category.id
+                      }
+                      type="button"
+                      onClick={() =>
+                        selectCategory(
+                          category
+                        )
+                      }
+                      className={`rounded-full px-5 py-2.5 text-sm font-black transition ${
+                        selectedCategoryName.toLowerCase() ===
+                        category.name.toLowerCase()
+                          ? "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg"
+                          : "bg-white text-orange-700 shadow hover:bg-orange-50"
+                      }`}
+                    >
+                      {category.name}
+                    </button>
+                  )
+                )}
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-orange-100 bg-gradient-to-r from-orange-50 to-pink-50 p-4">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center">
+                <div className="h-24 w-32 shrink-0 overflow-hidden rounded-2xl border border-orange-200 bg-white shadow">
+                  {selectedCategory?.image ? (
+                    <img
+                      src={
+                        selectedCategory.image
+                      }
+                      alt={
+                        selectedCategory.name
+                      }
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-4xl">
+                      🖼️
+                    </div>
+                  )}
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-500">
+                    Category Image
+                  </p>
+
+                  <h3 className="mt-1 text-xl font-black text-gray-900">
+                    {selectedCategory?.name ||
+                      "No Category"}
+                  </h3>
+
+                  <p className="mt-1 text-xs leading-5 text-gray-500">
+                    এই ছবিটি শুধু Category card-এর
+                    জন্য। Product image-এর সঙ্গে এর
+                    কোনো সম্পর্ক নেই।
+                  </p>
+                </div>
+
+                {selectedCategory && (
+                  <div className="flex flex-wrap gap-2">
+                    <label className="cursor-pointer rounded-xl bg-gradient-to-r from-orange-500 to-red-500 px-4 py-2.5 text-sm font-black text-white shadow">
+                      {categoryImageUploading
+                        ? "Processing..."
+                        : "📷 Change Category Image"}
+
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={
+                          handleCategoryImage
+                        }
+                      />
+                    </label>
+
+                    {selectedCategory.image && (
+                      <button
+                        type="button"
+                        onClick={
+                          removeCategoryImage
+                        }
+                        className="rounded-xl bg-red-50 px-4 py-2.5 text-sm font-black text-red-700 hover:bg-red-100"
+                      >
+                        🗑 Remove Image
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 xl:pt-1">
             {showCategoryInput && (
               <input
-                value={newCategory}
-                onChange={(e) => setNewCategory(e.target.value)}
+                value={
+                  newCategory
+                }
+                onChange={(e) =>
+                  setNewCategory(
+                    e.target.value
+                  )
+                }
                 placeholder="New Category"
                 className="w-44 rounded-xl border border-purple-200 bg-white px-4 py-2.5 outline-none"
               />
@@ -471,7 +1036,9 @@ export default function MenuManagementPage() {
             {showCategoryInput && (
               <button
                 type="button"
-                onClick={addCategory}
+                onClick={
+                  addCategory
+                }
                 className="rounded-xl bg-purple-600 px-4 py-2.5 font-bold text-white"
               >
                 Add
@@ -481,7 +1048,10 @@ export default function MenuManagementPage() {
             <button
               type="button"
               onClick={() =>
-                setShowCategoryInput((value) => !value)
+                setShowCategoryInput(
+                  (value) =>
+                    !value
+                )
               }
               className="rounded-xl bg-gradient-to-r from-purple-600 to-pink-500 px-5 py-2.5 font-bold text-white shadow"
             >
@@ -499,7 +1069,9 @@ export default function MenuManagementPage() {
             <div className="flex items-center justify-between">
               <div>
                 <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-black">
-                  {editingId !== null ? "EDIT PRODUCT" : "ADD PRODUCT"}
+                  {editingId !== null
+                    ? "EDIT PRODUCT"
+                    : "ADD PRODUCT"}
                 </span>
 
                 <h2 className="mt-2 text-2xl font-black">
@@ -512,7 +1084,9 @@ export default function MenuManagementPage() {
               {editingId !== null && (
                 <button
                   type="button"
-                  onClick={cancelEdit}
+                  onClick={
+                    cancelEdit
+                  }
                   className="rounded-xl bg-white/20 px-4 py-2 font-bold"
                 >
                   Cancel
@@ -521,8 +1095,13 @@ export default function MenuManagementPage() {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* IMAGE */}
+          <form
+            onSubmit={
+              handleSubmit
+            }
+            className="space-y-4"
+          >
+            {/* PRODUCT IMAGE */}
             <label className="block cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed border-orange-300 bg-gradient-to-br from-orange-50 to-pink-50">
               {form.image ? (
                 <img
@@ -532,7 +1111,10 @@ export default function MenuManagementPage() {
                 />
               ) : (
                 <div className="flex h-48 flex-col items-center justify-center">
-                  <span className="text-6xl">📷</span>
+                  <span className="text-6xl">
+                    📷
+                  </span>
+
                   <span className="mt-2 font-black text-orange-700">
                     Upload Product Image
                   </span>
@@ -543,9 +1125,19 @@ export default function MenuManagementPage() {
                 type="file"
                 accept="image/*"
                 className="hidden"
-                onChange={handleProductImage}
+                onChange={
+                  handleProductImage
+                }
               />
             </label>
+
+            <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs leading-5 text-blue-700">
+              <strong>
+                Product Image:
+              </strong>{" "}
+              এই ছবি শুধু এই Product-এর জন্য।
+              Category image এখানে পরিবর্তন হবে না।
+            </div>
 
             {/* NAME */}
             <div>
@@ -555,8 +1147,12 @@ export default function MenuManagementPage() {
 
               <input
                 name="name"
-                value={form.name}
-                onChange={handleChange}
+                value={
+                  form.name
+                }
+                onChange={
+                  handleChange
+                }
                 placeholder="Product Name"
                 className="w-full rounded-2xl border border-orange-100 bg-white px-4 py-3.5 shadow-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
               />
@@ -570,8 +1166,12 @@ export default function MenuManagementPage() {
 
               <textarea
                 name="description"
-                value={form.description}
-                onChange={handleChange}
+                value={
+                  form.description
+                }
+                onChange={
+                  handleChange
+                }
                 rows={4}
                 placeholder="Italian / English / Bengali Description"
                 className="w-full resize-none rounded-2xl border border-orange-100 bg-white px-4 py-3.5 shadow-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
@@ -587,8 +1187,12 @@ export default function MenuManagementPage() {
 
                 <input
                   name="price"
-                  value={form.price}
-                  onChange={handleChange}
+                  value={
+                    form.price
+                  }
+                  onChange={
+                    handleChange
+                  }
                   placeholder="€15.90"
                   className="w-full rounded-2xl border border-orange-100 bg-white px-4 py-3.5 shadow-sm outline-none focus:border-orange-500"
                 />
@@ -602,18 +1206,87 @@ export default function MenuManagementPage() {
 
                 <select
                   name="category"
-                  value={form.category}
-                  onChange={handleChange}
+                  value={
+                    form.category
+                  }
+                  onChange={(e) => {
+                    handleChange(e);
+
+                    setSelectedCategoryName(
+                      e.target.value
+                    );
+                  }}
                   className="w-full rounded-2xl border border-orange-100 bg-white px-4 py-3.5 shadow-sm outline-none focus:border-orange-500"
                 >
-                  {categories.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
+                  {categories
+                    .filter(
+                      (category) =>
+                        category.visible !==
+                        false
+                    )
+                    .map(
+                      (
+                        category
+                      ) => (
+                        <option
+                          key={
+                            category.id
+                          }
+                          value={
+                            category.name
+                          }
+                        >
+                          {
+                            category.name
+                          }
+                        </option>
+                      )
+                    )}
                 </select>
               </div>
             </div>
+
+            {/* CATEGORY IMAGE INFO */}
+            {selectedCategory && (
+              <div className="rounded-2xl border border-purple-100 bg-purple-50 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-14 w-20 overflow-hidden rounded-xl border border-purple-200 bg-white">
+                    {selectedCategory.image ? (
+                      <img
+                        src={
+                          selectedCategory.image
+                        }
+                        alt={
+                          selectedCategory.name
+                        }
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center">
+                        🖼️
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="text-xs font-black uppercase tracking-wider text-purple-600">
+                      Category
+                    </p>
+
+                    <p className="font-black text-gray-900">
+                      {
+                        selectedCategory.name
+                      }
+                    </p>
+
+                    <p className="text-xs text-gray-500">
+                      Product save করলেও এই Category image
+                      পরিবর্তন হবে না।
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* AVAILABLE */}
             <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-green-100 bg-gradient-to-r from-green-50 to-emerald-50 p-4">
@@ -629,12 +1302,18 @@ export default function MenuManagementPage() {
 
               <input
                 type="checkbox"
-                checked={form.available}
+                checked={
+                  form.available
+                }
                 onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    available: e.target.checked,
-                  }))
+                  setForm(
+                    (prev) => ({
+                      ...prev,
+                      available:
+                        e.target
+                          .checked,
+                    })
+                  )
                 }
                 className="h-6 w-6 accent-green-600"
               />
@@ -671,17 +1350,26 @@ export default function MenuManagementPage() {
               </div>
 
               <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                value={
+                  search
+                }
+                onChange={(e) =>
+                  setSearch(
+                    e.target.value
+                  )
+                }
                 placeholder="🔎 Search..."
                 className="rounded-xl bg-white px-4 py-3 text-gray-800 outline-none md:w-56"
               />
             </div>
           </div>
 
-          {filteredItems.length === 0 ? (
+          {filteredItems.length ===
+          0 ? (
             <div className="flex min-h-[500px] flex-col items-center justify-center rounded-3xl border-2 border-dashed border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 text-center">
-              <div className="text-7xl">🍽️</div>
+              <div className="text-7xl">
+                🍽️
+              </div>
 
               <h3 className="mt-5 text-2xl font-black text-gray-900">
                 No Products Yet
@@ -695,125 +1383,207 @@ export default function MenuManagementPage() {
           ) : (
             <div className="max-h-[calc(100vh-390px)] space-y-7 overflow-y-auto pr-2">
               {categories
-                .filter((category) => groupedItems[category]?.length)
-                .map((category) => (
-                  <div key={category}>
-                    <div className="mb-4 flex items-center justify-between border-b-2 border-purple-100 pb-3">
-                      <div>
-                        <h3 className="text-xl font-black text-gray-900">
-                          {category}
-                        </h3>
-
-                        <p className="text-xs font-bold text-gray-500">
-                          {groupedItems[category].length} Products
-                        </p>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingId(null);
-
-                          setForm({
-                            ...emptyForm,
-                            category,
-                          });
-
-                          window.scrollTo({
-                            top: 0,
-                            behavior: "smooth",
-                          });
-                        }}
-                        className="rounded-xl bg-purple-100 px-4 py-2 text-sm font-black text-purple-700 hover:bg-purple-200"
-                      >
-                        ＋ Add
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                      {groupedItems[category].map((item) => (
-                        <article
-                          key={item.id}
-                          className="overflow-hidden rounded-3xl border border-white bg-white shadow-lg transition hover:-translate-y-1 hover:shadow-2xl"
-                        >
-                          <div className="relative h-44 overflow-hidden bg-gradient-to-br from-orange-100 via-pink-100 to-purple-100">
-                            {item.image ? (
+                .filter(
+                  (category) =>
+                    groupedItems[
+                      category.name
+                    ]?.length
+                )
+                .map(
+                  (category) => (
+                    <div
+                      key={
+                        category.id
+                      }
+                    >
+                      <div className="mb-4 flex items-center justify-between border-b-2 border-purple-100 pb-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="h-12 w-16 shrink-0 overflow-hidden rounded-xl border border-purple-100 bg-white">
+                            {category.image ? (
                               <img
-                                src={item.image}
-                                alt={item.name}
+                                src={
+                                  category.image
+                                }
+                                alt={
+                                  category.name
+                                }
                                 className="h-full w-full object-cover"
                               />
                             ) : (
-                              <div className="flex h-full items-center justify-center text-6xl">
-                                🍽️
+                              <div className="flex h-full items-center justify-center">
+                                🖼️
                               </div>
                             )}
-
-                            <span
-                              className={`absolute right-3 top-3 rounded-full px-3 py-1 text-xs font-black text-white shadow ${
-                                item.available
-                                  ? "bg-green-500"
-                                  : "bg-gray-700"
-                              }`}
-                            >
-                              {item.available
-                                ? "Available"
-                                : "Hidden"}
-                            </span>
                           </div>
 
-                          <div className="p-4">
-                            <div className="flex items-start justify-between gap-2">
-                              <h4 className="font-black text-gray-900">
-                                {item.name}
-                              </h4>
+                          <div>
+                            <h3 className="text-xl font-black text-gray-900">
+                              {
+                                category.name
+                              }
+                            </h3>
 
-                              <span className="shrink-0 rounded-xl bg-orange-100 px-3 py-1 text-sm font-black text-orange-700">
-                                {item.price}
-                              </span>
-                            </div>
-
-                            <p className="mt-2 line-clamp-2 text-sm text-gray-500">
-                              {item.description}
+                            <p className="text-xs font-bold text-gray-500">
+                              {
+                                groupedItems[
+                                  category
+                                    .name
+                                ].length
+                              }{" "}
+                              Products
                             </p>
-
-                            <div className="mt-4 grid grid-cols-3 gap-2">
-                              <button
-                                type="button"
-                                onClick={() => editProduct(item)}
-                                className="rounded-xl bg-blue-50 px-2 py-2.5 text-xs font-black text-blue-700 hover:bg-blue-100"
-                              >
-                                ✏️ Edit
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  toggleAvailability(item.id)
-                                }
-                                className="rounded-xl bg-green-50 px-2 py-2.5 text-xs font-black text-green-700 hover:bg-green-100"
-                              >
-                                {item.available
-                                  ? "Hide"
-                                  : "Show"}
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  deleteProduct(item.id)
-                                }
-                                className="rounded-xl bg-red-50 px-2 py-2.5 text-xs font-black text-red-700 hover:bg-red-100"
-                              >
-                                🗑️ Delete
-                              </button>
-                            </div>
                           </div>
-                        </article>
-                      ))}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingId(
+                              null
+                            );
+
+                            setSelectedCategoryName(
+                              category.name
+                            );
+
+                            setForm({
+                              ...emptyForm,
+                              category:
+                                category.name,
+                            });
+
+                            window.scrollTo(
+                              {
+                                top: 0,
+                                behavior:
+                                  "smooth",
+                              }
+                            );
+                          }}
+                          className="rounded-xl bg-purple-100 px-4 py-2 text-sm font-black text-purple-700 hover:bg-purple-200"
+                        >
+                          ＋ Add
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                        {groupedItems[
+                          category.name
+                        ].map(
+                          (
+                            item
+                          ) => (
+                            <article
+                              key={
+                                item.id
+                              }
+                              className="overflow-hidden rounded-3xl border border-white bg-white shadow-lg transition hover:-translate-y-1 hover:shadow-2xl"
+                            >
+                              <div className="relative h-44 overflow-hidden bg-gradient-to-br from-orange-100 via-pink-100 to-purple-100">
+                                {item.image ? (
+                                  <img
+                                    src={
+                                      item.image
+                                    }
+                                    alt={
+                                      item.name
+                                    }
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="flex h-full items-center justify-center text-6xl">
+                                    🍽️
+                                  </div>
+                                )}
+
+                                <span
+                                  className={`absolute right-3 top-3 rounded-full px-3 py-1 text-xs font-black text-white shadow ${
+                                    item.available
+                                      ? "bg-green-500"
+                                      : "bg-gray-700"
+                                  }`}
+                                >
+                                  {item.available
+                                    ? "Available"
+                                    : "Hidden"}
+                                </span>
+                              </div>
+
+                              <div className="p-4">
+                                <div className="flex items-start justify-between gap-2">
+                                  <h4 className="font-black text-gray-900">
+                                    {
+                                      item.name
+                                    }
+                                  </h4>
+
+                                  <span className="shrink-0 rounded-xl bg-orange-100 px-3 py-1 text-sm font-black text-orange-700">
+                                    {
+                                      item.price
+                                    }
+                                  </span>
+                                </div>
+
+                                <p className="mt-2 line-clamp-2 text-sm text-gray-500">
+                                  {
+                                    item.description
+                                  }
+                                </p>
+
+                                <div className="mt-3 rounded-xl bg-purple-50 px-3 py-2 text-xs font-bold text-purple-700">
+                                  Category:{" "}
+                                  {
+                                    item.category
+                                  }
+                                </div>
+
+                                <div className="mt-4 grid grid-cols-3 gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      editProduct(
+                                        item
+                                      )
+                                    }
+                                    className="rounded-xl bg-blue-50 px-2 py-2.5 text-xs font-black text-blue-700 hover:bg-blue-100"
+                                  >
+                                    ✏️ Edit
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      toggleAvailability(
+                                        item.id
+                                      )
+                                    }
+                                    className="rounded-xl bg-green-50 px-2 py-2.5 text-xs font-black text-green-700 hover:bg-green-100"
+                                  >
+                                    {item.available
+                                      ? "Hide"
+                                      : "Show"}
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      deleteProduct(
+                                        item.id
+                                      )
+                                    }
+                                    className="rounded-xl bg-red-50 px-2 py-2.5 text-xs font-black text-red-700 hover:bg-red-100"
+                                  >
+                                    🗑️ Delete
+                                  </button>
+                                </div>
+                              </div>
+                            </article>
+                          )
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                )}
             </div>
           )}
         </section>
