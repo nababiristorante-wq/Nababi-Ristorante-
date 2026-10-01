@@ -14,6 +14,14 @@ type MenuItem = {
   available?: boolean;
 };
 
+type MenuCategory = {
+  id?: string;
+  name: string;
+  image?: string;
+  order?: number;
+  visible?: boolean;
+};
+
 type GalleryItem = {
   id?: string;
   image?: string;
@@ -56,15 +64,71 @@ type Reservation = {
 const GOLD = "#d9a441";
 const GOLD_LIGHT = "#f6cf70";
 
-const defaultCategories = [
-  "Biryani",
-  "Pizza",
-  "Burger",
-  "Naan",
-  "Chicken",
-  "Mutton",
-  "Drinks",
-  "Dessert",
+const defaultCategories: MenuCategory[] = [
+  {
+    id: "biryani",
+    name: "Biryani",
+    image:
+      "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=700&q=85",
+    order: 1,
+    visible: true,
+  },
+  {
+    id: "pizza",
+    name: "Pizza",
+    image:
+      "https://images.unsplash.com/photo-1579751626657-72bc17010498?auto=format&fit=crop&w=700&q=85",
+    order: 2,
+    visible: true,
+  },
+  {
+    id: "burger",
+    name: "Burger",
+    image:
+      "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=700&q=85",
+    order: 3,
+    visible: true,
+  },
+  {
+    id: "naan",
+    name: "Naan",
+    image:
+      "https://images.unsplash.com/photo-1601050690117-94f5f6fa8bd7?auto=format&fit=crop&w=700&q=85",
+    order: 4,
+    visible: true,
+  },
+  {
+    id: "chicken",
+    name: "Chicken",
+    image:
+      "https://images.unsplash.com/photo-1598103442097-8b74394b95c6?auto=format&fit=crop&w=700&q=85",
+    order: 5,
+    visible: true,
+  },
+  {
+    id: "mutton",
+    name: "Mutton",
+    image:
+      "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=700&q=85",
+    order: 6,
+    visible: true,
+  },
+  {
+    id: "drinks",
+    name: "Drinks",
+    image:
+      "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=700&q=85",
+    order: 7,
+    visible: true,
+  },
+  {
+    id: "dessert",
+    name: "Dessert",
+    image:
+      "https://images.unsplash.com/photo-1551024506-0bccd828d307?auto=format&fit=crop&w=700&q=85",
+    order: 8,
+    visible: true,
+  },
 ];
 
 const translations = {
@@ -273,14 +337,23 @@ const translations = {
   },
 };
 
-function getText(lang: Lang, key: keyof typeof translations.en) {
+function getText(
+  lang: Lang,
+  key: keyof typeof translations.en
+) {
   return translations[lang][key];
 }
 
-function readStorage<T>(key: string, fallback: T): T {
+function readStorage<T>(
+  key: string,
+  fallback: T
+): T {
   try {
-    const value = localStorage.getItem(key);
+    const value =
+      localStorage.getItem(key);
+
     if (!value) return fallback;
+
     return JSON.parse(value) as T;
   } catch {
     return fallback;
@@ -292,29 +365,192 @@ function safeImage(value?: string) {
   return value;
 }
 
+function normalizeCategories(
+  rawCategories: any[]
+): MenuCategory[] {
+  if (!Array.isArray(rawCategories)) {
+    return defaultCategories;
+  }
+
+  const normalized =
+    rawCategories
+      .map(
+        (
+          category: any,
+          index: number
+        ) => {
+          if (
+            typeof category ===
+            "string"
+          ) {
+            const fallback =
+              defaultCategories.find(
+                (item) =>
+                  item.name.toLowerCase() ===
+                  category
+                    .toLowerCase()
+              );
+
+            return {
+              id:
+                fallback?.id ||
+                `category-${index}`,
+              name: category,
+              image:
+                fallback?.image ||
+                "",
+              order:
+                fallback?.order ||
+                index + 1,
+              visible:
+                true,
+            };
+          }
+
+          const name = String(
+            category?.name ??
+              category?.title ??
+              ""
+          ).trim();
+
+          if (!name) {
+            return null;
+          }
+
+          const fallback =
+            defaultCategories.find(
+              (item) =>
+                item.name.toLowerCase() ===
+                name.toLowerCase()
+            );
+
+          return {
+            id:
+              String(
+                category?.id ||
+                  fallback?.id ||
+                  `category-${index}`
+              ),
+            name,
+            image:
+              category?.image ||
+              category?.categoryImage ||
+              fallback?.image ||
+              "",
+            order:
+              Number(
+                category?.order
+              ) || index + 1,
+            visible:
+              category?.visible !==
+              false,
+          };
+        }
+      )
+      .filter(
+        Boolean
+      ) as MenuCategory[];
+
+  const unique =
+    normalized.filter(
+      (
+        category,
+        index,
+        array
+      ) =>
+        array.findIndex(
+          (item) =>
+            item.name.toLowerCase() ===
+            category.name.toLowerCase()
+        ) === index
+    );
+
+  return unique.length
+    ? unique
+        .filter(
+          (item) =>
+            item.visible !==
+            false
+        )
+        .sort(
+          (a, b) =>
+            (a.order || 0) -
+            (b.order || 0)
+        )
+    : defaultCategories;
+}
+
 export default function HomePage() {
-  const [lang, setLang] = useState<Lang>("en");
+  const [lang, setLang] =
+    useState<Lang>("en");
 
-  const [home, setHome] = useState<any>({});
-  const [contact, setContact] = useState<any>({});
-  const [social, setSocial] = useState<any>({});
-  const [openingHours, setOpeningHours] = useState<any[]>([]);
-  const [settings, setSettings] = useState<any>({});
+  const [home, setHome] =
+    useState<any>({});
 
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [categories, setCategories] =
-    useState<string[]>(defaultCategories);
-  const [gallery, setGallery] = useState<GalleryItem[]>([]);
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [contact, setContact] =
+    useState<any>({});
 
-  const [selectedCategory, setSelectedCategory] =
-    useState("Biryani");
+  const [social, setSocial] =
+    useState<any>({});
 
-  const [galleryOpen, setGalleryOpen] = useState(false);
-  const [reviewsOpen, setReviewsOpen] = useState(false);
+  const [
+    openingHours,
+    setOpeningHours,
+  ] = useState<any[]>([]);
 
-  const [reviewForm, setReviewForm] = useState({
+  const [settings, setSettings] =
+    useState<any>({});
+
+  const [
+    menuItems,
+    setMenuItems,
+  ] = useState<MenuItem[]>([]);
+
+  const [
+    categories,
+    setCategories,
+  ] = useState<MenuCategory[]>(
+    defaultCategories
+  );
+
+  const [
+    gallery,
+    setGallery,
+  ] = useState<GalleryItem[]>(
+    []
+  );
+
+  const [
+    reviews,
+    setReviews,
+  ] = useState<Review[]>([]);
+
+  const [
+    reservations,
+    setReservations,
+  ] = useState<Reservation[]>(
+    []
+  );
+
+  const [
+    selectedCategory,
+    setSelectedCategory,
+  ] = useState("Biryani");
+
+  const [
+    galleryOpen,
+    setGalleryOpen,
+  ] = useState(false);
+
+  const [
+    reviewsOpen,
+    setReviewsOpen,
+  ] = useState(false);
+
+  const [
+    reviewForm,
+    setReviewForm,
+  ] = useState({
     name: "",
     phone: "",
     email: "",
@@ -322,7 +558,10 @@ export default function HomePage() {
     review: "",
   });
 
-  const [bookingForm, setBookingForm] = useState({
+  const [
+    bookingForm,
+    setBookingForm,
+  ] = useState({
     name: "",
     phone: "",
     email: "",
@@ -334,18 +573,39 @@ export default function HomePage() {
     note: "",
   });
 
-  const [bookingMessage, setBookingMessage] = useState("");
-  const [reviewMessage, setReviewMessage] = useState("");
+  const [
+    bookingMessage,
+    setBookingMessage,
+  ] = useState("");
 
-  const [breakingNews, setBreakingNews] = useState<any[]>([]);
-  const [newsClosed, setNewsClosed] = useState(false);
+  const [
+    reviewMessage,
+    setReviewMessage,
+  ] = useState("");
 
-  const t = (key: keyof typeof translations.en) =>
-    getText(lang, key);
+  const [
+    breakingNews,
+    setBreakingNews,
+  ] = useState<any[]>([]);
+
+  const [
+    newsClosed,
+    setNewsClosed,
+  ] = useState(false);
+
+  const t = (
+    key: keyof typeof translations.en
+  ) =>
+    getText(
+      lang,
+      key
+    );
 
   useEffect(() => {
     const savedLang =
-      localStorage.getItem("nababi-language") as Lang | null;
+      localStorage.getItem(
+        "nababi-language"
+      ) as Lang | null;
 
     if (
       savedLang === "en" ||
@@ -355,68 +615,137 @@ export default function HomePage() {
       setLang(savedLang);
     }
 
-    setHome(readStorage("nababi-home-settings", {}));
-    setContact(readStorage("nababi-contact", {}));
-    setSocial(readStorage("nababi-social-media", {}));
-    setOpeningHours(readStorage("nababi-opening-hours", []));
-    setSettings(readStorage("nababi-settings", {}));
-
-    const rawMenu = readStorage<any[]>("nababi-menu", []);
-
-    const rawCategories = readStorage<any[]>(
-      "nababi-categories",
-      defaultCategories
-    );
-
-    const normalizedCategories = Array.from(
-      new Set(
-        rawCategories
-          .map((c: any) =>
-            typeof c === "string"
-              ? c
-              : c?.name ?? c?.title ?? ""
-          )
-          .filter(Boolean)
-          .map(String)
+    setHome(
+      readStorage(
+        "nababi-home-settings",
+        {}
       )
     );
 
+    setContact(
+      readStorage(
+        "nababi-contact",
+        {}
+      )
+    );
+
+    setSocial(
+      readStorage(
+        "nababi-social-media",
+        {}
+      )
+    );
+
+    setOpeningHours(
+      readStorage(
+        "nababi-opening-hours",
+        []
+      )
+    );
+
+    setSettings(
+      readStorage(
+        "nababi-settings",
+        {}
+      )
+    );
+
+    const rawMenu =
+      readStorage<any[]>(
+        "nababi-menu",
+        []
+      );
+
+    setMenuItems(
+      Array.isArray(rawMenu)
+        ? rawMenu
+        : []
+    );
+
+    /*
+     * IMPORTANT:
+     * Category images now come ONLY
+     * from nababi-categories.
+     *
+     * Product image is never used
+     * as category image.
+     */
+    const rawCategories =
+      readStorage<any[]>(
+        "nababi-categories",
+        defaultCategories
+      );
+
+    const normalizedCategories =
+      normalizeCategories(
+        rawCategories
+      );
+
     setCategories(
-      normalizedCategories.length
-        ? normalizedCategories
-        : defaultCategories
+      normalizedCategories
     );
 
-    setMenuItems(Array.isArray(rawMenu) ? rawMenu : []);
+    if (
+      normalizedCategories.length >
+      0
+    ) {
+      setSelectedCategory(
+        (
+          previous
+        ) => {
+          const exists =
+            normalizedCategories.some(
+              (category) =>
+                category.name.toLowerCase() ===
+                previous.toLowerCase()
+            );
 
-    const rawGallery = readStorage<GalleryItem[]>(
-      "nababi-gallery",
-      []
-    );
+          return exists
+            ? previous
+            : normalizedCategories[0]
+                .name;
+        }
+      );
+    }
+
+    const rawGallery =
+      readStorage<GalleryItem[]>(
+        "nababi-gallery",
+        []
+      );
 
     setGallery(
       Array.isArray(rawGallery)
         ? rawGallery.filter(
-            (item) => item.visible !== false
+            (item) =>
+              item.visible !==
+              false
           )
         : []
     );
 
-    const rawReviews = readStorage<Review[]>(
-      "nababi-reviews",
-      []
-    );
+    const rawReviews =
+      readStorage<Review[]>(
+        "nababi-reviews",
+        []
+      );
 
     setReviews(
       Array.isArray(rawReviews)
         ? rawReviews
             .filter(
-              (review) => review.visible !== false
+              (review) =>
+                review.visible !==
+                false
             )
             .sort(
               (a, b) =>
-                new Date(b.date).getTime() -
-                new Date(a.date).getTime()
+                new Date(
+                  b.date
+                ).getTime() -
+                new Date(
+                  a.date
+                ).getTime()
             )
         : []
     );
@@ -428,32 +757,64 @@ export default function HomePage() {
       )
     );
 
-    const news = readStorage<any[]>(
-      "nababi-breaking-news",
-      []
+    const news =
+      readStorage<any[]>(
+        "nababi-breaking-news",
+        []
+      );
+
+    const now =
+      new Date();
+
+    const activeNews =
+      Array.isArray(news)
+        ? news.filter(
+            (item) => {
+              if (
+                item.visible ===
+                false
+              ) {
+                return false;
+              }
+
+              if (
+                item.startDate
+              ) {
+                const start =
+                  new Date(
+                    item.startDate
+                  );
+
+                if (
+                  now < start
+                ) {
+                  return false;
+                }
+              }
+
+              if (
+                item.endDate
+              ) {
+                const end =
+                  new Date(
+                    item.endDate
+                  );
+
+                if (
+                  now > end
+                ) {
+                  return false;
+                }
+              }
+
+              return true;
+            }
+          )
+        : [];
+
+    setBreakingNews(
+      activeNews
     );
-
-    const now = new Date();
-
-    const activeNews = Array.isArray(news)
-      ? news.filter((item) => {
-          if (item.visible === false) return false;
-
-          if (item.startDate) {
-            const start = new Date(item.startDate);
-            if (now < start) return false;
-          }
-
-          if (item.endDate) {
-            const end = new Date(item.endDate);
-            if (now > end) return false;
-          }
-
-          return true;
-        })
-      : [];
-
-    setBreakingNews(activeNews);
   }, []);
 
   const heroImage =
@@ -489,43 +850,73 @@ export default function HomePage() {
     contact?.googleMapsUrl ||
     "https://www.google.com/maps/search/?api=1&query=Via+Vespasiano+73+Roma";
 
-  const facebook = social?.facebook || "";
-  const instagram = social?.instagram || "";
-  const tiktok = social?.tiktok || "";
-  const youtube = social?.youtube || "";
+  const facebook =
+    social?.facebook || "";
 
-  const currentItems = useMemo(() => {
-    return menuItems.filter((item) => {
-      const category = String(
-        item.category || ""
-      )
-        .trim()
-        .toLowerCase();
+  const instagram =
+    social?.instagram || "";
 
-      return (
-        category ===
-        selectedCategory.toLowerCase()
+  const tiktok =
+    social?.tiktok || "";
+
+  const youtube =
+    social?.youtube || "";
+
+  const currentItems =
+    useMemo(() => {
+      return menuItems.filter(
+        (item) => {
+          const category =
+            String(
+              item.category ||
+                ""
+            )
+              .trim()
+              .toLowerCase();
+
+          return (
+            category ===
+            selectedCategory.toLowerCase()
+          );
+        }
       );
-    });
-  }, [menuItems, selectedCategory]);
+    }, [
+      menuItems,
+      selectedCategory,
+    ]);
 
-  const displayItems = currentItems.slice(0, 8);
+  const displayItems =
+    currentItems.slice(
+      0,
+      8
+    );
 
-  const totalReviews = reviews.length;
+  const totalReviews =
+    reviews.length;
 
   const averageRating =
     totalReviews > 0
       ? (
           reviews.reduce(
-            (sum, item) =>
-              sum + Number(item.rating || 0),
+            (
+              sum,
+              item
+            ) =>
+              sum +
+              Number(
+                item.rating ||
+                  0
+              ),
             0
           ) / totalReviews
         ).toFixed(1)
       : "0.0";
 
-  function saveReservation(e: FormEvent) {
+  function saveReservation(
+    e: FormEvent
+  ) {
     e.preventDefault();
+
     setBookingMessage("");
 
     if (
@@ -538,6 +929,7 @@ export default function HomePage() {
       setBookingMessage(
         "Please complete the required booking fields."
       );
+
       return;
     }
 
@@ -545,30 +937,47 @@ export default function HomePage() {
       "NAB-" +
       Math.random()
         .toString(36)
-        .substring(2, 8)
+        .substring(
+          2,
+          8
+        )
         .toUpperCase();
 
-    const reservation: Reservation = {
-      id: Date.now().toString(),
-      code,
-      name: bookingForm.name,
-      phone: bookingForm.phone,
-      email: bookingForm.email,
-      date: bookingForm.date,
-      time: bookingForm.time,
-      persons: bookingForm.persons,
-      category: bookingForm.category,
-      item: bookingForm.item,
-      note: bookingForm.note,
-      status: "Confirmed",
-    };
+    const reservation: Reservation =
+      {
+        id:
+          Date.now().toString(),
+        code,
+        name:
+          bookingForm.name,
+        phone:
+          bookingForm.phone,
+        email:
+          bookingForm.email,
+        date:
+          bookingForm.date,
+        time:
+          bookingForm.time,
+        persons:
+          bookingForm.persons,
+        category:
+          bookingForm.category,
+        item:
+          bookingForm.item,
+        note:
+          bookingForm.note,
+        status:
+          "Confirmed",
+      };
 
     const next = [
       ...reservations,
       reservation,
     ];
 
-    setReservations(next);
+    setReservations(
+      next
+    );
 
     localStorage.setItem(
       "nababi-reservations",
@@ -586,20 +995,28 @@ export default function HomePage() {
       date: "",
       time: "",
       persons: "2",
-      category: "Biryani",
+      category:
+        categories[0]?.name ||
+        "Biryani",
       item: "",
       note: "",
     });
   }
 
-  function submitReview(e: FormEvent) {
+  function submitReview(
+    e: FormEvent
+  ) {
     e.preventDefault();
+
     setReviewMessage("");
 
-    if (!reviewForm.name.trim()) {
+    if (
+      !reviewForm.name.trim()
+    ) {
       setReviewMessage(
         "Please enter your name."
       );
+
       return;
     }
 
@@ -610,42 +1027,56 @@ export default function HomePage() {
       setReviewMessage(
         "Please enter phone number or email."
       );
+
       return;
     }
 
-    if (!reviewForm.review.trim()) {
+    if (
+      !reviewForm.review.trim()
+    ) {
       setReviewMessage(
         "Please write your review."
       );
+
       return;
     }
 
-    const newReview: Review = {
-      id: Date.now().toString(),
-      customerName:
-        reviewForm.name.trim(),
-      phone:
-        reviewForm.phone.trim(),
-      email:
-        reviewForm.email.trim(),
-      rating: reviewForm.rating,
-      review:
-        reviewForm.review.trim(),
-      date: new Date().toISOString(),
-      visible: true,
-      replies: [],
-    };
+    const newReview: Review =
+      {
+        id:
+          Date.now().toString(),
+        customerName:
+          reviewForm.name.trim(),
+        phone:
+          reviewForm.phone.trim(),
+        email:
+          reviewForm.email.trim(),
+        rating:
+          reviewForm.rating,
+        review:
+          reviewForm.review.trim(),
+        date:
+          new Date().toISOString(),
+        visible: true,
+        replies: [],
+      };
 
     const next = [
       ...reviews,
       newReview,
     ].sort(
       (a, b) =>
-        new Date(b.date).getTime() -
-        new Date(a.date).getTime()
+        new Date(
+          b.date
+        ).getTime() -
+        new Date(
+          a.date
+        ).getTime()
     );
 
-    setReviews(next);
+    setReviews(
+      next
+    );
 
     localStorage.setItem(
       "nababi-reviews",
@@ -666,7 +1097,8 @@ export default function HomePage() {
   }
 
   function openAdmin() {
-    window.location.href = "/admin";
+    window.location.href =
+      "/admin";
   }
 
   return (
@@ -729,7 +1161,12 @@ export default function HomePage() {
           justify-content: space-between;
           gap: 20px;
           padding: 0 30px;
-          background: rgba(1, 7, 8, 0.96);
+          background: rgba(
+            1,
+            7,
+            8,
+            0.96
+          );
           border-bottom: 1px solid ${GOLD};
           backdrop-filter: blur(15px);
         }
@@ -864,10 +1301,16 @@ export default function HomePage() {
           left: 20px;
           width: 222px;
           padding: 8px;
-          background: rgba(2, 9, 10, 0.92);
+          background: rgba(
+            2,
+            9,
+            10,
+            0.92
+          );
           border: 1px solid #b9c2c4;
           border-radius: 8px;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+          box-shadow: 0 10px 30px
+            rgba(0, 0, 0, 0.5);
         }
 
         .breakingHeader {
@@ -926,9 +1369,14 @@ export default function HomePage() {
 
         .heroTitle {
           margin: 8px 0;
-          font-size: clamp(40px, 5vw, 66px);
+          font-size: clamp(
+            40px,
+            5vw,
+            66px
+          );
           color: ${GOLD_LIGHT};
-          text-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+          text-shadow: 0 4px 20px
+            rgba(0, 0, 0, 0.7);
         }
 
         .heroSubtitle {
@@ -950,7 +1398,9 @@ export default function HomePage() {
           position: absolute;
           left: 50%;
           top: -17px;
-          transform: translateX(-50%);
+          transform: translateX(
+            -50%
+          );
           color: ${GOLD_LIGHT};
           font-size: 25px;
         }
@@ -980,14 +1430,25 @@ export default function HomePage() {
         }
 
         .goldButton:hover {
-          transform: translateY(-1px);
+          transform: translateY(
+            -1px
+          );
           box-shadow:
-            0 0 18px rgba(217, 164, 65, 0.25);
+            0 0 18px
+              rgba(
+                217,
+                164,
+                65,
+                0.25
+              );
         }
 
         .highlights {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(
+            4,
+            1fr
+          );
           border-bottom: 1px solid ${GOLD};
           background: #021011;
         }
@@ -1057,13 +1518,21 @@ export default function HomePage() {
           position: absolute;
           top: 50%;
           left: 50%;
-          transform: translate(-50%, -50%);
+          transform: translate(
+            -50%,
+            -50%
+          );
           width: 48px;
           height: 48px;
           border-radius: 50%;
           border: 1px solid #fff;
           color: #fff;
-          background: rgba(0, 0, 0, 0.45);
+          background: rgba(
+            0,
+            0,
+            0,
+            0.45
+          );
           display: flex;
           align-items: center;
           justify-content: center;
@@ -1116,7 +1585,8 @@ export default function HomePage() {
               rgba(0, 0, 0, 0.65),
               rgba(0, 0, 0, 0.8)
             ),
-            url("${heroImage}") center / cover;
+            url("${heroImage}") center /
+              cover;
         }
 
         .reviewMiniTitle {
@@ -1162,7 +1632,10 @@ export default function HomePage() {
 
         .categoryRow {
           display: grid;
-          grid-template-columns: repeat(8, 1fr);
+          grid-template-columns: repeat(
+            8,
+            1fr
+          );
           gap: 9px;
         }
 
@@ -1181,8 +1654,16 @@ export default function HomePage() {
         .categoryCard.active {
           border-color: ${GOLD_LIGHT};
           box-shadow:
-            0 0 16px rgba(217, 164, 65, 0.2);
-          transform: translateY(-2px);
+            0 0 16px
+              rgba(
+                217,
+                164,
+                65,
+                0.2
+              );
+          transform: translateY(
+            -2px
+          );
         }
 
         .categoryImage {
@@ -1200,12 +1681,21 @@ export default function HomePage() {
         .menuItems {
           margin-top: 18px;
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(
+            4,
+            1fr
+          );
           gap: 13px;
         }
 
         .menuItem {
-          border: 1px solid rgba(217, 164, 65, 0.65);
+          border: 1px solid
+            rgba(
+              217,
+              164,
+              65,
+              0.65
+            );
           border-radius: 8px;
           overflow: hidden;
           background: #071214;
@@ -1247,14 +1737,30 @@ export default function HomePage() {
         }
 
         .utilityCard {
-          border: 1px solid rgba(217, 164, 65, 0.7);
+          border: 1px solid
+            rgba(
+              217,
+              164,
+              65,
+              0.7
+            );
           border-radius: 7px;
           padding: 13px;
           background:
             linear-gradient(
               135deg,
-              rgba(8, 20, 21, 0.98),
-              rgba(1, 10, 11, 0.98)
+              rgba(
+                8,
+                20,
+                21,
+                0.98
+              ),
+              rgba(
+                1,
+                10,
+                11,
+                0.98
+              )
             );
           min-width: 0;
         }
@@ -1366,14 +1872,23 @@ export default function HomePage() {
 
         .footer {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(
+            4,
+            1fr
+          );
           gap: 0;
           border-bottom: 1px solid ${GOLD};
         }
 
         .footerCol {
           padding: 18px 35px;
-          border-right: 1px solid rgba(217, 164, 65, 0.75);
+          border-right: 1px solid
+            rgba(
+              217,
+              164,
+              65,
+              0.75
+            );
           min-height: 135px;
         }
 
@@ -1411,7 +1926,12 @@ export default function HomePage() {
           position: fixed;
           inset: 0;
           z-index: 500;
-          background: rgba(0, 0, 0, 0.78);
+          background: rgba(
+            0,
+            0,
+            0,
+            0.78
+          );
           display: flex;
           align-items: center;
           justify-content: center;
@@ -1420,7 +1940,10 @@ export default function HomePage() {
         }
 
         .modal {
-          width: min(1100px, 100%);
+          width: min(
+            1100px,
+            100%
+          );
           max-height: 90vh;
           overflow-y: auto;
           border: 1px solid ${GOLD};
@@ -1428,12 +1951,23 @@ export default function HomePage() {
           background:
             radial-gradient(
               circle at top,
-              rgba(217, 164, 65, 0.1),
+              rgba(
+                217,
+                164,
+                65,
+                0.1
+              ),
               transparent 35%
             ),
             #031011;
           box-shadow:
-            0 25px 80px rgba(0, 0, 0, 0.8);
+            0 25px 80px
+              rgba(
+                0,
+                0,
+                0,
+                0.8
+              );
           padding: 20px;
         }
 
@@ -1442,7 +1976,13 @@ export default function HomePage() {
           align-items: center;
           justify-content: space-between;
           gap: 15px;
-          border-bottom: 1px solid rgba(217, 164, 65, 0.5);
+          border-bottom: 1px solid
+            rgba(
+              217,
+              164,
+              65,
+              0.5
+            );
           padding-bottom: 12px;
           margin-bottom: 15px;
         }
@@ -1469,7 +2009,13 @@ export default function HomePage() {
 
         .reviewForm,
         .reviewList {
-          border: 1px solid rgba(217, 164, 65, 0.7);
+          border: 1px solid
+            rgba(
+              217,
+              164,
+              65,
+              0.7
+            );
           border-radius: 7px;
           padding: 14px;
           background: #061315;
@@ -1504,7 +2050,13 @@ export default function HomePage() {
         }
 
         .reviewItem {
-          border-bottom: 1px solid rgba(217, 164, 65, 0.2);
+          border-bottom: 1px solid
+            rgba(
+              217,
+              164,
+              65,
+              0.2
+            );
           padding: 10px 0;
         }
 
@@ -1552,7 +2104,10 @@ export default function HomePage() {
 
         .galleryGrid {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(
+            4,
+            1fr
+          );
           gap: 10px;
         }
 
@@ -1561,7 +2116,13 @@ export default function HomePage() {
           height: 180px;
           object-fit: cover;
           border-radius: 6px;
-          border: 1px solid rgba(217, 164, 65, 0.6);
+          border: 1px solid
+            rgba(
+              217,
+              164,
+              65,
+              0.6
+            );
         }
 
         .message {
@@ -1592,7 +2153,10 @@ export default function HomePage() {
           }
 
           .categoryRow {
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(
+              4,
+              1fr
+            );
           }
 
           .utilityGrid {
@@ -1693,7 +2257,10 @@ export default function HomePage() {
           }
 
           .categoryRow {
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(
+              2,
+              1fr
+            );
           }
 
           .menuItems {
@@ -1711,7 +2278,13 @@ export default function HomePage() {
 
           .footerCol {
             border-right: 0;
-            border-bottom: 1px solid rgba(217, 164, 65, 0.4);
+            border-bottom: 1px solid
+              rgba(
+                217,
+                164,
+                65,
+                0.4
+              );
           }
 
           .copyright {
@@ -1731,8 +2304,13 @@ export default function HomePage() {
 
       {/* HEADER */}
       <header className="header">
-        <a href="#home" className="brand">
-          <span className="brandMark">♛</span>
+        <a
+          href="#home"
+          className="brand"
+        >
+          <span className="brandMark">
+            ♛
+          </span>
 
           <span className="brandText">
             NABABI
@@ -1743,7 +2321,10 @@ export default function HomePage() {
         </a>
 
         <nav className="nav">
-          <a href="#home" className="navActive">
+          <a
+            href="#home"
+            className="navActive"
+          >
             {t("home")}
           </a>
 
@@ -1757,12 +2338,16 @@ export default function HomePage() {
 
           <button
             onClick={() =>
-              setGalleryOpen(true)
+              setGalleryOpen(
+                true
+              )
             }
             style={{
-              background: "transparent",
+              background:
+                "transparent",
               border: 0,
-              color: "inherit",
+              color:
+                "inherit",
             }}
           >
             {t("gallery")}
@@ -1770,12 +2355,16 @@ export default function HomePage() {
 
           <button
             onClick={() =>
-              setReviewsOpen(true)
+              setReviewsOpen(
+                true
+              )
             }
             style={{
-              background: "transparent",
+              background:
+                "transparent",
               border: 0,
-              color: "inherit",
+              color:
+                "inherit",
             }}
           >
             {t("reviews")}
@@ -1824,7 +2413,9 @@ export default function HomePage() {
 
           <button
             className="adminButton"
-            onClick={openAdmin}
+            onClick={
+              openAdmin
+            }
           >
             ⚙ {t("admin")}
           </button>
@@ -1840,7 +2431,8 @@ export default function HomePage() {
 
         <div className="heroLeft">
           {!newsClosed &&
-            breakingNews.length > 0 && (
+            breakingNews.length >
+              0 && (
               <div className="breaking">
                 <div className="breakingHeader">
                   <span className="breakingTitle">
@@ -1850,31 +2442,38 @@ export default function HomePage() {
                   <button
                     className="breakingClose"
                     onClick={() =>
-                      setNewsClosed(true)
+                      setNewsClosed(
+                        true
+                      )
                     }
                   >
                     ×
                   </button>
                 </div>
 
-                {breakingNews[0]?.image ? (
+                {breakingNews[0]
+                  ?.image ? (
                   <img
                     src={
-                      breakingNews[0].image
+                      breakingNews[0]
+                        .image
                     }
                     className="breakingImage"
                     alt="Breaking News"
                   />
                 ) : (
                   <img
-                    src={heroImage}
+                    src={
+                      heroImage
+                    }
                     className="breakingImage"
                     alt="Breaking News"
                   />
                 )}
 
                 <div className="breakingText">
-                  {breakingNews[0]?.text ||
+                  {breakingNews[0]
+                    ?.text ||
                     "Special Discount on Biryani!"}
                 </div>
 
@@ -1984,7 +2583,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ABOUT + VIDEO + SMALL REVIEW OPTION */}
+      {/* ABOUT + VIDEO + SMALL REVIEW */}
       <section
         className="aboutSection"
         id="about"
@@ -2030,7 +2629,10 @@ export default function HomePage() {
 
         <div className="reviewMini">
           <div className="reviewMiniTitle">
-            ★ {t("smallReviews")}
+            ★{" "}
+            {t(
+              "smallReviews"
+            )}
           </div>
 
           <div className="stars">
@@ -2044,7 +2646,8 @@ export default function HomePage() {
           </strong>
 
           <div className="reviewMiniText">
-            {totalReviews > 0
+            {totalReviews >
+            0
               ? `Based on ${totalReviews} reviews`
               : "Share your experience with us"}
           </div>
@@ -2052,10 +2655,15 @@ export default function HomePage() {
           <button
             className="goldButton"
             onClick={() =>
-              setReviewsOpen(true)
+              setReviewsOpen(
+                true
+              )
             }
           >
-            {t("viewReviews")} →
+            {t(
+              "viewReviews"
+            )}{" "}
+            →
           </button>
         </div>
       </section>
@@ -2072,7 +2680,9 @@ export default function HomePage() {
             </h2>
 
             <p>
-              {t("chooseCategory")}
+              {t(
+                "chooseCategory"
+              )}
             </p>
           </div>
 
@@ -2084,57 +2694,62 @@ export default function HomePage() {
                   "menuItems"
                 )
                 ?.scrollIntoView({
-                  behavior: "smooth",
+                  behavior:
+                    "smooth",
                 });
             }}
           >
-            🍴 {t("fullMenu")} →
+            🍴{" "}
+            {t(
+              "fullMenu"
+            )}{" "}
+            →
           </button>
         </div>
 
+        {/* CATEGORY CARDS */}
         <div className="categoryRow">
           {categories.map(
-            (category, index) => {
-              const name =
-                String(category);
-
-              const categoryItem =
-                menuItems.find(
-                  (item) =>
-                    String(
-                      item.category || ""
-                    ).toLowerCase() ===
-                    name.toLowerCase()
-                );
-
+            (
+              category
+            ) => {
+              /*
+               * IMPORTANT:
+               * This image comes from
+               * category.image ONLY.
+               *
+               * Product image is NOT used
+               * here anymore.
+               */
               const categoryImage =
-                categoryItem?.image ||
-                [
-                  "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=600&q=80",
-                  "https://images.unsplash.com/photo-1579751626657-72bc17010498?auto=format&fit=crop&w=600&q=80",
-                  "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80",
-                  "https://images.unsplash.com/photo-1601050690117-94f5f6fa8bd7?auto=format&fit=crop&w=600&q=80",
-                ][index % 4];
+                category.image ||
+                "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=700&q=85";
 
               return (
                 <button
-                  key={`${name}-${index}`}
+                  key={
+                    category.id ||
+                    category.name
+                  }
                   className={`categoryCard ${
                     selectedCategory.toLowerCase() ===
-                    name.toLowerCase()
+                    category.name.toLowerCase()
                       ? "active"
                       : ""
                   }`}
                   onClick={() => {
                     setSelectedCategory(
-                      name
+                      category.name
                     );
 
                     setBookingForm(
-                      (prev) => ({
+                      (
+                        prev
+                      ) => ({
                         ...prev,
                         category:
-                          name,
+                          category.name,
+                        item: "",
                       })
                     );
                   }}
@@ -2144,11 +2759,16 @@ export default function HomePage() {
                     src={
                       categoryImage
                     }
-                    alt={name}
+                    alt={
+                      category.name
+                    }
                   />
 
                   <div className="categoryName">
-                    {name} →
+                    {
+                      category.name
+                    }{" "}
+                    →
                   </div>
                 </button>
               );
@@ -2156,13 +2776,18 @@ export default function HomePage() {
           )}
         </div>
 
+        {/* PRODUCTS */}
         <div
           className="menuItems"
           id="menuItems"
         >
-          {displayItems.length > 0 ? (
+          {displayItems.length >
+          0 ? (
             displayItems.map(
-              (item, index) => (
+              (
+                item,
+                index
+              ) => (
                 <div
                   className="menuItem"
                   key={
@@ -2170,9 +2795,12 @@ export default function HomePage() {
                     `${item.name}-${index}`
                   }
                 >
+                  {/* PRODUCT IMAGE IS COMPLETELY SEPARATE */}
                   {item.image ? (
                     <img
-                      src={item.image}
+                      src={
+                        item.image
+                      }
                       alt={
                         item.name ||
                         "Food"
@@ -2180,7 +2808,9 @@ export default function HomePage() {
                     />
                   ) : (
                     <img
-                      src={heroImage}
+                      src={
+                        heroImage
+                      }
                       alt={
                         item.name ||
                         "Food"
@@ -2202,11 +2832,14 @@ export default function HomePage() {
                     <div className="menuItemPrice">
                       {item.price !==
                         undefined &&
-                      item.price !== ""
+                      item.price !==
+                        ""
                         ? `${
                             settings?.currency ||
                             "€"
-                          } ${item.price}`
+                          } ${
+                            item.price
+                          }`
                         : ""}
                     </div>
                   </div>
@@ -2218,7 +2851,8 @@ export default function HomePage() {
               style={{
                 gridColumn:
                   "1 / -1",
-                padding: "25px",
+                padding:
+                  "25px",
                 textAlign:
                   "center",
                 border: `1px solid ${GOLD}`,
@@ -2226,15 +2860,18 @@ export default function HomePage() {
                   "8px",
               }}
             >
-              {selectedCategory} items
-              will appear here after
-              adding them from Admin Menu.
+              {selectedCategory}{" "}
+              items will
+              appear here
+              after adding
+              them from
+              Admin Menu.
             </div>
           )}
         </div>
       </section>
 
-      {/* BOOKING + BOOKING DETAILS + GALLERY + REVIEWS */}
+      {/* BOOKING + DETAILS + GALLERY + REVIEWS */}
       <section
         className="utilityGrid"
         id="booking"
@@ -2243,133 +2880,189 @@ export default function HomePage() {
         <div className="utilityCard">
           <div className="utilityTitle">
             <span>▣</span>
-            {t("tableBooking")}
+            {t(
+              "tableBooking"
+            )}
           </div>
 
           <div className="utilitySub">
-            {t("reserve")}
+            {t(
+              "reserve"
+            )}
           </div>
 
           <form
-            onSubmit={saveReservation}
+            onSubmit={
+              saveReservation
+            }
           >
             <div className="formGrid">
               <label className="field">
-                {t("name")}
+                {t(
+                  "name"
+                )}
 
                 <input
                   value={
                     bookingForm.name
                   }
-                  onChange={(e) =>
-                    setBookingForm({
-                      ...bookingForm,
-                      name:
-                        e.target.value,
-                    })
+                  onChange={(
+                    e
+                  ) =>
+                    setBookingForm(
+                      {
+                        ...bookingForm,
+                        name:
+                          e.target
+                            .value,
+                      }
+                    )
                   }
                   placeholder="Your name"
                 />
               </label>
 
               <label className="field">
-                {t("phone")}
+                {t(
+                  "phone"
+                )}
 
                 <input
                   value={
                     bookingForm.phone
                   }
-                  onChange={(e) =>
-                    setBookingForm({
-                      ...bookingForm,
-                      phone:
-                        e.target.value,
-                    })
+                  onChange={(
+                    e
+                  ) =>
+                    setBookingForm(
+                      {
+                        ...bookingForm,
+                        phone:
+                          e.target
+                            .value,
+                      }
+                    )
                   }
                   placeholder="Enter phone number"
                 />
               </label>
 
               <label className="field">
-                {t("email")}
+                {t(
+                  "email"
+                )}
 
                 <input
                   type="email"
                   value={
                     bookingForm.email
                   }
-                  onChange={(e) =>
-                    setBookingForm({
-                      ...bookingForm,
-                      email:
-                        e.target.value,
-                    })
+                  onChange={(
+                    e
+                  ) =>
+                    setBookingForm(
+                      {
+                        ...bookingForm,
+                        email:
+                          e.target
+                            .value,
+                      }
+                    )
                   }
                   placeholder="Enter email address"
                 />
               </label>
 
               <label className="field">
-                {t("date")}
+                {t(
+                  "date"
+                )}
 
                 <input
                   type="date"
                   value={
                     bookingForm.date
                   }
-                  onChange={(e) =>
-                    setBookingForm({
-                      ...bookingForm,
-                      date:
-                        e.target.value,
-                    })
+                  onChange={(
+                    e
+                  ) =>
+                    setBookingForm(
+                      {
+                        ...bookingForm,
+                        date:
+                          e.target
+                            .value,
+                      }
+                    )
                   }
                 />
               </label>
 
               <label className="field">
-                {t("time")}
+                {t(
+                  "time"
+                )}
 
                 <input
                   type="time"
                   value={
                     bookingForm.time
                   }
-                  onChange={(e) =>
-                    setBookingForm({
-                      ...bookingForm,
-                      time:
-                        e.target.value,
-                    })
+                  onChange={(
+                    e
+                  ) =>
+                    setBookingForm(
+                      {
+                        ...bookingForm,
+                        time:
+                          e.target
+                            .value,
+                      }
+                    )
                   }
                 />
               </label>
 
               <label className="field">
-                {t("persons")}
+                {t(
+                  "persons"
+                )}
 
                 <select
                   value={
                     bookingForm.persons
                   }
-                  onChange={(e) =>
-                    setBookingForm({
-                      ...bookingForm,
-                      persons:
-                        e.target.value,
-                    })
+                  onChange={(
+                    e
+                  ) =>
+                    setBookingForm(
+                      {
+                        ...bookingForm,
+                        persons:
+                          e.target
+                            .value,
+                      }
+                    )
                   }
                 >
                   {[
                     1, 2, 3, 4, 5,
                     6, 7, 8, 9, 10,
                   ].map(
-                    (number) => (
+                    (
+                      number
+                    ) => (
                       <option
-                        key={number}
-                        value={number}
+                        key={
+                          number
+                        }
+                        value={
+                          number
+                        }
                       >
-                        {number}
+                        {
+                          number
+                        }
                       </option>
                     )
                   )}
@@ -2377,33 +3070,44 @@ export default function HomePage() {
               </label>
 
               <label className="field">
-                {t("category")}
+                {t(
+                  "category"
+                )}
 
                 <select
                   value={
                     bookingForm.category
                   }
-                  onChange={(e) =>
-                    setBookingForm({
-                      ...bookingForm,
-                      category:
-                        e.target.value,
-                      item: "",
-                    })
+                  onChange={(
+                    e
+                  ) =>
+                    setBookingForm(
+                      {
+                        ...bookingForm,
+                        category:
+                          e.target
+                            .value,
+                        item: "",
+                      }
+                    )
                   }
                 >
                   {categories.map(
                     (
-                      category,
-                      index
+                      category
                     ) => (
                       <option
-                        key={`${category}-${index}`}
+                        key={
+                          category.id ||
+                          category.name
+                        }
                         value={
-                          category
+                          category.name
                         }
                       >
-                        {category}
+                        {
+                          category.name
+                        }
                       </option>
                     )
                   )}
@@ -2411,18 +3115,25 @@ export default function HomePage() {
               </label>
 
               <label className="field">
-                {t("item")}
+                {t(
+                  "item"
+                )}
 
                 <select
                   value={
                     bookingForm.item
                   }
-                  onChange={(e) =>
-                    setBookingForm({
-                      ...bookingForm,
-                      item:
-                        e.target.value,
-                    })
+                  onChange={(
+                    e
+                  ) =>
+                    setBookingForm(
+                      {
+                        ...bookingForm,
+                        item:
+                          e.target
+                            .value,
+                      }
+                    )
                   }
                 >
                   <option value="">
@@ -2431,7 +3142,9 @@ export default function HomePage() {
 
                   {menuItems
                     .filter(
-                      (item) =>
+                      (
+                        item
+                      ) =>
                         String(
                           item.category ||
                             ""
@@ -2453,7 +3166,9 @@ export default function HomePage() {
                             ""
                           }
                         >
-                          {item.name}
+                          {
+                            item.name
+                          }
                         </option>
                       )
                     )}
@@ -2461,18 +3176,25 @@ export default function HomePage() {
               </label>
 
               <label className="field full">
-                {t("special")}
+                {t(
+                  "special"
+                )}
 
                 <textarea
                   value={
                     bookingForm.note
                   }
-                  onChange={(e) =>
-                    setBookingForm({
-                      ...bookingForm,
-                      note:
-                        e.target.value,
-                    })
+                  onChange={(
+                    e
+                  ) =>
+                    setBookingForm(
+                      {
+                        ...bookingForm,
+                        note:
+                          e.target
+                            .value,
+                      }
+                    )
                   }
                   placeholder="Write your request (Optional)"
                 />
@@ -2484,34 +3206,45 @@ export default function HomePage() {
                 className="goldButton"
                 type="submit"
               >
-                {t("confirm")}
+                {t(
+                  "confirm"
+                )}
               </button>
 
               <button
                 className="dangerButton"
                 type="button"
                 onClick={() =>
-                  setBookingForm({
-                    name: "",
-                    phone: "",
-                    email: "",
-                    date: "",
-                    time: "",
-                    persons: "2",
-                    category:
-                      "Biryani",
-                    item: "",
-                    note: "",
-                  })
+                  setBookingForm(
+                    {
+                      name: "",
+                      phone: "",
+                      email: "",
+                      date: "",
+                      time: "",
+                      persons:
+                        "2",
+                      category:
+                        categories[0]
+                          ?.name ||
+                        "Biryani",
+                      item: "",
+                      note: "",
+                    }
+                  )
                 }
               >
-                {t("cancel")}
+                {t(
+                  "cancel"
+                )}
               </button>
             </div>
 
             {bookingMessage && (
               <div className="message">
-                {bookingMessage}
+                {
+                  bookingMessage
+                }
               </div>
             )}
           </form>
@@ -2522,25 +3255,34 @@ export default function HomePage() {
           <div>
             <div className="utilityTitle">
               <span>▣</span>
-              {t("bookingDetails")}
+              {t(
+                "bookingDetails"
+              )}
             </div>
 
             <div className="utilitySub">
-              {t("viewEditCancel")}
+              {t(
+                "viewEditCancel"
+              )}
             </div>
           </div>
 
           <div
             style={{
-              fontSize: "11px",
+              fontSize:
+                "11px",
               lineHeight: 1.6,
               opacity: 0.8,
-              marginBottom: "10px",
+              marginBottom:
+                "10px",
             }}
           >
-            Find your booking using your
-            phone/email and booking code.
-            You can view, edit or cancel
+            Find your
+            booking using
+            your phone/email
+            and booking code.
+            You can view,
+            edit or cancel
             your reservation.
           </div>
 
@@ -2548,7 +3290,10 @@ export default function HomePage() {
             href="/booking-details"
             className="goldButton"
           >
-            {t("bookingDetails")} →
+            {t(
+              "bookingDetails"
+            )}{" "}
+            →
           </a>
         </div>
 
@@ -2558,20 +3303,26 @@ export default function HomePage() {
             <div>
               <div className="utilityTitle">
                 <span>▣</span>
-                {t("galleryTitle")}
+                {t(
+                  "galleryTitle"
+                )}
               </div>
 
               <div className="utilitySub">
-                {t("gallerySub")}
+                {t(
+                  "gallerySub"
+                )}
               </div>
             </div>
 
-            {gallery.length > 0 ? (
+            {gallery.length >
+            0 ? (
               <img
                 className="galleryPreview"
                 src={
                   safeImage(
-                    gallery[0].image
+                    gallery[0]
+                      .image
                   ) ||
                   heroImage
                 }
@@ -2580,7 +3331,9 @@ export default function HomePage() {
             ) : (
               <img
                 className="galleryPreview"
-                src={heroImage}
+                src={
+                  heroImage
+                }
                 alt="Gallery"
               />
             )}
@@ -2588,10 +3341,15 @@ export default function HomePage() {
             <button
               className="goldButton"
               onClick={() =>
-                setGalleryOpen(true)
+                setGalleryOpen(
+                  true
+                )
               }
             >
-              {t("viewGallery")} →
+              {t(
+                "viewGallery"
+              )}{" "}
+              →
             </button>
           </div>
 
@@ -2599,11 +3357,14 @@ export default function HomePage() {
             <div>
               <div className="utilityTitle">
                 <span>★</span>
-                {t("reviews")}
+                {t(
+                  "reviews"
+                )}
               </div>
 
               <div className="utilitySub">
-                {totalReviews > 0
+                {totalReviews >
+                0
                   ? `${averageRating}/5 · ${totalReviews} reviews`
                   : "Share your experience with us"}
               </div>
@@ -2612,10 +3373,15 @@ export default function HomePage() {
             <button
               className="goldButton"
               onClick={() =>
-                setReviewsOpen(true)
+                setReviewsOpen(
+                  true
+                )
               }
             >
-              {t("viewReviews")} →
+              {t(
+                "viewReviews"
+              )}{" "}
+              →
             </button>
           </div>
         </div>
@@ -2628,7 +3394,8 @@ export default function HomePage() {
       >
         <div className="footerCol">
           <div className="footerTitle">
-            📍 {t("map")}
+            📍{" "}
+            {t("map")}
           </div>
 
           <div className="footerLine">
@@ -2641,13 +3408,18 @@ export default function HomePage() {
             rel="noreferrer"
             className="goldButton"
           >
-            {t("openMap")}
+            {t(
+              "openMap"
+            )}
           </a>
         </div>
 
         <div className="footerCol">
           <div className="footerTitle">
-            ☎ {t("contactUs")}
+            ☎{" "}
+            {t(
+              "contactUs"
+            )}
           </div>
 
           <div className="footerLine">
@@ -2692,10 +3464,12 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* SOCIAL MEDIA */}
         <div className="footerCol">
           <div className="footerTitle">
-            ◉ {t("socialMedia")}
+            ◉{" "}
+            {t(
+              "socialMedia"
+            )}
           </div>
 
           {facebook && (
@@ -2777,16 +3551,18 @@ export default function HomePage() {
             !youtube &&
             !whatsapp && (
               <div className="footerLine">
-                Social media links can be added
-                from Admin.
+                Social media
+                links can be
+                added from
+                Admin.
               </div>
             )}
         </div>
 
-        {/* QUICK LINKS */}
         <div className="footerCol">
           <div className="footerTitle">
-            ⚡ {t("quick")}
+            ⚡{" "}
+            {t("quick")}
           </div>
 
           <div className="footerLine">
@@ -2794,7 +3570,8 @@ export default function HomePage() {
               href="#about"
               className="footerLink"
             >
-              👥 {t("about")}
+              👥{" "}
+              {t("about")}
             </a>
           </div>
 
@@ -2803,14 +3580,17 @@ export default function HomePage() {
               href="#menu"
               className="footerLink"
             >
-              ✉ {t("menu")}
+              ✉{" "}
+              {t("menu")}
             </a>
           </div>
 
           <div className="footerLine">
             <button
               onClick={() =>
-                setGalleryOpen(true)
+                setGalleryOpen(
+                  true
+                )
               }
               className="footerLink"
               style={{
@@ -2818,17 +3598,23 @@ export default function HomePage() {
                   "transparent",
                 border: 0,
                 padding: 0,
-                color: "inherit",
+                color:
+                  "inherit",
               }}
             >
-              ▣ {t("gallery")}
+              ▣{" "}
+              {t(
+                "gallery"
+              )}
             </button>
           </div>
 
           <div className="footerLine">
             <button
               onClick={() =>
-                setReviewsOpen(true)
+                setReviewsOpen(
+                  true
+                )
               }
               className="footerLink"
               style={{
@@ -2836,10 +3622,14 @@ export default function HomePage() {
                   "transparent",
                 border: 0,
                 padding: 0,
-                color: "inherit",
+                color:
+                  "inherit",
               }}
             >
-              ★ {t("reviews")}
+              ★{" "}
+              {t(
+                "reviews"
+              )}
             </button>
           </div>
 
@@ -2848,7 +3638,10 @@ export default function HomePage() {
               href="/booking-details"
               className="footerLink"
             >
-              ▣ {t("bookingDetails")}
+              ▣{" "}
+              {t(
+                "bookingDetails"
+              )}
             </a>
           </div>
 
@@ -2857,7 +3650,10 @@ export default function HomePage() {
               href="#contact"
               className="footerLink"
             >
-              ☎ {t("contact")}
+              ☎{" "}
+              {t(
+                "contact"
+              )}
             </a>
           </div>
         </div>
@@ -2865,13 +3661,16 @@ export default function HomePage() {
 
       <div className="copyright">
         <span>
-          © 2025 {restaurantName}. All rights
+          © 2025{" "}
+          {restaurantName}.
+          All rights
           reserved.
         </span>
 
         <span
           style={{
-            color: GOLD_LIGHT,
+            color:
+              GOLD_LIGHT,
           }}
         >
           ❧ Good Food&nbsp; • &nbsp;Good Mood ❧
@@ -2883,7 +3682,9 @@ export default function HomePage() {
         <div
           className="modalBackdrop"
           onClick={() =>
-            setReviewsOpen(false)
+            setReviewsOpen(
+              false
+            )
           }
         >
           <div
@@ -2895,28 +3696,37 @@ export default function HomePage() {
             <div className="modalHeader">
               <div>
                 <h2>
-                  ★ {t("reviews")}
+                  ★{" "}
+                  {t(
+                    "reviews"
+                  )}
                 </h2>
 
                 <div
                   style={{
-                    marginTop: "4px",
+                    marginTop:
+                      "4px",
                   }}
                 >
                   <span className="stars">
-                    {totalReviews > 0
+                    {totalReviews >
+                    0
                       ? "★★★★★"
                       : "☆☆☆☆☆"}
                   </span>{" "}
-                  {averageRating}/5 ·{" "}
-                  {totalReviews} reviews
+                  {averageRating}/5
+                  {" · "}
+                  {totalReviews}{" "}
+                  reviews
                 </div>
               </div>
 
               <button
                 className="closeButton"
                 onClick={() =>
-                  setReviewsOpen(false)
+                  setReviewsOpen(
+                    false
+                  )
                 }
               >
                 ×
@@ -2924,13 +3734,16 @@ export default function HomePage() {
             </div>
 
             <div className="reviewLayout">
-              {/* WRITE REVIEW */}
               <form
                 className="reviewForm"
-                onSubmit={submitReview}
+                onSubmit={
+                  submitReview
+                }
               >
                 <h3>
-                  {t("writeReview")}
+                  {t(
+                    "writeReview"
+                  )}
                 </h3>
 
                 <input
@@ -2940,12 +3753,17 @@ export default function HomePage() {
                   value={
                     reviewForm.name
                   }
-                  onChange={(e) =>
-                    setReviewForm({
-                      ...reviewForm,
-                      name:
-                        e.target.value,
-                    })
+                  onChange={(
+                    e
+                  ) =>
+                    setReviewForm(
+                      {
+                        ...reviewForm,
+                        name:
+                          e.target
+                            .value,
+                      }
+                    )
                   }
                 />
 
@@ -2956,12 +3774,17 @@ export default function HomePage() {
                   value={
                     reviewForm.phone
                   }
-                  onChange={(e) =>
-                    setReviewForm({
-                      ...reviewForm,
-                      phone:
-                        e.target.value,
-                    })
+                  onChange={(
+                    e
+                  ) =>
+                    setReviewForm(
+                      {
+                        ...reviewForm,
+                        phone:
+                          e.target
+                            .value,
+                      }
+                    )
                   }
                 />
 
@@ -2973,12 +3796,17 @@ export default function HomePage() {
                   value={
                     reviewForm.email
                   }
-                  onChange={(e) =>
-                    setReviewForm({
-                      ...reviewForm,
-                      email:
-                        e.target.value,
-                    })
+                  onChange={(
+                    e
+                  ) =>
+                    setReviewForm(
+                      {
+                        ...reviewForm,
+                        email:
+                          e.target
+                            .value,
+                      }
+                    )
                   }
                 />
 
@@ -2991,14 +3819,27 @@ export default function HomePage() {
                         "4px",
                     }}
                   >
-                    {t("rating")} ⭐
+                    {t(
+                      "rating"
+                    )}{" "}
+                    ⭐
                   </div>
 
                   <div className="ratingButtons">
-                    {[1, 2, 3, 4, 5].map(
-                      (star) => (
+                    {[
+                      1,
+                      2,
+                      3,
+                      4,
+                      5,
+                    ].map(
+                      (
+                        star
+                      ) => (
                         <button
-                          key={star}
+                          key={
+                            star
+                          }
                           type="button"
                           className={`starButton ${
                             reviewForm.rating >=
@@ -3007,11 +3848,13 @@ export default function HomePage() {
                               : ""
                           }`}
                           onClick={() =>
-                            setReviewForm({
-                              ...reviewForm,
-                              rating:
-                                star,
-                            })
+                            setReviewForm(
+                              {
+                                ...reviewForm,
+                                rating:
+                                  star,
+                              }
+                            )
                           }
                         >
                           ★
@@ -3028,12 +3871,17 @@ export default function HomePage() {
                   value={
                     reviewForm.review
                   }
-                  onChange={(e) =>
-                    setReviewForm({
-                      ...reviewForm,
-                      review:
-                        e.target.value,
-                    })
+                  onChange={(
+                    e
+                  ) =>
+                    setReviewForm(
+                      {
+                        ...reviewForm,
+                        review:
+                          e.target
+                            .value,
+                      }
+                    )
                   }
                 />
 
@@ -3041,41 +3889,56 @@ export default function HomePage() {
                   className="goldButton"
                   type="submit"
                 >
-                  {t("submitReview")}
+                  {t(
+                    "submitReview"
+                  )}
                 </button>
 
                 {reviewMessage && (
                   <div className="message">
-                    {reviewMessage}
+                    {
+                      reviewMessage
+                    }
                   </div>
                 )}
 
                 <div
                   style={{
-                    fontSize: "9px",
-                    color: "#888",
-                    lineHeight: 1.4,
+                    fontSize:
+                      "9px",
+                    color:
+                      "#888",
+                    lineHeight:
+                      1.4,
                     marginTop:
                       "2px",
                   }}
                 >
-                  Your phone number and
-                  email are used only for
-                  customer identification
-                  and will never be shown
+                  Your phone
+                  number and
+                  email are used
+                  only for
+                  customer
+                  identification
+                  and will never
+                  be shown
                   publicly.
                 </div>
               </form>
 
-              {/* ALL REVIEWS */}
               <div className="reviewList">
                 <h3>
-                  {t("allReviews")}
+                  {t(
+                    "allReviews"
+                  )}
                 </h3>
 
-                {reviews.length > 0 ? (
+                {reviews.length >
+                0 ? (
                   reviews.map(
-                    (review) => (
+                    (
+                      review
+                    ) => (
                       <div
                         className="reviewItem"
                         key={
@@ -3132,13 +3995,18 @@ export default function HomePage() {
                         </div>
 
                         <div className="reviewText">
-                          {review.review}
+                          {
+                            review.review
+                          }
                         </div>
 
                         {review.replies
                           ?.slice()
                           .sort(
-                            (a, b) =>
+                            (
+                              a,
+                              b
+                            ) =>
                               new Date(
                                 a.date
                               ).getTime() -
@@ -3201,7 +4069,9 @@ export default function HomePage() {
         <div
           className="modalBackdrop"
           onClick={() =>
-            setGalleryOpen(false)
+            setGalleryOpen(
+              false
+            )
           }
         >
           <div
@@ -3221,17 +4091,23 @@ export default function HomePage() {
               <button
                 className="closeButton"
                 onClick={() =>
-                  setGalleryOpen(false)
+                  setGalleryOpen(
+                    false
+                  )
                 }
               >
                 ×
               </button>
             </div>
 
-            {gallery.length > 0 ? (
+            {gallery.length >
+            0 ? (
               <div className="galleryGrid">
                 {gallery.map(
-                  (item, index) => (
+                  (
+                    item,
+                    index
+                  ) => (
                     <img
                       key={
                         item.id ||
