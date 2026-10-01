@@ -38,8 +38,13 @@ const DB_VERSION = 1;
 const STORE_NAME = "gallery";
 
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
-const MAX_IMAGE_WIDTH = 2200;
-const JPEG_QUALITY = 0.86;
+
+// More efficient browser storage
+const MAX_IMAGE_WIDTH = 1800;
+const JPEG_QUALITY = 0.78;
+
+// No gallery-count limit
+const MAX_UPLOAD_COUNT = 1000;
 
 const GOLD = "#d9a441";
 const GOLD_LIGHT = "#f6cf70";
@@ -51,36 +56,63 @@ const TEXT = "#f5f1e8";
 const MUTED = "#a9a39a";
 
 function createId() {
-  return Date.now() + Math.floor(Math.random() * 1000000);
+  return (
+    Date.now() +
+    Math.floor(Math.random() * 1000000)
+  );
 }
 
 function openGalleryDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    if (typeof window === "undefined" || !("indexedDB" in window)) {
-      reject(new Error("IndexedDB is not supported in this browser."));
+    if (
+      typeof window === "undefined" ||
+      !("indexedDB" in window)
+    ) {
+      reject(
+        new Error(
+          "IndexedDB is not supported in this browser."
+        )
+      );
       return;
     }
 
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    const request = indexedDB.open(
+      DB_NAME,
+      DB_VERSION
+    );
 
     request.onerror = () => {
       reject(
         request.error ||
-          new Error("Unable to open gallery database.")
+          new Error(
+            "Unable to open gallery database."
+          )
       );
     };
 
     request.onupgradeneeded = () => {
       const db = request.result;
 
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        const store = db.createObjectStore(STORE_NAME, {
-          keyPath: "id",
-        });
+      if (
+        !db.objectStoreNames.contains(
+          STORE_NAME
+        )
+      ) {
+        const store =
+          db.createObjectStore(
+            STORE_NAME,
+            {
+              keyPath: "id",
+            }
+          );
 
-        store.createIndex("order", "order", {
-          unique: false,
-        });
+        store.createIndex(
+          "order",
+          "order",
+          {
+            unique: false,
+          }
+        );
       }
     };
 
@@ -90,35 +122,61 @@ function openGalleryDB(): Promise<IDBDatabase> {
   });
 }
 
-function getAllStoredItems(): Promise<StoredGalleryItem[]> {
+function getAllStoredItems(): Promise<
+  StoredGalleryItem[]
+> {
   return new Promise(async (resolve, reject) => {
     try {
-      const db = await openGalleryDB();
+      const db =
+        await openGalleryDB();
 
-      const transaction = db.transaction(STORE_NAME, "readonly");
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.getAll();
+      const transaction =
+        db.transaction(
+          STORE_NAME,
+          "readonly"
+        );
+
+      const store =
+        transaction.objectStore(
+          STORE_NAME
+        );
+
+      const request =
+        store.getAll();
 
       request.onerror = () => {
         db.close();
+
         reject(
           request.error ||
-            new Error("Unable to read gallery.")
+            new Error(
+              "Unable to read gallery."
+            )
         );
       };
 
       request.onsuccess = () => {
-        const result = Array.isArray(request.result)
-          ? (request.result as StoredGalleryItem[])
-          : [];
+        const result =
+          Array.isArray(
+            request.result
+          )
+            ? (request.result as StoredGalleryItem[])
+            : [];
 
         db.close();
 
         result.sort((a, b) => {
           const orderA =
-            typeof a.order === "number" ? a.order : 0;
+            typeof a.order ===
+            "number"
+              ? a.order
+              : 0;
+
           const orderB =
-            typeof b.order === "number" ? b.order : 0;
+            typeof b.order ===
+            "number"
+              ? b.order
+              : 0;
 
           return orderA - orderB;
         });
@@ -131,29 +189,53 @@ function getAllStoredItems(): Promise<StoredGalleryItem[]> {
   });
 }
 
-function saveStoredItems(
-  items: StoredGalleryItem[]
+/**
+ * Save ONE image at a time.
+ *
+ * This is important because a large multi-image
+ * IndexedDB transaction can fail on some browsers
+ * when many images are uploaded together.
+ */
+function saveStoredItem(
+  item: StoredGalleryItem
 ): Promise<void> {
   return new Promise(async (resolve, reject) => {
     try {
-      const db = await openGalleryDB();
+      const db =
+        await openGalleryDB();
 
-      const transaction = db.transaction(
-        STORE_NAME,
-        "readwrite"
-      );
+      const transaction =
+        db.transaction(
+          STORE_NAME,
+          "readwrite"
+        );
 
-      const store = transaction.objectStore(STORE_NAME);
+      const store =
+        transaction.objectStore(
+          STORE_NAME
+        );
 
-      for (const item of items) {
-        store.put(item);
-      }
+      store.put(item);
 
       transaction.onerror = () => {
         db.close();
+
         reject(
           transaction.error ||
-            new Error("Unable to save gallery images.")
+            new Error(
+              "Unable to save gallery image."
+            )
+        );
+      };
+
+      transaction.onabort = () => {
+        db.close();
+
+        reject(
+          transaction.error ||
+            new Error(
+              "Gallery image save was aborted."
+            )
         );
       };
 
@@ -167,25 +249,43 @@ function saveStoredItems(
   });
 }
 
-function deleteStoredItem(id: number): Promise<void> {
+async function saveStoredItems(
+  items: StoredGalleryItem[]
+): Promise<void> {
+  for (const item of items) {
+    await saveStoredItem(item);
+  }
+}
+
+function deleteStoredItem(
+  id: number
+): Promise<void> {
   return new Promise(async (resolve, reject) => {
     try {
-      const db = await openGalleryDB();
+      const db =
+        await openGalleryDB();
 
-      const transaction = db.transaction(
-        STORE_NAME,
-        "readwrite"
-      );
+      const transaction =
+        db.transaction(
+          STORE_NAME,
+          "readwrite"
+        );
 
-      const store = transaction.objectStore(STORE_NAME);
+      const store =
+        transaction.objectStore(
+          STORE_NAME
+        );
 
       store.delete(id);
 
       transaction.onerror = () => {
         db.close();
+
         reject(
           transaction.error ||
-            new Error("Unable to delete image.")
+            new Error(
+              "Unable to delete image."
+            )
         );
       };
 
@@ -202,22 +302,30 @@ function deleteStoredItem(id: number): Promise<void> {
 function clearStoredItems(): Promise<void> {
   return new Promise(async (resolve, reject) => {
     try {
-      const db = await openGalleryDB();
+      const db =
+        await openGalleryDB();
 
-      const transaction = db.transaction(
-        STORE_NAME,
-        "readwrite"
-      );
+      const transaction =
+        db.transaction(
+          STORE_NAME,
+          "readwrite"
+        );
 
-      const store = transaction.objectStore(STORE_NAME);
+      const store =
+        transaction.objectStore(
+          STORE_NAME
+        );
 
       store.clear();
 
       transaction.onerror = () => {
         db.close();
+
         reject(
           transaction.error ||
-            new Error("Unable to clear gallery.")
+            new Error(
+              "Unable to clear gallery."
+            )
         );
       };
 
@@ -231,28 +339,41 @@ function clearStoredItems(): Promise<void> {
   });
 }
 
-function dataUrlToBlob(dataUrl: string): Blob | null {
+function dataUrlToBlob(
+  dataUrl: string
+): Blob | null {
   try {
-    const parts = dataUrl.split(",");
+    const parts =
+      dataUrl.split(",");
 
     if (parts.length < 2) {
       return null;
     }
 
-    const mimeMatch = parts[0].match(
-      /data:(.*?);base64/
-    );
+    const mimeMatch =
+      parts[0].match(
+        /data:(.*?);base64/
+      );
 
     const mime =
-      mimeMatch?.[1] || "image/jpeg";
+      mimeMatch?.[1] ||
+      "image/jpeg";
 
-    const binary = atob(parts[1]);
+    const binary =
+      atob(parts[1]);
 
-    const length = binary.length;
-    const bytes = new Uint8Array(length);
+    const bytes =
+      new Uint8Array(
+        binary.length
+      );
 
-    for (let i = 0; i < length; i++) {
-      bytes[i] = binary.charCodeAt(i);
+    for (
+      let i = 0;
+      i < binary.length;
+      i++
+    ) {
+      bytes[i] =
+        binary.charCodeAt(i);
     }
 
     return new Blob([bytes], {
@@ -263,116 +384,185 @@ function dataUrlToBlob(dataUrl: string): Blob | null {
   }
 }
 
-function compressImage(file: File): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    if (!file.type.startsWith("image/")) {
-      reject(
-        new Error(
-          `${file.name} is not a supported image file.`
+/**
+ * Compress image before IndexedDB storage.
+ *
+ * WebP is attempted first because it normally
+ * produces much smaller files.
+ *
+ * JPEG is used as a reliable fallback.
+ */
+function compressImage(
+  file: File
+): Promise<Blob> {
+  return new Promise(
+    (resolve, reject) => {
+      if (
+        !file.type.startsWith(
+          "image/"
         )
-      );
-      return;
-    }
-
-    if (file.size > MAX_FILE_SIZE) {
-      reject(
-        new Error(
-          `${file.name} is larger than 15 MB.`
-        )
-      );
-      return;
-    }
-
-    const reader = new FileReader();
-
-    reader.onerror = () => {
-      reject(
-        new Error(
-          `Unable to read ${file.name}.`
-        )
-      );
-    };
-
-    reader.onload = () => {
-      const img = new Image();
-
-      img.onerror = () => {
+      ) {
         reject(
           new Error(
-            `Unable to process ${file.name}.`
+            `${file.name} is not a supported image file.`
+          )
+        );
+        return;
+      }
+
+      if (
+        file.size >
+        MAX_FILE_SIZE
+      ) {
+        reject(
+          new Error(
+            `${file.name} is larger than 15 MB.`
+          )
+        );
+        return;
+      }
+
+      const reader =
+        new FileReader();
+
+      reader.onerror = () => {
+        reject(
+          new Error(
+            `Unable to read ${file.name}.`
           )
         );
       };
 
-      img.onload = () => {
-        let width = img.width;
-        let height = img.height;
+      reader.onload = () => {
+        const img =
+          new Image();
 
-        if (
-          width > MAX_IMAGE_WIDTH
-        ) {
-          const ratio =
-            MAX_IMAGE_WIDTH / width;
-
-          width = MAX_IMAGE_WIDTH;
-          height = Math.round(
-            height * ratio
-          );
-        }
-
-        const canvas =
-          document.createElement(
-            "canvas"
-          );
-
-        canvas.width = width;
-        canvas.height = height;
-
-        const context =
-          canvas.getContext("2d");
-
-        if (!context) {
+        img.onerror = () => {
           reject(
             new Error(
-              "Unable to process image."
+              `Unable to process ${file.name}.`
             )
           );
-          return;
-        }
+        };
 
-        context.drawImage(
-          img,
-          0,
-          0,
-          width,
-          height
-        );
+        img.onload = () => {
+          let width =
+            img.naturalWidth ||
+            img.width;
 
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) {
-              reject(
-                new Error(
-                  `Unable to compress ${file.name}.`
-                )
+          let height =
+            img.naturalHeight ||
+            img.height;
+
+          if (
+            width >
+            MAX_IMAGE_WIDTH
+          ) {
+            const ratio =
+              MAX_IMAGE_WIDTH /
+              width;
+
+            width =
+              MAX_IMAGE_WIDTH;
+
+            height =
+              Math.round(
+                height * ratio
               );
-              return;
-            }
+          }
 
-            resolve(blob);
-          },
-          "image/jpeg",
-          JPEG_QUALITY
-        );
+          const canvas =
+            document.createElement(
+              "canvas"
+            );
+
+          canvas.width =
+            width;
+
+          canvas.height =
+            height;
+
+          const context =
+            canvas.getContext(
+              "2d"
+            );
+
+          if (!context) {
+            reject(
+              new Error(
+                "Unable to process image."
+              )
+            );
+            return;
+          }
+
+          context.imageSmoothingEnabled =
+            true;
+
+          context.imageSmoothingQuality =
+            "high";
+
+          context.drawImage(
+            img,
+            0,
+            0,
+            width,
+            height
+          );
+
+          // Try WebP first.
+          canvas.toBlob(
+            (webpBlob) => {
+              if (
+                webpBlob &&
+                webpBlob.size > 0 &&
+                webpBlob.type ===
+                  "image/webp"
+              ) {
+                resolve(
+                  webpBlob
+                );
+                return;
+              }
+
+              // JPEG fallback.
+              canvas.toBlob(
+                (jpegBlob) => {
+                  if (
+                    !jpegBlob
+                  ) {
+                    reject(
+                      new Error(
+                        `Unable to compress ${file.name}.`
+                      )
+                    );
+                    return;
+                  }
+
+                  resolve(
+                    jpegBlob
+                  );
+                },
+                "image/jpeg",
+                JPEG_QUALITY
+              );
+            },
+            "image/webp",
+            0.78
+          );
+        };
+
+        img.src =
+          String(
+            reader.result
+          );
       };
 
-      img.src = String(
-        reader.result
+      reader.readAsDataURL(
+        file
       );
-    };
-
-    reader.readAsDataURL(file);
-  });
+    }
+  );
 }
 
 async function migrateOldLocalStorage(): Promise<number> {
@@ -410,26 +600,34 @@ async function migrateOldLocalStorage(): Promise<number> {
     const migrated: StoredGalleryItem[] =
       [];
 
-    for (const item of parsed) {
+    for (
+      const item of parsed
+    ) {
       if (
         !item ||
         !item.image ||
-        typeof item.image !== "string"
+        typeof item.image !==
+          "string"
       ) {
         continue;
       }
 
       const id =
-        typeof item.id === "number"
+        typeof item.id ===
+        "number"
           ? item.id
           : createId();
 
-      if (existingIds.has(id)) {
+      if (
+        existingIds.has(id)
+      ) {
         continue;
       }
 
       const blob =
-        dataUrlToBlob(item.image);
+        dataUrlToBlob(
+          item.image
+        );
 
       if (!blob) {
         continue;
@@ -444,7 +642,8 @@ async function migrateOldLocalStorage(): Promise<number> {
             ? item.category
             : "Restaurant",
         visible:
-          item.visible !== false,
+          item.visible !==
+          false,
         order:
           typeof item.order ===
           "number"
@@ -453,7 +652,9 @@ async function migrateOldLocalStorage(): Promise<number> {
       });
     }
 
-    if (migrated.length > 0) {
+    if (
+      migrated.length > 0
+    ) {
       await saveStoredItems(
         migrated
       );
@@ -464,19 +665,30 @@ async function migrateOldLocalStorage(): Promise<number> {
     );
 
     return migrated.length;
-  } catch {
+  } catch (error) {
+    console.error(
+      "Gallery migration error:",
+      error
+    );
+
     return 0;
   }
 }
 
 export default function AdminGalleryPage() {
-  const [items, setItems] =
-    useState<GalleryItem[]>([]);
+  const [
+    items,
+    setItems,
+  ] = useState<GalleryItem[]>(
+    []
+  );
 
   const [
     selectedImages,
     setSelectedImages,
-  ] = useState<SelectedImage[]>([]);
+  ] = useState<
+    SelectedImage[]
+  >([]);
 
   const [
     isDragging,
@@ -520,10 +732,14 @@ export default function AdminGalleryPage() {
   const [
     selectedCategory,
     setSelectedCategory,
-  ] = useState("Restaurant");
+  ] = useState(
+    "Restaurant"
+  );
 
   const inputRef =
-    useRef<HTMLInputElement>(null);
+    useRef<HTMLInputElement>(
+      null
+    );
 
   const objectUrlsRef =
     useRef<string[]>([]);
@@ -531,86 +747,105 @@ export default function AdminGalleryPage() {
   const selectedUrlsRef =
     useRef<string[]>([]);
 
-  const showMessage = useCallback(
-    (
-      text: string,
-      type:
-        | "success"
-        | "error"
-    ) => {
-      setMessage(text);
-      setMessageType(type);
+  const showMessage =
+    useCallback(
+      (
+        text: string,
+        type:
+          | "success"
+          | "error"
+      ) => {
+        setMessage(text);
+        setMessageType(type);
 
-      window.setTimeout(() => {
-        setMessage("");
-        setMessageType("");
-      }, 4500);
-    },
-    []
-  );
+        window.setTimeout(
+          () => {
+            setMessage("");
+            setMessageType(
+              ""
+            );
+          },
+          4500
+        );
+      },
+      []
+    );
 
   const loadGallery =
-    useCallback(async () => {
-      try {
-        setIsLoading(true);
+    useCallback(
+      async () => {
+        try {
+          setIsLoading(
+            true
+          );
 
-        await migrateOldLocalStorage();
+          await migrateOldLocalStorage();
 
-        const stored =
-          await getAllStoredItems();
+          const stored =
+            await getAllStoredItems();
 
-        objectUrlsRef.current.forEach(
-          (url) => {
-            URL.revokeObjectURL(
-              url
-            );
-          }
-        );
-
-        objectUrlsRef.current = [];
-
-        const loaded: GalleryItem[] =
-          stored.map((item) => {
-            const url =
-              URL.createObjectURL(
-                item.imageBlob
+          objectUrlsRef.current.forEach(
+            (url) => {
+              URL.revokeObjectURL(
+                url
               );
+            }
+          );
 
-            objectUrlsRef.current.push(
-              url
+          objectUrlsRef.current =
+            [];
+
+          const loaded: GalleryItem[] =
+            stored.map(
+              (item) => {
+                const url =
+                  URL.createObjectURL(
+                    item.imageBlob
+                  );
+
+                objectUrlsRef.current.push(
+                  url
+                );
+
+                return {
+                  id: item.id,
+                  image: url,
+                  category:
+                    item.category ||
+                    "Restaurant",
+                  visible:
+                    item.visible !==
+                    false,
+                  order:
+                    typeof item.order ===
+                    "number"
+                      ? item.order
+                      : 0,
+                };
+              }
             );
 
-            return {
-              id: item.id,
-              image: url,
-              category:
-                item.category ||
-                "Restaurant",
-              visible:
-                item.visible !== false,
-              order:
-                typeof item.order ===
-                "number"
-                  ? item.order
-                  : 0,
-            };
-          });
+          setItems(
+            loaded
+          );
+        } catch (error) {
+          console.error(
+            "Gallery load error:",
+            error
+          );
 
-        setItems(loaded);
-      } catch (error) {
-        console.error(
-          "Gallery load error:",
-          error
-        );
-
-        showMessage(
-          "Unable to load gallery images.",
-          "error"
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    }, [showMessage]);
+          showMessage(
+            "Unable to load gallery images.",
+            "error"
+          );
+        } finally {
+          setIsLoading(
+            false
+          );
+        }
+      },
+      [showMessage]
+    );
 
   useEffect(() => {
     loadGallery();
@@ -634,84 +869,121 @@ export default function AdminGalleryPage() {
     };
   }, [loadGallery]);
 
-  const addFiles = useCallback(
-    (files: FileList | File[]) => {
-      const fileArray =
-        Array.from(files);
-
-      if (!fileArray.length) {
-        return;
-      }
-
-      const imageFiles =
-        fileArray.filter((file) =>
-          file.type.startsWith(
-            "image/"
-          )
-        );
-
-      if (!imageFiles.length) {
-        showMessage(
-          "Please select image files only.",
-          "error"
-        );
-        return;
-      }
-
-      const newSelections: SelectedImage[] =
-        [];
-
-      for (const file of imageFiles) {
-        if (
-          file.size >
-          MAX_FILE_SIZE
-        ) {
-          showMessage(
-            `${file.name} is larger than 15 MB and was skipped.`,
-            "error"
+  const addFiles =
+    useCallback(
+      (
+        files:
+          | FileList
+          | File[]
+      ) => {
+        const fileArray =
+          Array.from(
+            files
           );
-          continue;
+
+        if (
+          !fileArray.length
+        ) {
+          return;
         }
 
-        const preview =
-          URL.createObjectURL(file);
+        const imageFiles =
+          fileArray.filter(
+            (file) =>
+              file.type.startsWith(
+                "image/"
+              )
+          );
 
-        selectedUrlsRef.current.push(
-          preview
+        if (
+          !imageFiles.length
+        ) {
+          showMessage(
+            "Please select image files only.",
+            "error"
+          );
+          return;
+        }
+
+        const newSelections: SelectedImage[] =
+          [];
+
+        /*
+         * There is intentionally NO 4-image limit.
+         *
+         * 1000 is only a browser-safety ceiling
+         * for an accidental massive file selection.
+         */
+        const filesToAdd =
+          imageFiles.slice(
+            0,
+            MAX_UPLOAD_COUNT
+          );
+
+        for (
+          const file of filesToAdd
+        ) {
+          if (
+            file.size >
+            MAX_FILE_SIZE
+          ) {
+            showMessage(
+              `${file.name} is larger than 15 MB and was skipped.`,
+              "error"
+            );
+            continue;
+          }
+
+          const preview =
+            URL.createObjectURL(
+              file
+            );
+
+          selectedUrlsRef.current.push(
+            preview
+          );
+
+          newSelections.push({
+            id: createId(),
+            file,
+            preview,
+          });
+        }
+
+        if (
+          !newSelections.length
+        ) {
+          return;
+        }
+
+        setSelectedImages(
+          (previous) => [
+            ...previous,
+            ...newSelections,
+          ]
         );
+      },
+      [showMessage]
+    );
 
-        newSelections.push({
-          id: createId(),
-          file,
-          preview,
-        });
-      }
-
-      if (!newSelections.length) {
-        return;
-      }
-
-      setSelectedImages(
-        (previous) => [
-          ...previous,
-          ...newSelections,
-        ]
-      );
-    },
-    [showMessage]
-  );
-
-  const handleFileChange = (
-    event: ChangeEvent<HTMLInputElement>
-  ) => {
-    if (event.target.files) {
-      addFiles(
+  const handleFileChange =
+    (
+      event: ChangeEvent<HTMLInputElement>
+    ) => {
+      if (
         event.target.files
-      );
-    }
+      ) {
+        addFiles(
+          event.target.files
+        );
+      }
 
-    event.target.value = "";
-  };
+      /*
+       * Allows selecting the same file again
+       * after removing it.
+       */
+      event.target.value = "";
+    };
 
   const handleDrop = (
     event: DragEvent<HTMLDivElement>
@@ -720,69 +992,80 @@ export default function AdminGalleryPage() {
 
     setIsDragging(false);
 
-    if (event.dataTransfer.files) {
+    if (
+      event.dataTransfer
+        .files
+    ) {
       addFiles(
         event.dataTransfer.files
       );
     }
   };
 
-  const handleDragOver = (
-    event: DragEvent<HTMLDivElement>
-  ) => {
-    event.preventDefault();
-    setIsDragging(true);
-  };
+  const handleDragOver =
+    (
+      event: DragEvent<HTMLDivElement>
+    ) => {
+      event.preventDefault();
+      setIsDragging(true);
+    };
 
-  const handleDragLeave = (
-    event: DragEvent<HTMLDivElement>
-  ) => {
-    event.preventDefault();
-    setIsDragging(false);
-  };
+  const handleDragLeave =
+    (
+      event: DragEvent<HTMLDivElement>
+    ) => {
+      event.preventDefault();
+      setIsDragging(false);
+    };
 
-  const removeSelectedImage = (
-    id: number
-  ) => {
-    setSelectedImages(
-      (previous) => {
-        const found =
-          previous.find(
-            (item) => item.id === id
-          );
-
-        if (found) {
-          URL.revokeObjectURL(
-            found.preview
-          );
-
-          selectedUrlsRef.current =
-            selectedUrlsRef.current.filter(
-              (url) =>
-                url !== found.preview
+  const removeSelectedImage =
+    (id: number) => {
+      setSelectedImages(
+        (previous) => {
+          const found =
+            previous.find(
+              (item) =>
+                item.id === id
             );
+
+          if (found) {
+            URL.revokeObjectURL(
+              found.preview
+            );
+
+            selectedUrlsRef.current =
+              selectedUrlsRef.current.filter(
+                (url) =>
+                  url !==
+                  found.preview
+              );
+          }
+
+          return previous.filter(
+            (item) =>
+              item.id !== id
+          );
         }
+      );
+    };
 
-        return previous.filter(
-          (item) => item.id !== id
-        );
-      }
-    );
-  };
+  const clearSelectedImages =
+    () => {
+      selectedImages.forEach(
+        (item) => {
+          URL.revokeObjectURL(
+            item.preview
+          );
+        }
+      );
 
-  const clearSelectedImages = () => {
-    selectedImages.forEach(
-      (item) => {
-        URL.revokeObjectURL(
-          item.preview
-        );
-      }
-    );
+      selectedUrlsRef.current =
+        [];
 
-    selectedUrlsRef.current = [];
-
-    setSelectedImages([]);
-  };
+      setSelectedImages(
+        []
+      );
+    };
 
   const uploadSelectedImages =
     async () => {
@@ -797,13 +1080,12 @@ export default function AdminGalleryPage() {
       }
 
       try {
-        setIsUploading(true);
+        setIsUploading(
+          true
+        );
 
         const stored =
           await getAllStoredItems();
-
-        const newItems: StoredGalleryItem[] =
-          [];
 
         let currentMaxOrder =
           stored.reduce(
@@ -818,6 +1100,19 @@ export default function AdminGalleryPage() {
             -1
           );
 
+        let uploadedCount =
+          0;
+
+        let failedCount =
+          0;
+
+        /*
+         * IMPORTANT:
+         * Process images one by one.
+         *
+         * This prevents a large batch transaction
+         * from failing after only a few images.
+         */
         for (
           let index = 0;
           index <
@@ -827,28 +1122,52 @@ export default function AdminGalleryPage() {
           const selected =
             selectedImages[index];
 
-          const blob =
-            await compressImage(
-              selected.file
+          try {
+            const blob =
+              await compressImage(
+                selected.file
+              );
+
+            currentMaxOrder += 1;
+
+            const newItem: StoredGalleryItem =
+              {
+                id: createId(),
+                imageBlob: blob,
+                category:
+                  selectedCategory.trim() ||
+                  "Restaurant",
+                visible: true,
+                order:
+                  currentMaxOrder,
+              };
+
+            await saveStoredItem(
+              newItem
             );
 
-          currentMaxOrder += 1;
+            uploadedCount += 1;
+          } catch (error) {
+            failedCount += 1;
 
-          newItems.push({
-            id: createId(),
-            imageBlob: blob,
-            category:
-              selectedCategory.trim() ||
-              "Restaurant",
-            visible: true,
-            order:
-              currentMaxOrder,
-          });
+            console.error(
+              `Unable to upload ${selected.file.name}:`,
+              error
+            );
+          }
+
+          /*
+           * Give the browser a tiny chance to breathe
+           * between many large images.
+           */
+          await new Promise(
+            (resolve) =>
+              window.setTimeout(
+                resolve,
+                0
+              )
+          );
         }
-
-        await saveStoredItems(
-          newItems
-        );
 
         selectedImages.forEach(
           (item) => {
@@ -858,20 +1177,47 @@ export default function AdminGalleryPage() {
           }
         );
 
-        selectedUrlsRef.current = [];
+        selectedUrlsRef.current =
+          [];
 
-        setSelectedImages([]);
+        setSelectedImages(
+          []
+        );
 
         await loadGallery();
 
-        showMessage(
-          `${newItems.length} image${
-            newItems.length === 1
-              ? ""
-              : "s"
-          } uploaded successfully.`,
-          "success"
-        );
+        if (
+          uploadedCount === 0
+        ) {
+          showMessage(
+            "No images could be saved. Please try smaller images or check browser storage permission.",
+            "error"
+          );
+        } else if (
+          failedCount > 0
+        ) {
+          showMessage(
+            `${uploadedCount} image${
+              uploadedCount === 1
+                ? ""
+                : "s"
+            } uploaded. ${failedCount} image${
+              failedCount === 1
+                ? ""
+                : "s"
+            } could not be saved.`,
+            "error"
+          );
+        } else {
+          showMessage(
+            `${uploadedCount} image${
+              uploadedCount === 1
+                ? ""
+                : "s"
+            } uploaded successfully.`,
+            "success"
+          );
+        }
       } catch (error) {
         console.error(
           "Gallery upload error:",
@@ -885,71 +1231,78 @@ export default function AdminGalleryPage() {
           "error"
         );
       } finally {
-        setIsUploading(false);
+        setIsUploading(
+          false
+        );
       }
     };
 
-  const deleteImage = async (
-    id: number
-  ) => {
-    const confirmed =
-      window.confirm(
-        "Are you sure you want to delete this image?"
-      );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      await deleteStoredItem(id);
-
-      const item =
-        items.find(
-          (galleryItem) =>
-            galleryItem.id === id
+  const deleteImage =
+    async (id: number) => {
+      const confirmed =
+        window.confirm(
+          "Are you sure you want to delete this image?"
         );
 
-      if (item) {
-        URL.revokeObjectURL(
-          item.image
-        );
-
-        objectUrlsRef.current =
-          objectUrlsRef.current.filter(
-            (url) =>
-              url !== item.image
-          );
+      if (!confirmed) {
+        return;
       }
 
-      setItems(
-        (previous) =>
-          previous.filter(
+      try {
+        await deleteStoredItem(
+          id
+        );
+
+        const item =
+          items.find(
             (galleryItem) =>
-              galleryItem.id !== id
-          )
-      );
+              galleryItem.id ===
+              id
+          );
 
-      showMessage(
-        "Image deleted successfully.",
-        "success"
-      );
-    } catch (error) {
-      console.error(
-        "Delete gallery image error:",
-        error
-      );
+        if (item) {
+          URL.revokeObjectURL(
+            item.image
+          );
 
-      showMessage(
-        "Unable to delete image.",
-        "error"
-      );
-    }
-  };
+          objectUrlsRef.current =
+            objectUrlsRef.current.filter(
+              (url) =>
+                url !== item.image
+            );
+        }
+
+        setItems(
+          (previous) =>
+            previous.filter(
+              (galleryItem) =>
+                galleryItem.id !==
+                id
+            )
+        );
+
+        showMessage(
+          "Image deleted successfully.",
+          "success"
+        );
+      } catch (error) {
+        console.error(
+          "Delete gallery image error:",
+          error
+        );
+
+        showMessage(
+          "Unable to delete image.",
+          "error"
+        );
+      }
+    };
 
   const deleteAllImages =
     async () => {
-      if (!items.length) {
+      if (
+        !items.length
+      ) {
         return;
       }
 
@@ -963,7 +1316,9 @@ export default function AdminGalleryPage() {
       }
 
       try {
-        setIsDeletingAll(true);
+        setIsDeletingAll(
+          true
+        );
 
         await clearStoredItems();
 
@@ -975,7 +1330,8 @@ export default function AdminGalleryPage() {
           }
         );
 
-        objectUrlsRef.current = [];
+        objectUrlsRef.current =
+          [];
 
         setItems([]);
 
@@ -994,7 +1350,9 @@ export default function AdminGalleryPage() {
           "error"
         );
       } finally {
-        setIsDeletingAll(false);
+        setIsDeletingAll(
+          false
+        );
       }
     };
 
@@ -1017,9 +1375,9 @@ export default function AdminGalleryPage() {
         target.visible =
           !target.visible;
 
-        await saveStoredItems([
-          target,
-        ]);
+        await saveStoredItem(
+          target
+        );
 
         setItems(
           (previous) =>
@@ -1056,11 +1414,15 @@ export default function AdminGalleryPage() {
 
   const filteredItems =
     items.filter((item) => {
-      if (filter === "visible") {
+      if (
+        filter === "visible"
+      ) {
         return item.visible;
       }
 
-      if (filter === "hidden") {
+      if (
+        filter === "hidden"
+      ) {
         return !item.visible;
       }
 
@@ -1069,12 +1431,14 @@ export default function AdminGalleryPage() {
 
   const visibleCount =
     items.filter(
-      (item) => item.visible
+      (item) =>
+        item.visible
     ).length;
 
   const hiddenCount =
     items.filter(
-      (item) => !item.visible
+      (item) =>
+        !item.visible
     ).length;
 
   return (
@@ -1230,7 +1594,7 @@ export default function AdminGalleryPage() {
                   color: MUTED,
                   fontSize:
                     "11px",
-                  marginTop: "3px",
+                    marginTop: "3px",
                 }}
               >
                 Visible
@@ -1269,7 +1633,7 @@ export default function AdminGalleryPage() {
                   color: MUTED,
                   fontSize:
                     "11px",
-                  marginTop: "3px",
+                    marginTop: "3px",
                 }}
               >
                 Hidden
@@ -1355,10 +1719,10 @@ export default function AdminGalleryPage() {
                   lineHeight: 1.6,
                 }}
               >
-                You can select many
-                images at once. There
-                is no 4-image upload
-                limitation.
+                Select as many
+                images as you need.
+                There is no 4-image
+                restriction.
               </p>
             </div>
 
@@ -1512,7 +1876,9 @@ export default function AdminGalleryPage() {
             type="file"
             accept="image/*"
             multiple
-            onChange={handleFileChange}
+            onChange={
+              handleFileChange
+            }
             style={{
               display: "none",
             }}
@@ -1757,7 +2123,9 @@ export default function AdminGalleryPage() {
                   key={value}
                   type="button"
                   onClick={() =>
-                    setFilter(value)
+                    setFilter(
+                      value
+                    )
                   }
                   style={{
                     border:
@@ -2140,12 +2508,12 @@ export default function AdminGalleryPage() {
             lineHeight: 1.7,
           }}
         >
-          Gallery images are now
-          stored in browser IndexedDB
-          instead of localStorage, so
-          the old small localStorage
-          quota will not stop the
-          gallery after a few images.
+          Gallery images are stored
+          in browser IndexedDB. Images
+          are compressed before saving
+          and are saved one by one so a
+          large upload does not fail as
+          one large database transaction.
         </div>
       </div>
     </div>
