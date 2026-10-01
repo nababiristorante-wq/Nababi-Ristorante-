@@ -1,6 +1,12 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState, type CSSProperties } from "react";
+import {
+  FormEvent,
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+} from "react";
 
 type AnyData = Record<string, any>;
 
@@ -80,6 +86,7 @@ function categoryName(value: unknown): string {
 
   if (value && typeof value === "object") {
     const item = value as AnyData;
+
     return String(
       item.name ??
         item.title ??
@@ -97,7 +104,9 @@ function bookingCode(): string {
     .slice(2, 6)
     .toUpperCase();
 
-  const number = Math.floor(1000 + Math.random() * 9000);
+  const number = Math.floor(
+    1000 + Math.random() * 9000,
+  );
 
   return `NAB-${letters}${number}`;
 }
@@ -140,7 +149,13 @@ function Icon({
   if (name === "mail") {
     return (
       <svg {...props}>
-        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <rect
+          x="3"
+          y="5"
+          width="18"
+          height="14"
+          rx="2"
+        />
         <path d="m4 7 8 6 8-6" />
       </svg>
     );
@@ -149,7 +164,13 @@ function Icon({
   if (name === "calendar") {
     return (
       <svg {...props}>
-        <rect x="3.5" y="5" width="17" height="15" rx="2" />
+        <rect
+          x="3.5"
+          y="5"
+          width="17"
+          height="15"
+          rx="2"
+        />
         <path d="M7 3v4M17 3v4M3.5 9h17" />
       </svg>
     );
@@ -194,7 +215,13 @@ function Icon({
   if (name === "gallery") {
     return (
       <svg {...props}>
-        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <rect
+          x="3"
+          y="4"
+          width="18"
+          height="16"
+          rx="2"
+        />
         <circle cx="9" cy="9" r="1.5" />
         <path d="m5 17 5-5 3 3 2-2 4 4" />
       </svg>
@@ -244,7 +271,11 @@ function Icon({
 
   if (name === "facebook") {
     return (
-      <svg {...props} fill="currentColor" stroke="none">
+      <svg
+        {...props}
+        fill="currentColor"
+        stroke="none"
+      >
         <path d="M14 8h3V4h-3c-3 0-5 2-5 5v2H6v4h3v5h4v-5h3l1-4h-4V9c0-.7.3-1 1-1Z" />
       </svg>
     );
@@ -253,9 +284,20 @@ function Icon({
   if (name === "instagram") {
     return (
       <svg {...props}>
-        <rect x="4" y="4" width="16" height="16" rx="4" />
+        <rect
+          x="4"
+          y="4"
+          width="16"
+          height="16"
+          rx="4"
+        />
         <circle cx="12" cy="12" r="3.5" />
-        <circle cx="17" cy="7" r=".7" fill="currentColor" />
+        <circle
+          cx="17"
+          cy="7"
+          r=".7"
+          fill="currentColor"
+        />
       </svg>
     );
   }
@@ -271,8 +313,18 @@ function Icon({
   if (name === "youtube") {
     return (
       <svg {...props}>
-        <rect x="3" y="6" width="18" height="12" rx="3" />
-        <path d="m10 9 5 3-5 3V9Z" fill="currentColor" stroke="none" />
+        <rect
+          x="3"
+          y="6"
+          width="18"
+          height="12"
+          rx="3"
+        />
+        <path
+          d="m10 9 5 3-5 3V9Z"
+          fill="currentColor"
+          stroke="none"
+        />
       </svg>
     );
   }
@@ -284,7 +336,11 @@ function Icon({
   );
 }
 
-function CategoryIcon({ name }: { name: string }) {
+function CategoryIcon({
+  name,
+}: {
+  name: string;
+}) {
   const value = name.toLowerCase();
 
   const icons: Record<string, string> = {
@@ -310,118 +366,80 @@ function CategoryIcon({ name }: { name: string }) {
   );
 }
 
-const BREAKING_NEWS_MEDIA_DB_NAME = "nababi-breaking-news-media-db";
-const BREAKING_NEWS_MEDIA_DB_VERSION = 1;
-const BREAKING_NEWS_MEDIA_STORE_NAME = "media";
+export default function HomePage() {
+  const [home, setHome] =
+    useState<AnyData>({});
 
-function openBreakingNewsMediaDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    if (typeof window === "undefined" || !("indexedDB" in window)) {
-      reject(new Error("IndexedDB is not available in this browser."));
-      return;
-    }
+  const [about, setAbout] =
+    useState<AnyData>({});
 
-    const request = indexedDB.open(
-      BREAKING_NEWS_MEDIA_DB_NAME,
-      BREAKING_NEWS_MEDIA_DB_VERSION,
+  const [contact, setContact] =
+    useState<AnyData>({});
+
+  const [settings, setSettings] =
+    useState<AnyData>({});
+
+  const [social, setSocial] =
+    useState<SocialData>({});
+
+  const [menu, setMenu] =
+    useState<MenuItem[]>([]);
+
+  const [categories, setCategories] =
+    useState<string[]>(
+      DEFAULT_CATEGORIES,
     );
 
-    request.onupgradeneeded = () => {
-      const db = request.result;
+  const [gallery, setGallery] =
+    useState<GalleryItem[]>([]);
 
-      if (!db.objectStoreNames.contains(BREAKING_NEWS_MEDIA_STORE_NAME)) {
-        db.createObjectStore(BREAKING_NEWS_MEDIA_STORE_NAME, {
-          keyPath: "id",
-        });
-      }
-    };
+  const [reviews, setReviews] =
+    useState<AnyData[]>([]);
 
-    request.onsuccess = () => resolve(request.result);
+  const [news, setNews] =
+    useState<AnyData[]>([]);
 
-    request.onerror = () =>
-      reject(
-        request.error ||
-          new Error("Could not open breaking news media database."),
-      );
-  });
-}
+  const [selectedCategory, setSelectedCategory] =
+    useState("");
 
-function getBreakingNewsMedia(id: string): Promise<any | null> {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const db = await openBreakingNewsMediaDB();
+  const [mobileOpen, setMobileOpen] =
+    useState(false);
 
-      const request = db
-        .transaction(
-          BREAKING_NEWS_MEDIA_STORE_NAME,
-          "readonly",
-        )
-        .objectStore(
-          BREAKING_NEWS_MEDIA_STORE_NAME,
-        )
-        .get(id);
+  const [galleryOpen, setGalleryOpen] =
+    useState(false);
 
-      request.onsuccess = () =>
-        resolve(request.result || null);
+  const [bookingMessage, setBookingMessage] =
+    useState("");
 
-      request.onerror = () =>
-        reject(
-          request.error ||
-            new Error(
-              "Could not load breaking news media.",
-            ),
-        );
-    } catch (error) {
-      reject(error);
-    }
-  });
-}
+  const [booking, setBooking] =
+    useState({
+      name: "",
+      phone: "",
+      email: "",
+      date: "",
+      time: "",
+      guests: "2",
+      category: "",
+      item: "",
+      note: "",
+    });
 
-export default function HomePage() {
-  const [home, setHome] = useState<AnyData>({});
-  const [about, setAbout] = useState<AnyData>({});
-  const [contact, setContact] = useState<AnyData>({});
-  const [settings, setSettings] = useState<AnyData>({});
-  const [social, setSocial] = useState<SocialData>({});
+  const [myBookingOpen, setMyBookingOpen] =
+    useState(false);
 
-  const [menu, setMenu] = useState<MenuItem[]>([]);
-  const [categories, setCategories] =
-    useState<string[]>(DEFAULT_CATEGORIES);
+  const [lookupValue, setLookupValue] =
+    useState("");
 
-  const [gallery, setGallery] = useState<GalleryItem[]>([]);
-  const [reviews, setReviews] = useState<AnyData[]>([]);
-  const [news, setNews] = useState<AnyData[]>([]);
-  const [newsMediaUrls, setNewsMediaUrls] =
-    useState<Record<string, string>>({});
-
-  const [selectedCategory, setSelectedCategory] = useState("");
-
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [galleryOpen, setGalleryOpen] = useState(false);
-
-  const [bookingMessage, setBookingMessage] = useState("");
-
-  const [booking, setBooking] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    date: "",
-    time: "",
-    guests: "2",
-    category: "",
-    item: "",
-    note: "",
-  });
-
-  const [myBookingOpen, setMyBookingOpen] = useState(false);
-
-  const [lookupValue, setLookupValue] = useState("");
-  const [lookupCode, setLookupCode] = useState("");
+  const [lookupCode, setLookupCode] =
+    useState("");
 
   const [lookupStep, setLookupStep] =
-    useState<"login" | "code" | "details">("login");
+    useState<
+      "login" | "code" | "details"
+    >("login");
 
-  const [lookupMessage, setLookupMessage] = useState("");
+  const [lookupMessage, setLookupMessage] =
+    useState("");
 
   const [foundBooking, setFoundBooking] =
     useState<Reservation | null>(null);
@@ -429,34 +447,76 @@ export default function HomePage() {
   const [editingBooking, setEditingBooking] =
     useState(false);
 
-  const [newsClosed, setNewsClosed] = useState(false);
+  const [newsClosed, setNewsClosed] =
+    useState(false);
 
   const loadData = () => {
-    setHome(readStorage("nababi-home-settings", {}));
-    setAbout(readStorage("nababi-about", {}));
-    setContact(readStorage("nababi-contact", {}));
-    setSettings(readStorage("nababi-settings", {}));
-    setSocial(readStorage("nababi-social-media", {}));
-
-    const rawMenu = arrayData(
-      readStorage("nababi-menu", []),
-    ) as MenuItem[];
-
-    setMenu(
-      rawMenu.filter((item) => item.available !== false),
-    );
-
-    const rawCategories = arrayData(
-      readStorage("nababi-categories", []),
-    );
-
-    const categoryList = Array.from(
-      new Set(
-        rawCategories
-          .map(categoryName)
-          .filter(Boolean),
+    setHome(
+      readStorage(
+        "nababi-home-settings",
+        {},
       ),
     );
+
+    setAbout(
+      readStorage(
+        "nababi-about",
+        {},
+      ),
+    );
+
+    setContact(
+      readStorage(
+        "nababi-contact",
+        {},
+      ),
+    );
+
+    setSettings(
+      readStorage(
+        "nababi-settings",
+        {},
+      ),
+    );
+
+    setSocial(
+      readStorage(
+        "nababi-social-media",
+        {},
+      ),
+    );
+
+    const rawMenu =
+      arrayData(
+        readStorage(
+          "nababi-menu",
+          [],
+        ),
+      ) as MenuItem[];
+
+    setMenu(
+      rawMenu.filter(
+        (item) =>
+          item.available !== false,
+      ),
+    );
+
+    const rawCategories =
+      arrayData(
+        readStorage(
+          "nababi-categories",
+          [],
+        ),
+      );
+
+    const categoryList =
+      Array.from(
+        new Set(
+          rawCategories
+            .map(categoryName)
+            .filter(Boolean),
+        ),
+      );
 
     setCategories(
       categoryList.length
@@ -464,9 +524,13 @@ export default function HomePage() {
         : DEFAULT_CATEGORIES,
     );
 
-    const rawGallery = arrayData(
-      readStorage("nababi-gallery", []),
-    ) as GalleryItem[];
+    const rawGallery =
+      arrayData(
+        readStorage(
+          "nababi-gallery",
+          [],
+        ),
+      ) as GalleryItem[];
 
     setGallery(
       rawGallery
@@ -485,14 +549,18 @@ export default function HomePage() {
 
     setReviews(
       arrayData(
-        readStorage("nababi-reviews", []),
+        readStorage(
+          "nababi-reviews",
+          [],
+        ),
       ).filter(
         (item: AnyData) =>
           item.visible !== false,
       ),
     );
 
-    const currentTime = new Date();
+    const currentTime =
+      new Date();
 
     setNews(
       arrayData(
@@ -500,41 +568,52 @@ export default function HomePage() {
           "nababi-breaking-news",
           [],
         ),
-      ).filter((item: AnyData) => {
-        if (item.visible === false) return false;
+      ).filter(
+        (item: AnyData) => {
+          if (
+            item.visible === false
+          ) {
+            return false;
+          }
 
-        if (
-          item.startDate &&
-          new Date(item.startDate) > currentTime
-        ) {
-          return false;
-        }
+          if (
+            item.startDate &&
+            new Date(
+              item.startDate,
+            ) > currentTime
+          ) {
+            return false;
+          }
 
-        if (
-          item.endDate &&
-          new Date(item.endDate) < currentTime
-        ) {
-          return false;
-        }
+          if (
+            item.endDate &&
+            new Date(
+              item.endDate,
+            ) < currentTime
+          ) {
+            return false;
+          }
 
-        return Boolean(
-          item.text ||
-            item.title ||
-            item.image ||
-            item.video ||
-            item.mediaId,
-        );
-      }),
+          return Boolean(
+            item.text ||
+              item.title ||
+              item.image ||
+              item.video ||
+              item.mediaId,
+          );
+        },
+      ),
     );
   };
 
   useEffect(() => {
     loadData();
 
-    const interval = window.setInterval(
-      loadData,
-      1500,
-    );
+    const interval =
+      window.setInterval(
+        loadData,
+        1500,
+      );
 
     window.addEventListener(
       "storage",
@@ -542,98 +621,16 @@ export default function HomePage() {
     );
 
     return () => {
-      window.clearInterval(interval);
+      window.clearInterval(
+        interval,
+      );
+
       window.removeEventListener(
         "storage",
         loadData,
       );
     };
   }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const createdUrls: string[] = [];
-
-    const loadBreakingNewsMedia = async () => {
-      const items = arrayData(
-        readStorage(
-          "nababi-breaking-news",
-          [],
-        ),
-      ) as AnyData[];
-
-      const videoItems = items.filter(
-        (item) =>
-          item.visible !== false &&
-          item.mediaType === "video" &&
-          item.mediaId,
-      );
-
-      if (!videoItems.length) {
-        setNewsMediaUrls({});
-        return;
-      }
-
-      const nextUrls: Record<string, string> = {};
-
-      await Promise.all(
-        videoItems.map(async (item) => {
-          try {
-            const media = await getBreakingNewsMedia(
-              String(item.mediaId),
-            );
-
-            if (media?.blob instanceof Blob) {
-              const url =
-                URL.createObjectURL(media.blob);
-
-              nextUrls[String(item.id)] = url;
-              createdUrls.push(url);
-            }
-          } catch {
-            // Keep the existing page working if IndexedDB is unavailable.
-          }
-        }),
-      );
-
-      if (cancelled) {
-        createdUrls.forEach((url) =>
-          URL.revokeObjectURL(url),
-        );
-        return;
-      }
-
-      setNewsMediaUrls((previous) => {
-        Object.values(previous).forEach((url) => {
-          if (
-            !Object.values(nextUrls).includes(url)
-          ) {
-            URL.revokeObjectURL(url);
-          }
-        });
-
-        return nextUrls;
-      });
-    };
-
-    loadBreakingNewsMedia();
-
-    return () => {
-      cancelled = true;
-
-      createdUrls.forEach((url) =>
-        URL.revokeObjectURL(url),
-      );
-    };
-  }, [news]);
-
-  useEffect(() => {
-    return () => {
-      Object.values(newsMediaUrls).forEach((url) => {
-        URL.revokeObjectURL(url);
-      });
-    };
-  }, [newsMediaUrls]);
 
   const restaurantName =
     settings.restaurantName ||
@@ -649,15 +646,25 @@ export default function HomePage() {
     "Authentic flavors of India & Bangladesh in the heart of Rome.";
 
   /*
-   * IMPORTANT:
-   * এখানে কোনো default Home image নেই।
-   * Admin → Home থেকে image/video না দিলে Home-এ
-   * কোনো restaurant image দেখাবে না।
+   * HOME HERO IMAGE
+   *
+   * Admin → Home থেকে image থাকলে
+   * সেটি দেখাবে।
+   *
+   * Admin থেকে image delete করলে
+   * default biryani image দেখাবে।
+   *
+   * এই default image আপনার দেওয়া
+   * Nababi Ristorante design-এর
+   * biryani hero হিসেবে ব্যবহার করা হবে।
    */
+  const DEFAULT_BIRYANI_IMAGE =
+    "/images/default-biryani.jpg";
+
   const heroImage =
     home.heroImage ||
     home.image ||
-    "";
+    DEFAULT_BIRYANI_IMAGE;
 
   const heroVideo =
     home.heroVideo ||
@@ -669,8 +676,12 @@ export default function HomePage() {
     about.text ||
     "Authentic food, warm hospitality and traditional flavors.";
 
-  const phone = contact.phone || "";
-  const email = contact.email || "";
+  const phone =
+    contact.phone || "";
+
+  const email =
+    contact.email || "";
+
   const address =
     contact.address ||
     "Via Vespasiano 73/75/77, Roma";
@@ -685,43 +696,61 @@ export default function HomePage() {
     "";
 
   const visibleNews =
-    news.length > 0 && !newsClosed
+    news.length > 0 &&
+    !newsClosed
       ? news[0]
       : null;
 
-  const categoryCards = useMemo(() => {
-    return categories.map((category) => {
-      const firstItem = menu.find(
-        (item) =>
-          categoryName(item.category)
-            .toLowerCase() ===
-          category.toLowerCase(),
+  const categoryCards =
+    useMemo(() => {
+      return categories.map(
+        (category) => {
+          const firstItem =
+            menu.find(
+              (item) =>
+                categoryName(
+                  item.category,
+                )
+                  .toLowerCase() ===
+                category.toLowerCase(),
+            );
+
+          return {
+            name: category,
+            image:
+              firstItem?.image ||
+              "",
+          };
+        },
       );
+    }, [
+      categories,
+      menu,
+    ]);
 
-      return {
-        name: category,
-        image: firstItem?.image || "",
-      };
-    });
-  }, [categories, menu]);
+  const selectedItems =
+    selectedCategory
+      ? menu.filter(
+          (item) =>
+            categoryName(
+              item.category,
+            )
+              .toLowerCase() ===
+            selectedCategory.toLowerCase(),
+        )
+      : [];
 
-  const selectedItems = selectedCategory
-    ? menu.filter(
-        (item) =>
-          categoryName(item.category)
-            .toLowerCase() ===
-          selectedCategory.toLowerCase(),
-      )
-    : [];
-
-  const bookingItems = booking.category
-    ? menu.filter(
-        (item) =>
-          categoryName(item.category)
-            .toLowerCase() ===
-          booking.category.toLowerCase(),
-      )
-    : [];
+  const bookingItems =
+    booking.category
+      ? menu.filter(
+          (item) =>
+            categoryName(
+              item.category,
+            )
+              .toLowerCase() ===
+            booking.category.toLowerCase(),
+        )
+      : [];
 
   const socialLinks = [
     {
@@ -740,9 +769,13 @@ export default function HomePage() {
       name: "youtube",
       url: social.youtube,
     },
-  ].filter((item) => item.url);
+  ].filter(
+    (item) => item.url,
+  );
 
-  const scrollTo = (id: string) => {
+  const scrollTo = (
+    id: string,
+  ) => {
     document
       .getElementById(id)
       ?.scrollIntoView({
@@ -753,7 +786,7 @@ export default function HomePage() {
   };
 
   const submitBooking = (
-      event: FormEvent<HTMLFormElement>,
+    event: FormEvent<HTMLFormElement>,
   ) => {
     event.preventDefault();
 
@@ -770,30 +803,37 @@ export default function HomePage() {
       return;
     }
 
-    if (!booking.phone && !booking.email) {
+    if (
+      !booking.phone &&
+      !booking.email
+    ) {
       setBookingMessage(
         "Please enter a phone number or email.",
       );
       return;
     }
 
-    const newReservation: Reservation = {
-      id: `reservation-${Date.now()}`,
-      code: bookingCode(),
-      name: booking.name,
-      phone: booking.phone,
-      email: booking.email,
-      date: booking.date,
-      time: booking.time,
-      guests:
-        Number(booking.guests) || 2,
-      category: booking.category,
-      item: booking.item,
-      note: booking.note,
-      status: "Confirmed",
-      createdAt:
-        new Date().toISOString(),
-    };
+    const newReservation: Reservation =
+      {
+        id: `reservation-${Date.now()}`,
+        code: bookingCode(),
+        name: booking.name,
+        phone: booking.phone,
+        email: booking.email,
+        date: booking.date,
+        time: booking.time,
+        guests:
+          Number(
+            booking.guests,
+          ) || 2,
+        category:
+          booking.category,
+        item: booking.item,
+        note: booking.note,
+        status: "Confirmed",
+        createdAt:
+          new Date().toISOString(),
+      };
 
     const current =
       arrayData(
@@ -830,7 +870,9 @@ export default function HomePage() {
 
   const findMyBooking = () => {
     const value =
-      lookupValue.trim().toLowerCase();
+      lookupValue
+        .trim()
+        .toLowerCase();
 
     if (!value) {
       setLookupMessage(
@@ -847,13 +889,18 @@ export default function HomePage() {
         ),
       ) as Reservation[];
 
-    const found = reservations.find(
-      (item) =>
-        String(item.phone || "")
-          .toLowerCase() === value ||
-        String(item.email || "")
-          .toLowerCase() === value,
-    );
+    const found =
+      reservations.find(
+        (item) =>
+          String(
+            item.phone || "",
+          ).toLowerCase() ===
+            value ||
+          String(
+            item.email || "",
+          ).toLowerCase() ===
+            value,
+      );
 
     if (!found) {
       setLookupMessage(
@@ -868,10 +915,13 @@ export default function HomePage() {
   };
 
   const verifyCode = () => {
-    if (!foundBooking) return;
+    if (!foundBooking)
+      return;
 
     if (
-      lookupCode.trim().toUpperCase() !==
+      lookupCode
+        .trim()
+        .toUpperCase() !==
       foundBooking.code.toUpperCase()
     ) {
       setLookupMessage(
@@ -889,7 +939,8 @@ export default function HomePage() {
   ) => {
     event.preventDefault();
 
-    if (!foundBooking) return;
+    if (!foundBooking)
+      return;
 
     const reservations =
       arrayData(
@@ -900,10 +951,12 @@ export default function HomePage() {
       ) as Reservation[];
 
     const updated =
-      reservations.map((item) =>
-        item.id === foundBooking.id
-          ? foundBooking
-          : item,
+      reservations.map(
+        (item) =>
+          item.id ===
+          foundBooking.id
+            ? foundBooking
+            : item,
       );
 
     localStorage.setItem(
@@ -919,7 +972,8 @@ export default function HomePage() {
   };
 
   const cancelMyBooking = () => {
-    if (!foundBooking) return;
+    if (!foundBooking)
+      return;
 
     const reservations =
       arrayData(
@@ -930,13 +984,16 @@ export default function HomePage() {
       ) as Reservation[];
 
     const updated =
-      reservations.map((item) =>
-        item.id === foundBooking.id
-          ? {
-              ...item,
-              status: "Cancelled",
-            }
-          : item,
+      reservations.map(
+        (item) =>
+          item.id ===
+          foundBooking.id
+            ? {
+                ...item,
+                status:
+                  "Cancelled",
+              }
+            : item,
       );
 
     localStorage.setItem(
@@ -955,10 +1012,14 @@ export default function HomePage() {
   };
 
   const openWhatsApp = () => {
-    if (!whatsapp) return;
+    if (!whatsapp)
+      return;
 
     const number =
-      whatsapp.replace(/[^\d+]/g, "");
+      whatsapp.replace(
+        /[^\d+]/g,
+        "",
+      );
 
     window.open(
       `https://wa.me/${number.replace(
@@ -1017,7 +1078,12 @@ export default function HomePage() {
           background:
             radial-gradient(
               circle at 10% 10%,
-              rgba(242, 189, 69, 0.08),
+              rgba(
+                242,
+                189,
+                69,
+                0.08
+              ),
               transparent 28%
             ),
             #050607;
@@ -1032,9 +1098,17 @@ export default function HomePage() {
           align-items: center;
           gap: 22px;
           padding: 9px 4vw;
-          background: rgba(4, 6, 7, 0.97);
-          border-bottom: 1px solid var(--line);
-          backdrop-filter: blur(16px);
+          background: rgba(
+            4,
+            6,
+            7,
+            0.97
+          );
+          border-bottom: 1px solid
+            var(--line);
+          backdrop-filter: blur(
+            16px
+          );
         }
 
         .brand {
@@ -1053,7 +1127,8 @@ export default function HomePage() {
           height: 47px;
           display: grid;
           place-items: center;
-          border: 1px solid var(--gold);
+          border: 1px solid
+            var(--gold);
           border-radius: 50%;
           color: var(--gold);
           font-size: 25px;
@@ -1105,7 +1180,8 @@ export default function HomePage() {
           gap: 7px;
           border-radius: 999px;
           padding: 10px 17px;
-          border: 1px solid var(--gold);
+          border: 1px solid
+            var(--gold);
           background: transparent;
           color: var(--gold-light);
         }
@@ -1122,7 +1198,8 @@ export default function HomePage() {
 
         .mobile-menu {
           display: none;
-          border: 1px solid var(--line);
+          border: 1px solid
+            var(--line);
           background: transparent;
           color: var(--gold);
           padding: 8px 12px;
@@ -1135,7 +1212,8 @@ export default function HomePage() {
           display: grid;
           place-items: center;
           overflow: hidden;
-          border-bottom: 1px solid var(--line);
+          border-bottom: 1px solid
+            var(--line);
           background:
             linear-gradient(
               90deg,
@@ -1165,90 +1243,172 @@ export default function HomePage() {
           width: 100%;
           height: 100%;
           object-fit: cover;
-          opacity: 0.45;
+          z-index: 0;
+        }
+
+        .hero-video::after {
+          content: "";
         }
 
         .hero-content {
           position: relative;
-          z-index: 2;
-          width: min(950px, 92%);
-          padding: 100px 0;
-          text-align: center;
+          z-index: 5;
+          width: min(
+            1180px,
+            92%
+          );
+          margin: 0 auto;
+          padding: 130px 0 100px;
         }
 
         .eyebrow {
           color: var(--gold);
+          font-size: 12px;
+          letter-spacing: 3px;
           text-transform: uppercase;
-          letter-spacing: 4px;
-          font-size: 13px;
         }
 
         .hero h1 {
-          margin: 15px 0;
-          color: var(--gold);
-          font-size: clamp(45px, 7vw, 88px);
-          line-height: 1;
+          max-width: 700px;
+          margin: 10px 0 14px;
+          color: #fff;
+          font-size: clamp(
+            50px,
+            7vw,
+            88px
+          );
+          line-height: 0.98;
+          font-weight: 700;
         }
 
         .hero-description {
-          max-width: 700px;
-          margin: 0 auto 28px;
-          color: #eee;
-          line-height: 1.7;
+          max-width: 650px;
+          color: #ddd;
           font-size: 18px;
+          line-height: 1.7;
         }
 
         .hero-buttons {
           display: flex;
-          justify-content: center;
+          gap: 12px;
+          margin-top: 28px;
           flex-wrap: wrap;
-          gap: 10px;
         }
 
         .hero-contact {
           position: absolute;
           left: 4vw;
           right: 4vw;
-          bottom: 22px;
-          z-index: 2;
+          bottom: 25px;
+          z-index: 7;
           display: flex;
-          justify-content: space-between;
-          gap: 20px;
-          color: #ddd;
+          gap: 28px;
+          align-items: center;
+          color: #eee;
           font-size: 13px;
         }
 
         .hero-contact span {
-          display: inline-flex;
+          display: flex;
           align-items: center;
           gap: 7px;
         }
 
         .hero-empty {
-          margin: 30px auto 0;
-          width: fit-content;
-          max-width: 90%;
-          padding: 10px 16px;
-          border: 1px dashed rgba(242, 189, 69, 0.5);
-          border-radius: 999px;
-          color: #b7b1a6;
+          margin-top: 25px;
+          color: rgba(
+            255,
+            255,
+            255,
+            0.42
+          );
           font-size: 12px;
+        }
+
+        /*
+          BREAKING NEWS:
+          শুধু একটি box — বাম পাশে।
+          Home hero-এর দ্বিতীয় কোনো video box নেই।
+        */
+
+        .breaking-news {
+          position: absolute;
+          left: 22px;
+          top: 25px;
+          z-index: 20;
+          width: 275px;
+          background: rgba(
+            4,
+            6,
+            7,
+            0.96
+          );
+          border: 1px solid
+            var(--gold);
+          border-radius: 13px;
+          overflow: hidden;
+          box-shadow:
+            0 20px 50px
+              rgba(0, 0, 0, 0.5);
+        }
+
+        .breaking-head {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 8px 11px;
+          background: #df3434;
+          font-weight: 700;
+        }
+
+        .breaking-close {
+          border: 0;
+          background: transparent;
+          color: #fff;
+        }
+
+        .breaking-media {
+          display: block;
+          width: 100%;
+          height: 150px;
+          object-fit: cover;
+          background: #111;
+        }
+
+        .breaking-body {
+          padding: 11px;
+        }
+
+        .breaking-body strong {
+          display: block;
+          margin-bottom: 5px;
+        }
+
+        .breaking-body small {
+          color: var(--gold);
         }
 
         .features {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          border-bottom: 1px solid var(--line);
-          background: #080a0c;
+          grid-template-columns: repeat(
+            4,
+            1fr
+          );
+          border-bottom: 1px solid
+            var(--line);
+          background: #07090a;
         }
 
         .feature {
-          min-height: 120px;
-          padding: 25px;
-          display: grid;
-          place-items: center;
           text-align: center;
-          border-right: 1px solid rgba(242, 189, 69, 0.2);
+          padding: 28px 12px;
+          border-right: 1px solid
+            rgba(
+              242,
+              189,
+              69,
+              0.25
+            );
         }
 
         .feature:last-child {
@@ -1256,12 +1416,13 @@ export default function HomePage() {
         }
 
         .feature-icon {
-          width: 44px;
-          height: 44px;
+          width: 48px;
+          height: 48px;
           display: grid;
           place-items: center;
-          margin-bottom: 8px;
-          border: 1px solid var(--line);
+          margin: 0 auto 10px;
+          border: 1px solid
+            var(--gold);
           border-radius: 50%;
           color: var(--gold);
         }
@@ -1277,7 +1438,10 @@ export default function HomePage() {
         }
 
         .section {
-          width: min(1180px, 92%);
+          width: min(
+            1180px,
+            92%
+          );
           margin: 0 auto;
           padding: 75px 0;
         }
@@ -1289,160 +1453,222 @@ export default function HomePage() {
         .section-title h2 {
           margin: 7px 0;
           color: var(--gold);
-          font-size: clamp(30px, 4vw, 50px);
+          font-size: clamp(
+            30px,
+            4vw,
+            48px
+          );
         }
 
         .section-title p {
           color: var(--muted);
-          margin: 0;
+          line-height: 1.7;
         }
 
         .about-grid {
           display: grid;
-          grid-template-columns: 1fr 1.2fr 280px;
-          gap: 25px;
-          align-items: center;
+          grid-template-columns:
+            1.1fr
+            1fr
+            0.8fr;
+          gap: 18px;
         }
 
         .box {
-          background:
-            linear-gradient(
-              145deg,
-              rgba(17, 20, 22, 0.98),
-              rgba(6, 8, 9, 0.96)
+          background: linear-gradient(
+            145deg,
+            rgba(
+              255,
+              255,
+              255,
+              0.035
+            ),
+            rgba(
+              255,
+              255,
+              255,
+              0.015
+            )
+          );
+          border: 1px solid
+            rgba(
+              242,
+              189,
+              69,
+              0.2
             );
-          border: 1px solid var(--line);
-          border-radius: 14px;
-          box-shadow: 0 20px 55px rgba(0, 0, 0, 0.22);
+          border-radius: 16px;
+          padding: 22px;
         }
 
         .about-media {
-          min-height: 260px;
+          padding: 0;
+          min-height: 340px;
           overflow: hidden;
-          display: grid;
-          place-items: center;
         }
 
         .about-media img,
         .about-media video {
+          display: block;
           width: 100%;
           height: 100%;
-          min-height: 260px;
+          min-height: 340px;
           object-fit: cover;
         }
 
         .empty-box {
-          min-height: 260px;
+          min-height: 200px;
           display: grid;
           place-items: center;
-          text-align: center;
-          padding: 25px;
           color: var(--muted);
-        }
-
-        .about-text {
-          padding: 27px;
-        }
-
-        .about-text h3 {
-          margin: 7px 0 15px;
-          color: var(--gold-light);
-          font-size: 32px;
+          text-align: center;
+          padding: 30px;
         }
 
         .about-text p {
-          color: #d5d0c6;
+          color: #d4d0c8;
           line-height: 1.8;
         }
 
-        .info-box {
-          padding: 25px;
-        }
-
         .info-box h4 {
-          margin-top: 0;
           color: var(--gold);
-          font-size: 19px;
+          margin-top: 0;
         }
 
         .info-line {
-          display: flex;
-          gap: 9px;
-          align-items: center;
-          margin: 16px 0;
-          color: #eee;
+          padding: 13px 0;
+          border-bottom: 1px solid
+            rgba(
+              255,
+              255,
+              255,
+              0.08
+            );
+          color: #ddd;
         }
 
         .menu-section {
-          background: linear-gradient(
-            180deg,
-            #07090a,
-            #0b0d0f
-          );
-          border-top: 1px solid var(--line);
-          border-bottom: 1px solid var(--line);
+          background:
+            radial-gradient(
+              circle at 80% 20%,
+              rgba(
+                242,
+                189,
+                69,
+                0.07
+              ),
+              transparent 30%
+            ),
+            #07090a;
+          border-top: 1px solid
+            rgba(
+              242,
+              189,
+              69,
+              0.12
+            );
+          border-bottom: 1px solid
+            rgba(
+              242,
+              189,
+              69,
+              0.12
+            );
         }
 
         .category-grid {
           display: grid;
-          grid-template-columns: repeat(8, 1fr);
-          gap: 10px;
+          grid-template-columns: repeat(
+            4,
+            1fr
+          );
+          gap: 14px;
         }
 
         .category-card {
-          min-height: 150px;
-          padding: 9px;
-          border: 1px solid var(--line);
-          border-radius: 12px;
-          background: #090c0e;
+          position: relative;
+          min-height: 180px;
+          padding: 0;
+          overflow: hidden;
+          border: 1px solid
+            rgba(
+              242,
+              189,
+              69,
+              0.22
+            );
+          border-radius: 14px;
+          background: #0a0c0e;
           color: #fff;
-          transition: 0.2s;
+          text-align: left;
         }
 
-        .category-card:hover,
         .category-card.active {
-          transform: translateY(-3px);
-          border-color: #ffe29a;
-          box-shadow: 0 10px 30px rgba(242, 189, 69, 0.15);
+          border-color:
+            var(--gold);
+          box-shadow:
+            0 0 0 1px
+              var(--gold);
         }
 
         .category-photo {
+          position: absolute;
+          inset: 0;
           width: 100%;
-          height: 95px;
+          height: 100%;
           object-fit: cover;
-          border-radius: 8px;
+          opacity: 0.72;
         }
 
         .category-placeholder {
-          width: 100%;
-          height: 95px;
+          position: absolute;
+          inset: 0;
           display: grid;
           place-items: center;
-          border-radius: 8px;
-          background: radial-gradient(
-            circle,
-            #30240f,
-            #101214
-          );
+          background:
+            radial-gradient(
+              circle,
+              rgba(
+                242,
+                189,
+                69,
+                0.15
+              ),
+              transparent 60%
+            ),
+            #101315;
         }
 
         .category-icon {
-          font-size: 42px;
+          font-size: 52px;
         }
 
         .category-name {
-          margin-top: 9px;
-          color: var(--gold-light);
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          padding: 15px;
+          background: linear-gradient(
+            transparent,
+            rgba(0, 0, 0, 0.9)
+          );
           font-weight: 700;
-          font-size: 13px;
+          color: #fff;
         }
 
         .items-panel {
-          margin-top: 25px;
-          padding: 25px;
-          border: 1px solid var(--line);
-          border-radius: 14px;
-          background: #050708;
+          margin-top: 22px;
+          padding: 22px;
+          border: 1px solid
+            rgba(
+              242,
+              189,
+              69,
+              0.25
+            );
+          border-radius: 16px;
+          background: #0a0d0f;
         }
 
         .items-header {
@@ -1460,72 +1686,74 @@ export default function HomePage() {
 
         .item-grid {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 18px;
+          grid-template-columns: repeat(
+            3,
+            1fr
+          );
+          gap: 15px;
         }
 
         .menu-item {
           overflow: hidden;
-          background: #0b0e10;
-          border: 1px solid rgba(242, 189, 69, 0.4);
-          border-radius: 12px;
+          border: 1px solid
+            rgba(
+              242,
+              189,
+              69,
+              0.18
+            );
+          border-radius: 13px;
+          background: #0d1012;
         }
 
         .menu-item img {
+          display: block;
           width: 100%;
-          height: 190px;
+          height: 210px;
           object-fit: cover;
         }
 
-        .menu-item-content {
-          padding: 16px;
+        .menu-item > div:last-child {
+          padding: 15px;
         }
 
-        .menu-item-content h4 {
-          margin: 0 0 7px;
+        .menu-item h4 {
+          margin: 0 0 8px;
+          color: var(--gold);
+        }
+
+        .menu-item p {
+          color: var(--muted);
+          line-height: 1.6;
         }
 
         .price {
-          color: var(--gold);
-          font-size: 18px;
+          color: #fff;
           font-weight: 700;
         }
 
-        .description {
-          color: var(--muted);
-          font-size: 13px;
-          line-height: 1.6;
+        .booking-section {
+          background: #060809;
         }
 
         .booking-grid {
           display: grid;
-          grid-template-columns: 1.2fr 0.8fr;
+          grid-template-columns:
+            1fr
+            0.8fr;
           gap: 20px;
-        }
-
-        .booking-box {
-          padding: 25px;
-        }
-
-        .booking-box h3 {
-          color: var(--gold);
-          margin: 0 0 7px;
-        }
-
-        .booking-box > p {
-          color: var(--muted);
         }
 
         .form-grid {
           display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 13px;
+          grid-template-columns: 1fr 1fr;
+          gap: 14px;
         }
 
         .field {
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 7px;
         }
 
         .field.full {
@@ -1533,148 +1761,215 @@ export default function HomePage() {
         }
 
         .field label {
-          color: #ddd;
-          font-size: 12px;
+          color: var(--gold-light);
+          font-size: 13px;
         }
 
         .field input,
         .field select,
         .field textarea {
           width: 100%;
-          border: 1px solid #46515d;
-          background: #101a25;
+          border: 1px solid
+            rgba(
+              242,
+              189,
+              69,
+              0.22
+            );
+          border-radius: 10px;
+          background: #080b0d;
           color: #fff;
-          border-radius: 7px;
-          padding: 12px;
+          padding: 11px 12px;
           outline: none;
         }
 
         .field input:focus,
         .field select:focus,
         .field textarea:focus {
-          border-color: var(--gold);
+          border-color:
+            var(--gold);
         }
 
         .field textarea {
-          min-height: 90px;
+          min-height: 110px;
           resize: vertical;
         }
 
         .form-actions {
           display: flex;
           flex-wrap: wrap;
-          gap: 9px;
-          margin-top: 17px;
+          gap: 10px;
+          margin-top: 18px;
         }
 
-        .message {
-          margin-top: 13px;
-          padding: 11px;
-          border: 1px solid var(--line);
-          border-radius: 8px;
+        .booking-message {
+          margin-top: 15px;
+          padding: 12px;
+          border: 1px solid
+            rgba(
+              242,
+              189,
+              69,
+              0.3
+            );
+          border-radius: 10px;
           color: var(--gold-light);
-          background: rgba(242, 189, 69, 0.07);
-          font-size: 13px;
         }
 
         .gallery-review {
           display: grid;
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns:
+            1.2fr
+            0.8fr;
           gap: 20px;
-        }
-
-        .gallery-box,
-        .review-box {
-          padding: 25px;
         }
 
         .gallery-grid {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 8px;
+          grid-template-columns: repeat(
+            3,
+            1fr
+          );
+          gap: 10px;
         }
 
         .gallery-grid img {
           width: 100%;
-          aspect-ratio: 1;
+          height: 160px;
           object-fit: cover;
-          border-radius: 8px;
+          border-radius: 10px;
+          border: 1px solid
+            rgba(
+              242,
+              189,
+              69,
+              0.18
+            );
         }
 
         .review-list {
           display: grid;
-          gap: 10px;
-          max-height: 320px;
-          overflow: auto;
+          gap: 12px;
         }
 
         .review {
-          padding: 14px;
-          border: 1px solid rgba(242, 189, 69, 0.25);
-          border-radius: 9px;
+          padding: 15px;
+          border: 1px solid
+            rgba(
+              255,
+              255,
+              255,
+              0.08
+            );
+          border-radius: 12px;
+          background: rgba(
+            255,
+            255,
+            255,
+            0.02
+          );
         }
 
         .review strong {
           display: block;
+          color: #fff;
+          margin-bottom: 6px;
         }
 
         .stars {
           color: var(--gold);
           letter-spacing: 2px;
+          margin-bottom: 7px;
         }
 
         .review p {
-          color: #c8c3ba;
-          font-size: 13px;
+          margin: 0;
+          color: var(--muted);
           line-height: 1.6;
         }
 
         .contact-grid {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(
+            3,
+            1fr
+          );
           gap: 18px;
         }
 
-        .contact-box {
-          padding: 25px;
-        }
-
         .contact-box h3 {
-          color: var(--gold);
           margin-top: 0;
+          color: var(--gold);
         }
 
         .contact-line {
           display: flex;
-          gap: 10px;
           align-items: flex-start;
-          margin: 14px 0;
+          gap: 10px;
+          margin: 13px 0;
           color: #ddd;
+          line-height: 1.6;
+        }
+
+        .contact-line svg {
+          flex: 0 0 auto;
+          color: var(--gold);
+          margin-top: 2px;
         }
 
         .social-row {
           display: flex;
-          gap: 10px;
+          gap: 12px;
           flex-wrap: wrap;
+          margin-top: 15px;
         }
 
         .social-icon {
-          width: 44px;
-          height: 44px;
+          width: 46px;
+          height: 46px;
           display: grid;
           place-items: center;
-          border: 1px solid var(--line);
+          border: 1px solid
+            rgba(
+              242,
+              189,
+              69,
+              0.35
+            );
           border-radius: 50%;
           color: var(--gold);
+          background: rgba(
+            242,
+            189,
+            69,
+            0.04
+          );
+          transition:
+            transform 0.2s ease,
+            background 0.2s ease;
+        }
+
+        .social-icon:hover {
+          transform: translateY(
+            -2px
+          );
+          background: rgba(
+            242,
+            189,
+            69,
+            0.12
+          );
         }
 
         .footer {
           display: flex;
           justify-content: space-between;
-          gap: 20px;
-          padding: 22px 4vw;
-          border-top: 1px solid var(--line);
-          color: #9c978e;
+          align-items: center;
+          gap: 15px;
+          padding: 25px 4vw;
+          border-top: 1px solid
+            var(--line);
+          color: var(--muted);
           font-size: 12px;
         }
 
@@ -1686,17 +1981,16 @@ export default function HomePage() {
         }
 
         .floating-book button {
-          border: 1px solid #ffe29a;
+          border: 1px solid
+            var(--gold);
           border-radius: 999px;
-          padding: 13px 19px;
-          background: linear-gradient(
-            135deg,
-            #f9d878,
-            #d99a25
-          );
+          padding: 12px 18px;
           color: #171108;
+          background: var(--gold);
           font-weight: 700;
-          box-shadow: 0 15px 40px rgba(0,0,0,.45);
+          box-shadow:
+            0 15px 35px
+              rgba(0, 0, 0, 0.4);
         }
 
         .modal-bg {
@@ -1706,27 +2000,45 @@ export default function HomePage() {
           display: grid;
           place-items: center;
           padding: 20px;
-          background: rgba(0,0,0,.75);
-          backdrop-filter: blur(8px);
+          background: rgba(
+            0,
+            0,
+            0,
+            0.75
+          );
+          backdrop-filter: blur(
+            8px
+          );
         }
 
         .modal {
-          width: min(620px, 100%);
+          width: min(
+            620px,
+            100%
+          );
           max-height: 90vh;
           overflow: auto;
           background: #080b0d;
-          border: 1px solid var(--gold);
+          border: 1px solid
+            var(--gold);
           border-radius: 15px;
-          box-shadow: 0 30px 100px rgba(0,0,0,.7);
+          box-shadow:
+            0 30px 100px
+              rgba(0, 0, 0, 0.7);
         }
 
         .modal-head {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          gap: 15px;
           padding: 18px 20px;
-          border-bottom: 1px solid rgba(242, 189, 69, 0.25);
+          border-bottom: 1px solid
+            rgba(
+              242,
+              189,
+              69,
+              0.25
+            );
         }
 
         .modal-head h3 {
@@ -1735,141 +2047,69 @@ export default function HomePage() {
         }
 
         .modal-close {
-          width: 38px;
-          height: 38px;
-          display: grid;
-          place-items: center;
-          border: 1px solid var(--line);
-          border-radius: 50%;
+          border: 0;
           background: transparent;
-          color: var(--gold);
+          color: #fff;
         }
 
         .modal-body {
           padding: 20px;
         }
 
-        .booking-summary {
-          display: grid;
-          gap: 10px;
-          margin-bottom: 18px;
-        }
-
-        .booking-summary div {
-          display: flex;
-          justify-content: space-between;
-          gap: 15px;
-          padding: 10px 0;
-          border-bottom: 1px solid rgba(255,255,255,0.08);
-        }
-
-        .booking-summary span:first-child {
-          color: var(--muted);
-        }
-
-        .booking-summary span:last-child {
-          color: #fff;
-          text-align: right;
-        }
-
-        .news-wrap {
-          position: fixed;
-          left: 0;
-          right: 0;
-          top: 70px;
-          z-index: 90;
-          padding: 8px 4vw;
-          background: rgba(12, 9, 5, 0.96);
-          border-bottom: 1px solid var(--line);
-          backdrop-filter: blur(12px);
-        }
-
-        .breaking-news {
-          width: min(1180px, 100%);
-          margin: 0 auto;
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          min-height: 48px;
-        }
-
-        .breaking-label {
-          flex: 0 0 auto;
-          padding: 7px 12px;
-          border-radius: 999px;
-          background: linear-gradient(
-            135deg,
-            #f9d878,
-            #d99a25
-          );
-          color: #171108;
-          font-size: 11px;
-          font-weight: 800;
-          letter-spacing: 1px;
-          text-transform: uppercase;
-        }
-
-        .breaking-text {
-          flex: 1;
-          min-width: 0;
-          color: #fff;
-          font-size: 14px;
-          line-height: 1.5;
-        }
-
-        .breaking-media {
-          width: 70px;
-          height: 40px;
-          flex: 0 0 70px;
-          object-fit: cover;
-          border-radius: 7px;
-          border: 1px solid rgba(242, 189, 69, 0.4);
-          background: #090b0d;
-        }
-
-        .breaking-close {
-          width: 34px;
-          height: 34px;
-          flex: 0 0 34px;
-          display: grid;
-          place-items: center;
-          border: 1px solid rgba(242, 189, 69, 0.45);
-          border-radius: 50%;
-          background: transparent;
+        .code-display {
+          text-align: center;
+          margin: 20px 0;
           color: var(--gold);
+          font-size: 28px;
+          letter-spacing: 2px;
         }
 
-        .gallery-modal {
-          width: min(1100px, 100%);
-          max-height: 92vh;
-          overflow: auto;
-          padding: 20px;
-          background: #080b0d;
-          border: 1px solid var(--gold);
-          border-radius: 15px;
-        }
-
-        .gallery-modal-grid {
+        .details-grid {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 12px;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+          margin: 20px 0;
         }
 
-        .gallery-modal-grid img {
-          width: 100%;
-          aspect-ratio: 1.1;
-          object-fit: cover;
-          border-radius: 10px;
-          border: 1px solid rgba(242, 189, 69, 0.3);
+        .detail {
+          padding: 10px;
+          border-bottom: 1px solid
+            rgba(
+              255,
+              255,
+              255,
+              0.08
+            );
+        }
+
+        .detail small {
+          display: block;
+          color: #888;
+          margin-bottom: 4px;
+        }
+
+        .detail strong {
+          word-break: break-word;
+        }
+
+        .small-note {
+          color: #8e8a82;
+          font-size: 12px;
+          line-height: 1.6;
         }
 
         @media (max-width: 1050px) {
           .category-grid {
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(
+              4,
+              1fr
+            );
           }
 
           .about-grid {
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns:
+              1fr
+              1fr;
           }
 
           .info-box {
@@ -1877,17 +2117,18 @@ export default function HomePage() {
           }
         }
 
-        @media (max-width: 850px) {
+        @media (max-width: 800px) {
           .nav {
             display: none;
             position: absolute;
             top: 70px;
             left: 0;
             right: 0;
-            padding: 15px 4vw;
-            background: rgba(4, 6, 7, 0.98);
-            border-bottom: 1px solid var(--line);
+            padding: 20px;
             flex-direction: column;
+            background: #050607;
+            border-bottom: 1px solid
+              var(--line);
           }
 
           .nav.open {
@@ -1898,25 +2139,20 @@ export default function HomePage() {
             display: block;
           }
 
-          .top-actions .pill {
-            display: none;
+          .topbar {
+            padding: 9px 15px;
           }
 
           .brand {
-            min-width: 0;
-            flex: 1;
+            min-width: auto;
+          }
+
+          .pill {
+            display: none;
           }
 
           .features {
-            grid-template-columns: repeat(2, 1fr);
-          }
-
-          .feature:nth-child(2) {
-            border-right: 0;
-          }
-
-          .feature:nth-child(-n+2) {
-            border-bottom: 1px solid rgba(242, 189, 69, 0.2);
+            grid-template-columns: 1fr 1fr;
           }
 
           .about-grid,
@@ -1927,21 +2163,17 @@ export default function HomePage() {
           }
 
           .item-grid {
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: 1fr 1fr;
           }
 
-          .hero-contact {
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
+          .breaking-news {
+            left: 12px;
+            top: 12px;
+            width: 230px;
           }
         }
 
-        @media (max-width: 600px) {
-          .topbar {
-            padding: 8px 4vw;
-          }
-
+        @media (max-width: 560px) {
           .brand-name {
             font-size: 15px;
             letter-spacing: 2px;
@@ -1951,33 +2183,16 @@ export default function HomePage() {
             font-size: 7px;
           }
 
-          .hero {
-            min-height: 620px;
-          }
-
-          .hero-content {
-            padding: 80px 0 110px;
-          }
-
-          .hero h1 {
-            font-size: 48px;
-          }
-
-          .hero-description {
-            font-size: 15px;
-          }
-
-          .features {
-            grid-template-columns: 1fr 1fr;
-          }
-
-          .feature {
-            padding: 18px 10px;
-            min-height: 110px;
+          .brand-mark {
+            width: 40px;
+            height: 40px;
           }
 
           .category-grid {
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(
+              2,
+              1fr
+            );
           }
 
           .item-grid {
@@ -1992,577 +2207,45 @@ export default function HomePage() {
             grid-column: auto;
           }
 
-          .gallery-grid {
-            grid-template-columns: repeat(2, 1fr);
+          .details-grid {
+            grid-template-columns: 1fr;
           }
 
-          .gallery-modal-grid {
-            grid-template-columns: 1fr 1fr;
+          .hero {
+            min-height: 610px;
+          }
+
+          .hero h1 {
+            font-size: 43px;
+          }
+
+          .hero-description {
+            font-size: 15px;
+          }
+
+          .hero-contact {
+            display: none;
           }
 
           .footer {
             flex-direction: column;
-          }
-
-          .news-wrap {
-            top: 64px;
-            padding: 7px 3vw;
+            text-align: center;
           }
 
           .breaking-news {
-            gap: 7px;
-          }
-
-          .breaking-label {
-            font-size: 9px;
-            padding: 6px 8px;
-          }
-
-          .breaking-text {
-            font-size: 11px;
+            width: 210px;
           }
 
           .breaking-media {
-            width: 58px;
-            height: 35px;
-            flex-basis: 58px;
+            height: 125px;
           }
 
-          .floating-book {
-            right: 12px;
-            bottom: 12px;
+          .gallery-grid {
+            grid-template-columns: 1fr 1fr;
           }
         }
       `}</style>
-
-      {/* ================= TOP BAR ================= */}
-
-      <header className="topbar">
-        <button
-          className="brand"
-          onClick={() => scrollTo("home")}
-        >
-          <span className="brand-mark">
-            ♛
-          </span>
-
-          <span>
-            <span className="brand-name">
-              {restaurantName}
-            </span>
-
-            <span className="brand-sub">
-              ROMA • INDIA • BANGLADESH
-            </span>
-          </span>
-        </button>
-
-        <nav
-          className={`nav ${
-            mobileOpen ? "open" : ""
-          }`}
-        >
-          <button
-            onClick={() => scrollTo("home")}
-          >
-            Home
-          </button>
-
-          <button
-            onClick={() => scrollTo("about")}
-          >
-            About
-          </button>
-
-          <button
-            onClick={() => scrollTo("menu")}
-          >
-            Menu
-          </button>
-
-          <button
-            onClick={() => scrollTo("booking")}
-          >
-            Booking
-          </button>
-
-          <button
-            onClick={() => scrollTo("gallery")}
-          >
-            Gallery
-          </button>
-
-          <button
-            onClick={() => scrollTo("contact")}
-          >
-            Contact
-          </button>
-        </nav>
-
-        <div className="top-actions">
-          <button
-            className="pill"
-            onClick={() =>
-              setMyBookingOpen(true)
-            }
-          >
-            <Icon
-              name="calendar"
-              size={16}
-            />
-            My Booking
-          </button>
-
-          <button
-            className="gold-btn"
-            onClick={() =>
-              scrollTo("booking")
-            }
-          >
-            Book Table
-          </button>
-
-          <button
-            className="mobile-menu"
-            onClick={() =>
-              setMobileOpen(
-                (value) => !value,
-              )
-            }
-          >
-            ☰
-          </button>
-        </div>
-      </header>
-
-      {/* ================= BREAKING NEWS ================= */}
-
-      {visibleNews && (
-        <div className="news-wrap">
-          <div className="breaking-news">
-            <span className="breaking-label">
-              Breaking News
-            </span>
-
-            {visibleNews.image ? (
-              <img
-                className="breaking-media"
-                src={visibleNews.image}
-                alt={
-                  visibleNews.title ||
-                  "Breaking News"
-                }
-              />
-            ) : visibleNews.mediaType ===
-                "video" &&
-              newsMediaUrls[
-                String(visibleNews.id)
-              ] ? (
-              <video
-                className="breaking-media"
-                src={
-                  newsMediaUrls[
-                    String(visibleNews.id)
-                  ]
-                }
-                autoPlay
-                muted
-                loop
-                playsInline
-                controls
-              />
-            ) : visibleNews.video ? (
-              <video
-                className="breaking-media"
-                src={visibleNews.video}
-                autoPlay
-                muted
-                loop
-                playsInline
-                controls
-              />
-            ) : (
-              <div className="breaking-media" />
-            )}
-
-            <div className="breaking-text">
-              {visibleNews.text ||
-                visibleNews.title}
-            </div>
-
-            <button
-              className="breaking-close"
-              onClick={() =>
-                setNewsClosed(true)
-              }
-              aria-label="Close breaking news"
-            >
-              <Icon
-                name="close"
-                size={16}
-              />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ================= HOME ================= */}
-
-      <section
-        id="home"
-        className={`hero ${
-          heroImage
-            ? "with-image"
-            : ""
-        }`}
-        style={
-          heroImage
-            ? ({
-                "--hero-image": `url("${heroImage}")`,
-              } as CSSProperties)
-            : undefined
-        }
-      >
-        {heroVideo && (
-          <video
-            className="hero-video"
-            src={heroVideo}
-            autoPlay
-            muted
-            loop
-            playsInline
-          />
-        )}
-
-        <div className="hero-content">
-          <div className="eyebrow">
-            Welcome to {restaurantName}
-          </div>
-
-          <h1>{heroTitle}</h1>
-
-          <p className="hero-description">
-            {heroSubtitle}
-          </p>
-
-          <div className="hero-buttons">
-            <button
-              className="gold-btn"
-              onClick={() =>
-                scrollTo("booking")
-              }
-            >
-              Reserve Your Table
-              <Icon
-                name="arrow"
-                size={17}
-              />
-            </button>
-
-            <button
-              className="outline-btn"
-              onClick={() =>
-                scrollTo("menu")
-              }
-            >
-              Explore Menu
-            </button>
-          </div>
-
-          {!heroImage &&
-            !heroVideo && (
-              <div className="hero-empty">
-                Home image/video has not
-                been added from Admin → Home.
-              </div>
-            )}
-        </div>
-
-        <div className="hero-contact">
-          {phone && (
-            <span>
-              <Icon
-                name="phone"
-                size={16}
-              />
-              {phone}
-            </span>
-          )}
-
-          <span>
-            <Icon
-              name="pin"
-              size={16}
-            />
-            {address}
-          </span>
-        </div>
-      </section>
-
-      {/* ================= FEATURES ================= */}
-
-      <section className="features">
-        <div className="feature">
-          <div className="feature-icon">
-            ✦
-          </div>
-
-          <strong>
-            Fresh Ingredients
-          </strong>
-
-          <span>
-            Only the best for you
-          </span>
-        </div>
-
-        <div className="feature">
-          <div className="feature-icon">
-            ♛
-          </div>
-
-          <strong>
-            Skilled Chefs
-          </strong>
-
-          <span>
-            Crafted with love
-          </span>
-        </div>
-
-        <div className="feature">
-          <div className="feature-icon">
-            ⌂
-          </div>
-
-          <strong>
-            Cozy Ambience
-          </strong>
-
-          <span>
-            Feel at home
-          </span>
-        </div>
-
-        <div className="feature">
-          <div className="feature-icon">
-            ◷
-          </div>
-
-          <strong>
-            Fast Service
-          </strong>
-
-          <span>
-            Your time matters
-          </span>
-        </div>
-      </section>
-
-      {/* ================= ABOUT ================= */}
-
-      <section
-        id="about"
-        className="section"
-      >
-        <div className="about-grid">
-          <div className="box about-media">
-            {about.video ? (
-              <video
-                src={about.video}
-                controls
-                playsInline
-              />
-            ) : about.image ? (
-              <img
-                src={about.image}
-                alt="About restaurant"
-              />
-            ) : (
-              <div className="empty-box">
-                <div>
-                  <Icon
-                    name="gallery"
-                    size={40}
-                  />
-
-                  <p>
-                    No About image/video
-                    added yet.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="box about-text">
-            <div className="eyebrow">
-              About Us
-            </div>
-
-            <h3>
-              {about.title ||
-                "A Place for Food Lovers"}
-            </h3>
-
-            <p>{aboutText}</p>
-
-            <button
-              className="outline-btn"
-              onClick={() =>
-                scrollTo("contact")
-              }
-            >
-              Learn More
-              <Icon
-                name="arrow"
-                size={16}
-              />
-            </button>
-          </div>
-
-          <div className="box info-box">
-            <h4>
-              Restaurant Experience
-            </h4>
-
-            <div className="info-line">
-              ✦ Fresh & Organic Food
-            </div>
-
-            <div className="info-line">
-              ♨ Authentic Recipes
-            </div>
-
-            <div className="info-line">
-              ♛ Royal Dining Experience
-            </div>
-
-            <div className="info-line">
-              ♡ Family Friendly
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ================= MENU ================= */}
-
-      <section
-        id="menu"
-        className="menu-section"
-      >
-        <div className="section">
-          <div className="section-title">
-            <div className="eyebrow">
-              Our Menu
-            </div>
-
-            <h2>
-              Choose Your Favourite
-              Category
-            </h2>
-
-            <p>
-              Click on a category image
-              or icon to view its items.
-            </p>
-          </div>
-
-          <div className="category-grid">
-            {categoryCards.map(
-              (category, index) => (
-                <button
-                  key={`${category.name}-${index}`}
-                  className={`category-card ${
-                    selectedCategory ===
-                    category.name
-                      ? "active"
-                      : ""
-                  }`}
-                  onClick={() =>
-                    setSelectedCategory(
-                      selectedCategory ===
-                        category.name
-                        ? ""
-                        : category.name,
-                    )
-                  }
-                >
-                  {category.image ? (
-                    <img
-                      className="category-photo"
-                      src={
-                        category.image
-                      }
-                      alt={
-                        category.name
-                      }
-                    />
-                  ) : (
-                    <span className="category-placeholder">
-                      <CategoryIcon
-                        name={
-                          category.name
-                        }
-                      />
-                    </span>
-                  )}
-
-                  <div className="category-name">
-                    {category.name} →
-                  </div>
-                </button>
-              ),
-            )}
-          </div>
-
-          {selectedCategory && (
-            <div className="items-panel">
-              <div className="items-header">
-                <h3>
-                  {selectedCategory}
-                </h3>
-
-                <button
-                  className="outline-btn"
-                  onClick={() =>
-                    setSelectedCategory(
-                      "",
-                    )
-                  }
-                >
-                  Close
-                </button>
-              </div>
-
-              {selectedItems.length >
-              0 ? (
-                <div className="item-grid">
-                  {selectedItems.map(
-                    (item, index) => (
-                      <article
-                        className="menu-item"
-                        key={`${
-                          item.id ||
-                          item.name ||
-                          "item"
-                        }-${index}`}
-                      >
-                        {item.image ? (
-                          <img
-                            src={item.image}
-                            alt={
-                              item.name ||
-                              item.title ||
-                              "Food"
-                            }
-                          />
-                        ) : (
-                          <div className="category-placeholder">
-                            <CategoryIcon
-                              name={
-                                selectedCategory
-                              }
+                                    }
                             />
                           </div>
                         )}
@@ -2571,18 +2254,16 @@ export default function HomePage() {
                           <h4>
                             {item.name ||
                               item.title ||
-                              "Food Item"}
+                              "Menu Item"}
                           </h4>
 
                           {item.price !==
                             undefined &&
-                            item.price !==
-                              "" && (
+                            item.price !== "" && (
                               <div className="price">
+                                {item.price}{" "}
                                 {settings.currency ||
                                   "€"}
-                                {" "}
-                                {item.price}
                               </div>
                             )}
 
@@ -2600,8 +2281,9 @@ export default function HomePage() {
                 </div>
               ) : (
                 <div className="empty-box">
-                  No items available in this
-                  category.
+                  No items have been
+                  added to this category
+                  yet.
                 </div>
               )}
             </div>
@@ -2617,469 +2299,572 @@ export default function HomePage() {
       >
         <div className="section-title">
           <div className="eyebrow">
-            Reservation
+            Reservations
           </div>
 
           <h2>
-            Reserve Your Table
+            Book a Table
           </h2>
 
           <p>
-            Book your table directly
-            with {restaurantName}.
+            New booking করুন। আগে
+            booking থাকলে My Booking
+            দিয়ে দেখতে, edit করতে বা
+            cancel করতে পারবেন।
           </p>
         </div>
 
         <div className="booking-grid">
-          <div className="box booking-box">
+          <form
+            className="box booking-box"
+            onSubmit={
+              submitBooking
+            }
+          >
             <h3>
-              {home.bookingTitle ||
-                "Book a Table"}
+              Book Your Table
             </h3>
 
             <p>
-              {home.bookingText ||
-                "Choose your preferred date, time and number of guests."}
+              Booking confirm হলে
+              একটি unique booking code
+              তৈরি হবে।
             </p>
 
-            <form
-              onSubmit={submitBooking}
-            >
-              <div className="form-grid">
-                <div className="field">
-                  <label>
-                    Full Name *
-                  </label>
+            <div className="form-grid">
+              <div className="field">
+                <label>
+                  Name *
+                </label>
 
-                  <input
-                    value={booking.name}
-                    onChange={(event) =>
-                      setBooking({
-                        ...booking,
-                        name: event.target
+                <input
+                  value={
+                    booking.name
+                  }
+                  onChange={(event) =>
+                    setBooking({
+                      ...booking,
+                      name:
+                        event.target
                           .value,
-                      })
-                    }
-                    required
-                  />
-                </div>
-
-                <div className="field">
-                  <label>
-                    Phone
-                  </label>
-
-                  <input
-                    value={booking.phone}
-                    onChange={(event) =>
-                      setBooking({
-                        ...booking,
-                        phone: event.target
-                          .value,
-                      })
-                    }
-                    type="tel"
-                  />
-                </div>
-
-                <div className="field">
-                  <label>
-                    Email
-                  </label>
-
-                  <input
-                    value={booking.email}
-                    onChange={(event) =>
-                      setBooking({
-                        ...booking,
-                        email: event.target
-                          .value,
-                      })
-                    }
-                    type="email"
-                  />
-                </div>
-
-                <div className="field">
-                  <label>
-                    Guests
-                  </label>
-
-                  <select
-                    value={booking.guests}
-                    onChange={(event) =>
-                      setBooking({
-                        ...booking,
-                        guests:
-                          event.target
-                            .value,
-                      })
-                    }
-                  >
-                    {Array.from(
-                      { length: 20 },
-                      (_, index) =>
-                        index + 1,
-                    ).map((number) => (
-                      <option
-                        key={number}
-                        value={number}
-                      >
-                        {number}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="field">
-                  <label>
-                    Date *
-                  </label>
-
-                  <input
-                    type="date"
-                    value={booking.date}
-                    onChange={(event) =>
-                      setBooking({
-                        ...booking,
-                        date: event.target
-                          .value,
-                      })
-                    }
-                    required
-                  />
-                </div>
-
-                <div className="field">
-                  <label>
-                    Time *
-                  </label>
-
-                  <input
-                    type="time"
-                    value={booking.time}
-                    onChange={(event) =>
-                      setBooking({
-                        ...booking,
-                        time: event.target
-                          .value,
-                      })
-                    }
-                    required
-                  />
-                </div>
-
-                <div className="field">
-                  <label>
-                    Category
-                  </label>
-
-                  <select
-                    value={booking.category}
-                    onChange={(event) =>
-                      setBooking({
-                        ...booking,
-                        category:
-                          event.target
-                            .value,
-                        item: "",
-                      })
-                    }
-                  >
-                    <option value="">
-                      Select category
-                    </option>
-
-                    {categories.map(
-                      (category) => (
-                        <option
-                          key={category}
-                          value={category}
-                        >
-                          {category}
-                        </option>
-                      ),
-                    )}
-                  </select>
-                </div>
-
-                <div className="field">
-                  <label>
-                    Food Item
-                  </label>
-
-                  <select
-                    value={booking.item}
-                    onChange={(event) =>
-                      setBooking({
-                        ...booking,
-                        item: event.target
-                          .value,
-                      })
-                    }
-                    disabled={
-                      !booking.category
-                    }
-                  >
-                    <option value="">
-                      Select item
-                    </option>
-
-                    {bookingItems.map(
-                      (item, index) => (
-                        <option
-                          key={`${
-                            item.id ||
-                            item.name
-                          }-${index}`}
-                          value={
-                            item.name ||
-                            item.title ||
-                            ""
-                          }
-                        >
-                          {item.name ||
-                            item.title ||
-                            "Food"}
-                        </option>
-                      ),
-                    )}
-                  </select>
-                </div>
-
-                <div className="field full">
-                  <label>
-                    Note
-                  </label>
-
-                  <textarea
-                    value={booking.note}
-                    onChange={(event) =>
-                      setBooking({
-                        ...booking,
-                        note: event.target
-                          .value,
-                      })
-                    }
-                    placeholder="Any special request?"
-                  />
-                </div>
+                    })
+                  }
+                  placeholder="Your name"
+                  required
+                />
               </div>
 
-              <div className="form-actions">
-                <button
-                  type="submit"
-                  className="gold-btn"
-                >
-                  Confirm Booking
-                  <Icon
-                    name="check"
-                    size={16}
-                  />
-                </button>
+              <div className="field">
+                <label>
+                  Phone
+                </label>
 
-                <button
-                  type="button"
-                  className="outline-btn"
-                  onClick={() =>
-                    setMyBookingOpen(true)
+                <input
+                  value={
+                    booking.phone
+                  }
+                  onChange={(event) =>
+                    setBooking({
+                      ...booking,
+                      phone:
+                        event.target
+                          .value,
+                    })
+                  }
+                  placeholder="Phone number"
+                />
+              </div>
+
+              <div className="field">
+                <label>
+                  Email
+                </label>
+
+                <input
+                  type="email"
+                  value={
+                    booking.email
+                  }
+                  onChange={(event) =>
+                    setBooking({
+                      ...booking,
+                      email:
+                        event.target
+                          .value,
+                    })
+                  }
+                  placeholder="Email address"
+                />
+              </div>
+
+              <div className="field">
+                <label>
+                  Date *
+                </label>
+
+                <input
+                  type="date"
+                  value={
+                    booking.date
+                  }
+                  onChange={(event) =>
+                    setBooking({
+                      ...booking,
+                      date:
+                        event.target
+                          .value,
+                    })
+                  }
+                  required
+                />
+              </div>
+
+              <div className="field">
+                <label>
+                  Time *
+                </label>
+
+                <input
+                  type="time"
+                  value={
+                    booking.time
+                  }
+                  onChange={(event) =>
+                    setBooking({
+                      ...booking,
+                      time:
+                        event.target
+                          .value,
+                    })
+                  }
+                  required
+                />
+              </div>
+
+              <div className="field">
+                <label>
+                  Persons
+                </label>
+
+                <select
+                  value={
+                    booking.guests
+                  }
+                  onChange={(event) =>
+                    setBooking({
+                      ...booking,
+                      guests:
+                        event.target
+                          .value,
+                    })
                   }
                 >
-                  My Booking
-                </button>
+                  {Array.from(
+                    {
+                      length: 12,
+                    },
+                    (_, index) =>
+                      index + 1,
+                  ).map((number) => (
+                    <option
+                      key={number}
+                      value={number}
+                    >
+                      {number}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              {bookingMessage && (
-                <div className="message">
-                  {bookingMessage}
-                </div>
-              )}
-            </form>
-          </div>
+              <div className="field">
+                <label>
+                  Category
+                </label>
 
-          <div className="box booking-box">
-            <div className="eyebrow">
-              Need Help?
+                <select
+                  value={
+                    booking.category
+                  }
+                  onChange={(event) =>
+                    setBooking({
+                      ...booking,
+                      category:
+                        event.target
+                          .value,
+                      item: "",
+                    })
+                  }
+                >
+                  <option value="">
+                    Select category
+                  </option>
+
+                  {categories.map(
+                    (
+                      category,
+                      index,
+                    ) => (
+                      <option
+                        key={`${category}-${index}`}
+                        value={
+                          category
+                        }
+                      >
+                        {category}
+                      </option>
+                    ),
+                  )}
+                </select>
+              </div>
+
+              <div className="field">
+                <label>
+                  Food / Item
+                </label>
+
+                <select
+                  value={
+                    booking.item
+                  }
+                  disabled={
+                    !booking.category
+                  }
+                  onChange={(event) =>
+                    setBooking({
+                      ...booking,
+                      item:
+                        event.target
+                          .value,
+                    })
+                  }
+                >
+                  <option value="">
+                    Select item
+                  </option>
+
+                  {bookingItems.map(
+                    (
+                      item,
+                      index,
+                    ) => (
+                      <option
+                        key={`${
+                          item.id ||
+                          item.name ||
+                          "food"
+                        }-${index}`}
+                        value={
+                          item.name ||
+                          item.title ||
+                          ""
+                        }
+                      >
+                        {item.name ||
+                          item.title}
+                      </option>
+                    ),
+                  )}
+                </select>
+              </div>
+
+              <div className="field full">
+                <label>
+                  Special Request
+                </label>
+
+                <textarea
+                  value={
+                    booking.note
+                  }
+                  onChange={(event) =>
+                    setBooking({
+                      ...booking,
+                      note:
+                        event.target
+                          .value,
+                    })
+                  }
+                  placeholder="Write your request"
+                />
+              </div>
             </div>
 
+            <div className="form-actions">
+              <button
+                className="gold-btn"
+                type="submit"
+              >
+                <Icon
+                  name="check"
+                  size={17}
+                />
+                Confirm Booking
+              </button>
+
+              <button
+                className="outline-btn"
+                type="button"
+                onClick={() =>
+                  setBooking({
+                    name: "",
+                    phone: "",
+                    email: "",
+                    date: "",
+                    time: "",
+                    guests: "2",
+                    category: "",
+                    item: "",
+                    note: "",
+                  })
+                }
+              >
+                Cancel
+              </button>
+            </div>
+
+            {bookingMessage && (
+              <div className="message">
+                {bookingMessage}
+              </div>
+            )}
+          </form>
+
+          <div className="box booking-box">
             <h3>
-              Contact {restaurantName}
+              My Booking
             </h3>
 
             <p>
-              For large groups, private
-              events or special requests,
-              contact us directly.
+              আগে booking করেছেন?
+              একই phone/email দিয়ে
+              আপনার booking খুঁজে
+              বের করুন।
             </p>
 
-            {phone && (
-              <div className="contact-line">
-                <Icon
-                  name="phone"
-                  size={18}
-                />
+            <button
+              className="gold-btn"
+              onClick={() => {
+                setMyBookingOpen(
+                  true,
+                );
+                setLookupStep(
+                  "login",
+                );
+                setLookupMessage(
+                  "",
+                );
+              }}
+            >
+              <Icon
+                name="user"
+                size={18}
+              />
+              My Booking
+            </button>
 
-                <span>{phone}</span>
-              </div>
-            )}
-
-            {email && (
-              <div className="contact-line">
-                <Icon
-                  name="mail"
-                  size={18}
-                />
-
-                <span>{email}</span>
-              </div>
-            )}
-
-            {whatsapp && (
-              <button
-                className="gold-btn"
-                onClick={openWhatsApp}
-              >
-                WhatsApp Us
-              </button>
-            )}
+            <p
+              className="small-note"
+              style={{
+                marginTop: 20,
+              }}
+            >
+              Phone অথবা Email →
+              Booking Code →
+              Booking Details →
+              Edit / Cancel
+            </p>
           </div>
         </div>
       </section>
 
       {/* ================= GALLERY + REVIEWS ================= */}
 
-      <section
-        id="gallery"
-        className="section"
-      >
-        <div className="section-title">
-          <div className="eyebrow">
-            Memories
-          </div>
-
-          <h2>
-            Gallery & Reviews
-          </h2>
-
-          <p>
-            A glimpse of our restaurant
-            and what guests say.
-          </p>
-        </div>
-
+      <section className="section">
         <div className="gallery-review">
-          <div className="box gallery-box">
-            <div className="items-header">
-              <h3>
-                Gallery
-              </h3>
 
-              {gallery.length > 6 && (
-                <button
-                  className="outline-btn"
-                  onClick={() =>
-                    setGalleryOpen(true)
-                  }
-                >
-                  View All
-                </button>
-              )}
+          <div
+            id="gallery"
+            className="box gallery-box"
+          >
+            <div className="section-title">
+              <div className="eyebrow">
+                Gallery
+              </div>
+
+              <h2>
+                Our Gallery
+              </h2>
+
+              <p>
+                Admin → Gallery থেকে
+                image যোগ করলেই এখানে
+                দেখাবে।
+              </p>
             </div>
 
             {gallery.length > 0 ? (
-              <div className="gallery-grid">
-                {gallery
-                  .slice(0, 6)
+              <>
+                <div className="gallery-grid">
+                  {gallery
+                    .slice(0, 6)
+                    .map(
+                      (
+                        item,
+                        index,
+                      ) => (
+                        <img
+                          key={`${
+                            item.id ||
+                            item.image
+                          }-${index}`}
+                          src={
+                            item.image
+                          }
+                          alt={
+                            item.title ||
+                            "Gallery"
+                          }
+                        />
+                      ),
+                    )}
+                </div>
+
+                <button
+                  className="outline-btn"
+                  style={{
+                    marginTop: 15,
+                  }}
+                  onClick={() =>
+                    setGalleryOpen(
+                      true,
+                    )
+                  }
+                >
+                  <Icon
+                    name="gallery"
+                    size={17}
+                  />
+                  View Gallery
+                </button>
+              </>
+            ) : (
+              <div className="empty-box">
+                <div>
+                  <Icon
+                    name="gallery"
+                    size={42}
+                  />
+                  <p>
+                    No images yet.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ================= REVIEWS ================= */}
+
+          <div
+            id="reviews"
+            className="box review-box"
+          >
+            <div className="section-title">
+              <div className="eyebrow">
+                Reviews
+              </div>
+
+              <h2>
+                What Customers Say
+              </h2>
+
+              <p>
+                Admin → Reviews থেকে
+                যোগ করা customer reviews
+                এখানে দেখাবে।
+              </p>
+            </div>
+
+            {reviews.length > 0 ? (
+              <div className="review-list">
+                {reviews
+                  .slice(0, 8)
                   .map(
-                    (item, index) => (
-                      <img
-                        key={`gallery-${
-                          item.id ||
-                          index
-                        }`}
-                        src={
-                          item.image
-                        }
-                        alt={
-                          item.title ||
-                          "Restaurant gallery"
-                        }
-                      />
+                    (
+                      review,
+                      index,
+                    ) => (
+                      <div
+                        className="review"
+                        key={`${
+                          review.id ||
+                          review.customerName ||
+                          "review"
+                        }-${index}`}
+                      >
+                        <strong>
+                          {review.customerName ||
+                            review.name ||
+                            "Customer"}
+                        </strong>
+
+                        <div className="stars">
+                          {Array.from(
+                            {
+                              length: Math.min(
+                                5,
+                                Math.max(
+                                  0,
+                                  Number(
+                                    review.rating,
+                                  ) ||
+                                    0,
+                                ),
+                              ),
+                            },
+                            (_, star) => (
+                              <span
+                                key={star}
+                              >
+                                ★
+                              </span>
+                            ),
+                          )}
+                        </div>
+
+                        <p>
+                          {review.review ||
+                            review.text ||
+                            ""}
+                        </p>
+                      </div>
                     ),
                   )}
               </div>
             ) : (
               <div className="empty-box">
-                No gallery images added yet.
+                <div>
+                  <div className="stars">
+                    ★★★★★
+                  </div>
+
+                  <p>
+                    No reviews added yet.
+                  </p>
+
+                  <p className="small-note">
+                    Admin → Reviews থেকে
+                    customer review যোগ
+                    করুন।
+                  </p>
+                </div>
               </div>
             )}
           </div>
 
-          <div className="box review-box">
-            <div className="items-header">
-              <h3>
-                Guest Reviews
-              </h3>
-
-              {reviews.length >
-                0 && (
-                <span className="stars">
-                  ★★★★★
-                </span>
-              )}
-            </div>
-
-            {reviews.length > 0 ? (
-              <div className="review-list">
-                {reviews.map(
-                  (review, index) => (
-                    <div
-                      className="review"
-                      key={`review-${
-                        review.id ||
-                        index
-                      }`}
-                    >
-                      <strong>
-                        {review.customerName ||
-                          review.name ||
-                          "Guest"}
-                      </strong>
-
-                      <div className="stars">
-                        {"★".repeat(
-                          Math.max(
-                            0,
-                            Math.min(
-                              5,
-                              Number(
-                                review.rating ||
-                                  5,
-                              ),
-                            ),
-                          ),
-                        )}
-                      </div>
-
-                      <p>
-                        {review.review ||
-                          review.text ||
-                          ""}
-                      </p>
-                    </div>
-                  ),
-                )}
-              </div>
-            ) : (
-              <div className="empty-box">
-                No reviews added yet.
-              </div>
-            )}
-          </div>
         </div>
       </section>
 
-      {/* ================= CONTACT ================= */}
+      {/* ================= CONTACT + SOCIAL MEDIA ================= */}
 
       <section
         id="contact"
@@ -3091,25 +2876,30 @@ export default function HomePage() {
           </div>
 
           <h2>
-            Visit {restaurantName}
+            Find & Contact Us
           </h2>
 
           <p>
-            We look forward to welcoming
-            you.
+            আপনার restaurant-এর
+            phone number, address এবং
+            social media এখানে
+            দেখাবে।
           </p>
         </div>
 
         <div className="contact-grid">
+
+          {/* ADDRESS */}
+
           <div className="box contact-box">
             <h3>
-              Restaurant
+              Find Us
             </h3>
 
             <div className="contact-line">
               <Icon
                 name="pin"
-                size={19}
+                size={20}
               />
 
               <span>
@@ -3117,81 +2907,9 @@ export default function HomePage() {
               </span>
             </div>
 
-            {phone && (
-              <div className="contact-line">
-                <Icon
-                  name="phone"
-                  size={19}
-                />
-
-                <span>
-                  {phone}
-                </span>
-              </div>
-            )}
-
-            {email && (
-              <div className="contact-line">
-                <Icon
-                  name="mail"
-                  size={19}
-                />
-
-                <span>
-                  {email}
-                </span>
-              </div>
-            )}
-          </div>
-
-          <div className="box contact-box">
-            <h3>
-              Social Media
-            </h3>
-
-            {social.visible !== false &&
-            socialLinks.length > 0 ? (
-              <div className="social-row">
-                {socialLinks.map(
-                  (item) => (
-                    <a
-                      key={item.name}
-                      href={
-                        item.url
-                      }
-                      target="_blank"
-                      rel="noreferrer"
-                      className="social-icon"
-                      aria-label={
-                        item.name
-                      }
-                    >
-                      <Icon
-                        name={
-                          item.name
-                        }
-                        size={20}
-                      />
-                    </a>
-                  ),
-                )}
-              </div>
-            ) : (
-              <p className="description">
-                Social media links
-                are not available.
-              </p>
-            )}
-          </div>
-
-          <div className="box contact-box">
-            <h3>
-              Location
-            </h3>
-
             {mapUrl ? (
               <a
-                className="gold-btn"
+                className="outline-btn"
                 href={mapUrl}
                 target="_blank"
                 rel="noreferrer"
@@ -3203,18 +2921,150 @@ export default function HomePage() {
                 Open Google Maps
               </a>
             ) : (
-              <div className="contact-line">
-                <Icon
-                  name="pin"
-                  size={19}
-                />
-
-                <span>
-                  {address}
-                </span>
-              </div>
+              <span className="small-note">
+                Google Maps link Admin →
+                Contact থেকে যোগ করুন।
+              </span>
             )}
           </div>
+
+          {/* PHONE / EMAIL */}
+
+          <div className="box contact-box">
+            <h3>
+              Contact Us
+            </h3>
+
+            {phone && (
+              <div className="contact-line">
+                <Icon
+                  name="phone"
+                  size={20}
+                />
+
+                <a
+                  href={`tel:${phone}`}
+                >
+                  {phone}
+                </a>
+              </div>
+            )}
+
+            {email && (
+              <div className="contact-line">
+                <Icon
+                  name="mail"
+                  size={20}
+                />
+
+                <a
+                  href={`mailto:${email}`}
+                >
+                  {email}
+                </a>
+              </div>
+            )}
+
+            {whatsapp && (
+              <div className="contact-line">
+                <button
+                  style={{
+                    background:
+                      "transparent",
+                    border: 0,
+                    padding: 0,
+                    color: "#fff",
+                    display: "flex",
+                    alignItems:
+                      "center",
+                    gap: 10,
+                  }}
+                  onClick={
+                    openWhatsApp
+                  }
+                >
+                  <Icon
+                    name="phone"
+                    size={20}
+                  />
+
+                  WhatsApp
+                </button>
+              </div>
+            )}
+
+            {!phone &&
+              !email &&
+              !whatsapp && (
+                <p className="small-note">
+                  Phone, Email এবং
+                  WhatsApp Admin →
+                  Contact থেকে যোগ করুন।
+                </p>
+              )}
+          </div>
+
+          {/* SOCIAL MEDIA */}
+
+          <div
+            id="social-media"
+            className="box contact-box"
+          >
+            <h3>
+              Follow Us
+            </h3>
+
+            <p className="small-note">
+              আমাদের Social Media-তে
+              follow করুন।
+            </p>
+
+            {social.visible !==
+            false ? (
+              socialLinks.length >
+              0 ? (
+                <div className="social-row">
+                  {socialLinks.map(
+                    (item) => (
+                      <a
+                        key={item.name}
+                        className="social-icon"
+                        href={
+                          item.url
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                        title={
+                          item.name
+                        }
+                      >
+                        <Icon
+                          name={
+                            item.name
+                          }
+                          size={22}
+                        />
+                      </a>
+                    ),
+                  )}
+                </div>
+              ) : (
+                <p className="small-note">
+                  Facebook,
+                  Instagram, TikTok
+                  এবং YouTube link
+                  Admin → Social Media
+                  থেকে যোগ করুন।
+                </p>
+              )
+            ) : (
+              <p className="small-note">
+                Social Media বর্তমানে
+                hidden করা আছে।
+              </p>
+            )}
+          </div>
+
         </div>
       </section>
 
@@ -3222,17 +3072,16 @@ export default function HomePage() {
 
       <footer className="footer">
         <span>
-          © {new Date().getFullYear()}{" "}
-          {restaurantName}. All rights
-          reserved.
+          © 2026 {restaurantName}.
+          All rights reserved.
         </span>
 
         <span>
-          Rome • Italy
+          Good Food • Good Mood
         </span>
       </footer>
 
-      {/* ================= FLOATING BOOK ================= */}
+      {/* ================= FLOATING BOOKING ================= */}
 
       <div className="floating-book">
         <button
@@ -3240,7 +3089,7 @@ export default function HomePage() {
             scrollTo("booking")
           }
         >
-          Reserve Table
+          Table Booking
         </button>
       </div>
 
@@ -3249,13 +3098,13 @@ export default function HomePage() {
       {myBookingOpen && (
         <div
           className="modal-bg"
-          onClick={() =>
+          onMouseDown={() =>
             setMyBookingOpen(false)
           }
         >
           <div
             className="modal"
-            onClick={(event) =>
+            onMouseDown={(event) =>
               event.stopPropagation()
             }
           >
@@ -3267,40 +3116,45 @@ export default function HomePage() {
               <button
                 className="modal-close"
                 onClick={() =>
-                  setMyBookingOpen(false)
+                  setMyBookingOpen(
+                    false,
+                  )
                 }
               >
-                <Icon
-                  name="close"
-                  size={17}
-                />
+                <Icon name="close" />
               </button>
             </div>
 
             <div className="modal-body">
+
+              {/* STEP 1 */}
+
               {lookupStep ===
                 "login" && (
                 <>
-                  <p className="description">
-                    Enter the phone number
-                    or email used for your
-                    reservation.
+                  <p className="small-note">
+                    যে phone number
+                    অথবা email দিয়ে
+                    booking করেছিলেন
+                    সেটি দিন।
                   </p>
 
                   <div className="field">
                     <label>
-                      Phone or Email
+                      Phone / Email
                     </label>
 
                     <input
-                      value={lookupValue}
+                      value={
+                        lookupValue
+                      }
                       onChange={(event) =>
                         setLookupValue(
                           event.target
                             .value,
                         )
                       }
-                      placeholder="Phone or email"
+                      placeholder="Phone number or email"
                     />
                   </div>
 
@@ -3311,494 +3165,456 @@ export default function HomePage() {
                         findMyBooking
                       }
                     >
-                      Find Booking
+                      Continue
+                      <Icon
+                        name="arrow"
+                        size={17}
+                      />
                     </button>
                   </div>
                 </>
               )}
 
+              {/* STEP 2 */}
+
               {lookupStep ===
                 "code" &&
                 foundBooking && (
-                  <>
-                    <p className="description">
-                      Enter the booking code
-                      you received after
-                      reservation.
-                    </p>
+                <>
+                  <p className="small-note">
+                    আপনার booking
+                    পাওয়া গেছে। এখন
+                    আপনার booking
+                    code দিন।
+                  </p>
 
-                    <div className="field">
-                      <label>
-                        Booking Code
-                      </label>
+                  <div className="code-display">
+                    {foundBooking.code}
+                  </div>
 
-                      <input
-                        value={lookupCode}
-                        onChange={(
-                          event,
-                        ) =>
-                          setLookupCode(
-                            event.target
-                              .value,
-                          )
-                        }
-                        placeholder="NAB-XXXX0000"
-                      />
-                    </div>
+                  <div className="field">
+                    <label>
+                      Booking Code
+                    </label>
 
-                    <div className="form-actions">
-                      <button
-                        className="gold-btn"
-                        onClick={
-                          verifyCode
-                        }
-                      >
-                        Verify
-                      </button>
+                    <input
+                      value={
+                        lookupCode
+                      }
+                      onChange={(event) =>
+                        setLookupCode(
+                          event.target
+                            .value,
+                        )
+                      }
+                      placeholder="Enter booking code"
+                    />
+                  </div>
 
-                      <button
-                        className="outline-btn"
-                        onClick={() => {
-                          setLookupStep(
-                            "login",
-                          );
-                          setFoundBooking(
-                            null,
-                          );
-                          setLookupCode(
-                            "",
-                          );
-                        }}
-                      >
-                        Back
-                      </button>
-                    </div>
-                  </>
-                )}
+                  <div className="form-actions">
+                    <button
+                      className="gold-btn"
+                      onClick={
+                        verifyCode
+                      }
+                    >
+                      Verify Code
+                    </button>
+
+                    <button
+                      className="outline-btn"
+                      onClick={() => {
+                        setLookupStep(
+                          "login",
+                        );
+                        setFoundBooking(
+                          null,
+                        );
+                      }}
+                    >
+                      Back
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* STEP 3 */}
 
               {lookupStep ===
                 "details" &&
                 foundBooking && (
-                  <>
-                    {!editingBooking ? (
-                      <>
-                        <div className="booking-summary">
-                          <div>
-                            <span>
-                              Booking Code
-                            </span>
+                <>
+                  <div className="details-grid">
 
-                            <span>
-                              {
-                                foundBooking.code
-                              }
-                            </span>
-                          </div>
+                    <div className="detail">
+                      <small>
+                        Name
+                      </small>
 
-                          <div>
-                            <span>
-                              Name
-                            </span>
+                      <strong>
+                        {
+                          foundBooking.name
+                        }
+                      </strong>
+                    </div>
 
-                            <span>
-                              {
-                                foundBooking.name
-                              }
-                            </span>
-                          </div>
+                    <div className="detail">
+                      <small>
+                        Status
+                      </small>
 
-                          <div>
-                            <span>
-                              Date
-                            </span>
+                      <strong>
+                        {
+                          foundBooking.status
+                        }
+                      </strong>
+                    </div>
 
-                            <span>
-                              {
-                                foundBooking.date
-                              }
-                            </span>
-                          </div>
+                    <div className="detail">
+                      <small>
+                        Date
+                      </small>
 
-                          <div>
-                            <span>
-                              Time
-                            </span>
+                      <strong>
+                        {
+                          foundBooking.date
+                        }
+                      </strong>
+                    </div>
 
-                            <span>
-                              {
-                                foundBooking.time
-                              }
-                            </span>
-                          </div>
+                    <div className="detail">
+                      <small>
+                        Time
+                      </small>
 
-                          <div>
-                            <span>
-                              Guests
-                            </span>
+                      <strong>
+                        {
+                          foundBooking.time
+                        }
+                      </strong>
+                    </div>
 
-                            <span>
-                              {
-                                foundBooking.guests
-                              }
-                            </span>
-                          </div>
+                    <div className="detail">
+                      <small>
+                        Persons
+                      </small>
 
-                          <div>
-                            <span>
-                              Status
-                            </span>
+                      <strong>
+                        {
+                          foundBooking.guests
+                        }
+                      </strong>
+                    </div>
 
-                            <span>
-                              {
-                                foundBooking.status
-                              }
-                            </span>
-                          </div>
+                    <div className="detail">
+                      <small>
+                        Category
+                      </small>
 
-                          {foundBooking.category && (
-                            <div>
-                              <span>
-                                Category
-                              </span>
+                      <strong>
+                        {
+                          foundBooking.category ||
+                          "—"
+                        }
+                      </strong>
+                    </div>
 
-                              <span>
+                    <div className="detail">
+                      <small>
+                        Item
+                      </small>
+
+                      <strong>
+                        {
+                          foundBooking.item ||
+                          "—"
+                        }
+                      </strong>
+                    </div>
+
+                    <div className="detail">
+                      <small>
+                        Booking Code
+                      </small>
+
+                      <strong>
+                        {
+                          foundBooking.code
+                        }
+                      </strong>
+                    </div>
+
+                  </div>
+
+                  {editingBooking ? (
+                    <form
+                      onSubmit={
+                        updateMyBooking
+                      }
+                    >
+                      <div className="form-grid">
+
+                        <div className="field">
+                          <label>
+                            Name
+                          </label>
+
+                          <input
+                            value={
+                              foundBooking.name
+                            }
+                            onChange={(
+                              event,
+                            ) =>
+                              setFoundBooking(
                                 {
-                                  foundBooking.category
-                                }
-                              </span>
-                            </div>
-                          )}
-
-                          {foundBooking.item && (
-                            <div>
-                              <span>
-                                Food
-                              </span>
-
-                              <span>
-                                {
-                                  foundBooking.item
-                                }
-                              </span>
-                            </div>
-                          )}
-
-                          {foundBooking.note && (
-                            <div>
-                              <span>
-                                Note
-                              </span>
-
-                              <span>
-                                {
-                                  foundBooking.note
-                                }
-                              </span>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="form-actions">
-                          <button
-                            className="gold-btn"
-                            onClick={() =>
-                              setEditingBooking(
-                                true,
+                                  ...foundBooking,
+                                  name:
+                                    event
+                                      .target
+                                      .value,
+                                },
                               )
                             }
-                            disabled={
-                              foundBooking.status ===
-                              "Cancelled"
-                            }
-                          >
-                            Edit Booking
-                          </button>
-
-                          <button
-                            className="outline-btn"
-                            onClick={
-                              cancelMyBooking
-                            }
-                            disabled={
-                              foundBooking.status ===
-                              "Cancelled"
-                            }
-                          >
-                            Cancel Booking
-                          </button>
+                          />
                         </div>
-                      </>
-                    ) : (
-                      <form
-                        onSubmit={
-                          updateMyBooking
+
+                        <div className="field">
+                          <label>
+                            Phone
+                          </label>
+
+                          <input
+                            value={
+                              foundBooking.phone ||
+                              ""
+                            }
+                            onChange={(
+                              event,
+                            ) =>
+                              setFoundBooking(
+                                {
+                                  ...foundBooking,
+                                  phone:
+                                    event
+                                      .target
+                                      .value,
+                                },
+                              )
+                            }
+                          />
+                        </div>
+
+                        <div className="field">
+                          <label>
+                            Email
+                          </label>
+
+                          <input
+                            value={
+                              foundBooking.email ||
+                              ""
+                            }
+                            onChange={(
+                              event,
+                            ) =>
+                              setFoundBooking(
+                                {
+                                  ...foundBooking,
+                                  email:
+                                    event
+                                      .target
+                                      .value,
+                                },
+                              )
+                            }
+                          />
+                        </div>
+
+                        <div className="field">
+                          <label>
+                            Date
+                          </label>
+
+                          <input
+                            type="date"
+                            value={
+                              foundBooking.date
+                            }
+                            onChange={(
+                              event,
+                            ) =>
+                              setFoundBooking(
+                                {
+                                  ...foundBooking,
+                                  date:
+                                    event
+                                      .target
+                                      .value,
+                                },
+                              )
+                            }
+                          />
+                        </div>
+
+                        <div className="field">
+                          <label>
+                            Time
+                          </label>
+
+                          <input
+                            type="time"
+                            value={
+                              foundBooking.time
+                            }
+                            onChange={(
+                              event,
+                            ) =>
+                              setFoundBooking(
+                                {
+                                  ...foundBooking,
+                                  time:
+                                    event
+                                      .target
+                                      .value,
+                                },
+                              )
+                            }
+                          />
+                        </div>
+
+                        <div className="field">
+                          <label>
+                            Persons
+                          </label>
+
+                          <input
+                            type="number"
+                            min="1"
+                            value={
+                              foundBooking.guests
+                            }
+                            onChange={(
+                              event,
+                            ) =>
+                              setFoundBooking(
+                                {
+                                  ...foundBooking,
+                                  guests:
+                                    Number(
+                                      event
+                                        .target
+                                        .value,
+                                    ) || 1,
+                                },
+                              )
+                            }
+                          />
+                        </div>
+
+                        <div className="field full">
+                          <label>
+                            Special Request
+                          </label>
+
+                          <textarea
+                            value={
+                              foundBooking.note
+                            }
+                            onChange={(
+                              event,
+                            ) =>
+                              setFoundBooking(
+                                {
+                                  ...foundBooking,
+                                  note:
+                                    event
+                                      .target
+                                      .value,
+                                },
+                              )
+                            }
+                          />
+                        </div>
+
+                      </div>
+
+                      <div className="form-actions">
+                        <button
+                          className="gold-btn"
+                          type="submit"
+                        >
+                          Save Changes
+                        </button>
+
+                        <button
+                          className="outline-btn"
+                          type="button"
+                          onClick={() =>
+                            setEditingBooking(
+                              false,
+                            )
+                          }
+                        >
+                          Back
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div className="form-actions">
+
+                      <button
+                        className="gold-btn"
+                        onClick={() =>
+                          setEditingBooking(
+                            true,
+                          )
                         }
                       >
-                        <div className="form-grid">
-                          <div className="field">
-                            <label>
-                              Name
-                            </label>
+                        <Icon
+                          name="edit"
+                          size={17}
+                        />
 
-                            <input
-                              value={
-                                foundBooking.name
-                              }
-                              onChange={(
-                                event,
-                              ) =>
-                                setFoundBooking(
-                                  {
-                                    ...foundBooking,
-                                    name:
-                                      event
-                                        .target
-                                        .value,
-                                  },
-                                )
-                              }
-                            />
-                          </div>
+                        Edit
+                      </button>
 
-                          <div className="field">
-                            <label>
-                              Phone
-                            </label>
+                      <button
+                        className="outline-btn"
+                        style={{
+                          borderColor:
+                            "#e74b4b",
+                          color:
+                            "#ff8d8d",
+                        }}
+                        disabled={
+                          foundBooking.status ===
+                          "Cancelled"
+                        }
+                        onClick={
+                          cancelMyBooking
+                        }
+                      >
+                        <Icon
+                          name="trash"
+                          size={17}
+                        />
 
-                            <input
-                              value={
-                                foundBooking.phone ||
-                                ""
-                              }
-                              onChange={(
-                                event,
-                              ) =>
-                                setFoundBooking(
-                                  {
-                                    ...foundBooking,
-                                    phone:
-                                      event
-                                        .target
-                                        .value,
-                                  },
-                                )
-                              }
-                            />
-                          </div>
+                        Cancel Booking
+                      </button>
 
-                          <div className="field">
-                            <label>
-                              Email
-                            </label>
+                    </div>
+                  )}
 
-                            <input
-                              value={
-                                foundBooking.email ||
-                                ""
-                              }
-                              onChange={(
-                                event,
-                              ) =>
-                                setFoundBooking(
-                                  {
-                                    ...foundBooking,
-                                    email:
-                                      event
-                                        .target
-                                        .value,
-                                  },
-                                )
-                              }
-                            />
-                          </div>
-
-                          <div className="field">
-                            <label>
-                              Guests
-                            </label>
-
-                            <input
-                              type="number"
-                              min="1"
-                              value={
-                                foundBooking.guests
-                              }
-                              onChange={(
-                                event,
-                              ) =>
-                                setFoundBooking(
-                                  {
-                                    ...foundBooking,
-                                    guests:
-                                      Number(
-                                        event
-                                          .target
-                                          .value,
-                                      ) || 1,
-                                  },
-                                )
-                              }
-                            />
-                          </div>
-
-                          <div className="field">
-                            <label>
-                              Date
-                            </label>
-
-                            <input
-                              type="date"
-                              value={
-                                foundBooking.date
-                              }
-                              onChange={(
-                                event,
-                              ) =>
-                                setFoundBooking(
-                                  {
-                                    ...foundBooking,
-                                    date:
-                                      event
-                                        .target
-                                        .value,
-                                  },
-                                )
-                              }
-                            />
-                          </div>
-
-                          <div className="field">
-                            <label>
-                              Time
-                            </label>
-
-                            <input
-                              type="time"
-                              value={
-                                foundBooking.time
-                              }
-                              onChange={(
-                                event,
-                              ) =>
-                                setFoundBooking(
-                                  {
-                                    ...foundBooking,
-                                    time:
-                                      event
-                                        .target
-                                        .value,
-                                  },
-                                )
-                              }
-                            />
-                          </div>
-
-                          <div className="field">
-                            <label>
-                              Category
-                            </label>
-
-                            <select
-                              value={
-                                foundBooking.category ||
-                                ""
-                              }
-                              onChange={(
-                                event,
-                              ) =>
-                                setFoundBooking(
-                                  {
-                                    ...foundBooking,
-                                    category:
-                                      event
-                                        .target
-                                        .value,
-                                  },
-                                )
-                              }
-                            >
-                              <option value="">
-                                Select category
-                              </option>
-
-                              {categories.map(
-                                (
-                                  category,
-                                ) => (
-                                  <option
-                                    key={
-                                      category
-                                    }
-                                    value={
-                                      category
-                                    }
-                                  >
-                                    {
-                                      category
-                                    }
-                                  </option>
-                                ),
-                              )}
-                            </select>
-                          </div>
-
-                          <div className="field full">
-                            <label>
-                              Note
-                            </label>
-
-                            <textarea
-                              value={
-                                foundBooking.note ||
-                                ""
-                              }
-                              onChange={(
-                                event,
-                              ) =>
-                                setFoundBooking(
-                                  {
-                                    ...foundBooking,
-                                    note:
-                                      event
-                                        .target
-                                        .value,
-                                  },
-                                )
-                              }
-                            />
-                          </div>
-                        </div>
-
-                        <div className="form-actions">
-                          <button
-                            type="submit"
-                            className="gold-btn"
-                          >
-                            Save Changes
-                          </button>
-
-                          <button
-                            type="button"
-                            className="outline-btn"
-                            onClick={() =>
-                              setEditingBooking(
-                                false,
-                              )
-                            }
-                          >
-                            Back
-                          </button>
-                        </div>
-                      </form>
-                    )}
-                  </>
-                )}
+                </>
+              )}
 
               {lookupMessage && (
                 <div className="message">
                   {lookupMessage}
                 </div>
               )}
+
             </div>
           </div>
         </div>
@@ -3809,13 +3625,13 @@ export default function HomePage() {
       {galleryOpen && (
         <div
           className="modal-bg"
-          onClick={() =>
+          onMouseDown={() =>
             setGalleryOpen(false)
           }
         >
           <div
-            className="gallery-modal"
-            onClick={(event) =>
+            className="modal"
+            onMouseDown={(event) =>
               event.stopPropagation()
             }
           >
@@ -3830,35 +3646,38 @@ export default function HomePage() {
                   setGalleryOpen(false)
                 }
               >
-                <Icon
-                  name="close"
-                  size={17}
-                />
+                <Icon name="close" />
               </button>
             </div>
 
-            <div className="gallery-modal-grid">
-              {gallery.map(
-                (item, index) => (
-                  <img
-                    key={`gallery-modal-${
-                      item.id ||
-                      index
-                    }`}
-                    src={
-                      item.image
-                    }
-                    alt={
-                      item.title ||
-                      "Restaurant gallery"
-                    }
-                  />
-                ),
-              )}
+            <div className="modal-body">
+              <div className="gallery-grid">
+                {gallery.map(
+                  (
+                    item,
+                    index,
+                  ) => (
+                    <img
+                      key={`gallery-${
+                        item.id ||
+                        index
+                      }`}
+                      src={
+                        item.image
+                      }
+                      alt={
+                        item.title ||
+                        "Gallery"
+                      }
+                    />
+                  ),
+                )}
+              </div>
             </div>
           </div>
         </div>
       )}
+
     </main>
   );
 }
