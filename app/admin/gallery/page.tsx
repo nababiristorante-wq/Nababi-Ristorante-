@@ -1,6 +1,12 @@
 "use client";
 
-import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import {
+  ChangeEvent,
+  DragEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 type GalleryItem = {
   id: number;
@@ -12,31 +18,80 @@ type GalleryItem = {
 
 const STORAGE_KEY = "nababi-gallery";
 
-const categories = [
-  "Restaurant",
-  "Food",
-  "Interior",
-  "Events",
-  "Chef",
-  "Other",
-];
+const MAX_FILE_SIZE = 8 * 1024 * 1024;
+const MAX_IMAGE_WIDTH = 1800;
+const JPEG_QUALITY = 0.82;
+
+function createId() {
+  return Date.now() + Math.floor(Math.random() * 100000);
+}
+
+function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onerror = () => reject(new Error("Unable to read image."));
+
+    reader.onload = () => {
+      const img = new Image();
+
+      img.onerror = () => reject(new Error("Unable to process image."));
+
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > MAX_IMAGE_WIDTH) {
+          const ratio = MAX_IMAGE_WIDTH / width;
+          width = MAX_IMAGE_WIDTH;
+          height = Math.round(height * ratio);
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        const context = canvas.getContext("2d");
+
+        if (!context) {
+          reject(new Error("Unable to process image."));
+          return;
+        }
+
+        context.drawImage(img, 0, 0, width, height);
+
+        const result = canvas.toDataURL("image/jpeg", JPEG_QUALITY);
+
+        resolve(result);
+      };
+
+      img.src = String(reader.result);
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function GalleryPage() {
   const [items, setItems] = useState<GalleryItem[]>([]);
-  const [image, setImage] = useState("");
-  const [category, setCategory] = useState("Restaurant");
-  const [visible, setVisible] = useState(true);
-  const [order, setOrder] = useState(1);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [filter, setFilter] = useState("All");
-  const [saved, setSaved] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState("");
+  const [filter, setFilter] = useState<"All" | "Visible" | "Hidden">("All");
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
 
       if (stored) {
-        setItems(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+
+        if (Array.isArray(parsed)) {
+          setItems(parsed);
+        }
       }
     } catch {
       setItems([]);
@@ -48,419 +103,545 @@ export default function GalleryPage() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(nextItems));
   };
 
-  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const processFiles = async (files: File[]) => {
+    if (!files.length) return;
 
-    if (!file) return;
+    const imageFiles = files.filter((file) =>
+      file.type.startsWith("image/")
+    );
 
-    if (file.size > 8 * 1024 * 1024) {
-      alert("Image size must be 8MB or less.");
+    if (!imageFiles.length) {
+      setUploadMessage("Please select image files only.");
       return;
     }
 
-    const reader = new FileReader();
+    const oversized = imageFiles.filter(
+      (file) => file.size > MAX_FILE_SIZE
+    );
 
-    reader.onload = () => {
-      setImage(String(reader.result));
-    };
-
-    reader.readAsDataURL(file);
-  };
-
-  const resetForm = () => {
-    setImage("");
-    setCategory("Restaurant");
-    setVisible(true);
-    setOrder(items.length + 1);
-    setEditingId(null);
-  };
-
-  const saveGalleryItem = () => {
-    if (!image) {
-      alert("Please upload an image.");
-      return;
-    }
-
-    if (editingId !== null) {
-      const updated = items.map((item) =>
-        item.id === editingId
-          ? {
-              ...item,
-              image,
-              category,
-              visible,
-              order: Number(order) || 1,
-            }
-          : item
+    if (oversized.length > 0) {
+      setUploadMessage(
+        `${oversized.length} image${
+          oversized.length > 1 ? "s were" : " was"
+        } larger than 8MB and skipped.`
       );
-
-      saveItems(updated);
-    } else {
-      const newItem: GalleryItem = {
-        id: Date.now(),
-        image,
-        category,
-        visible,
-        order: Number(order) || 1,
-      };
-
-      saveItems([...items, newItem]);
     }
 
-    setSaved(true);
+    const validFiles = imageFiles.filter(
+      (file) => file.size <= MAX_FILE_SIZE
+    );
 
-    setTimeout(() => {
-      setSaved(false);
-    }, 2000);
+    if (!validFiles.length) return;
 
-    resetForm();
+    setIsUploading(true);
+
+    try {
+      const compressedImages: string[] = [];
+
+      for (const file of validFiles) {
+        try {
+          const compressed = await compressImage(file);
+          compressedImages.push(compressed);
+        } catch {
+          // Skip files that cannot be processed.
+        }
+      }
+
+      setSelectedImages((previous) => [
+        ...previous,
+        ...compressedImages,
+      ]);
+
+      setUploadMessage(
+        `${compressedImages.length} image${
+          compressedImages.length !== 1 ? "s" : ""
+        } selected successfully.`
+      );
+    } finally {
+      setIsUploading(false);
+    }
   };
 
-  const editItem = (item: GalleryItem) => {
-    setEditingId(item.id);
-    setImage(item.image);
-    setCategory(item.category);
-    setVisible(item.visible);
-    setOrder(item.order);
+  const handleFileChange = async (
+    e: ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = Array.from(e.target.files || []);
 
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+    await processFiles(files);
+
+    e.target.value = "";
   };
 
-  const deleteItem = (id: number) => {
+  const handleDrop = async (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files || []);
+
+    await processFiles(files);
+  };
+
+  const removeSelectedImage = (index: number) => {
+    setSelectedImages((previous) =>
+      previous.filter((_, imageIndex) => imageIndex !== index)
+    );
+  };
+
+  const clearSelectedImages = () => {
+    setSelectedImages([]);
+    setUploadMessage("");
+  };
+
+  const uploadAllImages = () => {
+    if (!selectedImages.length) {
+      setUploadMessage("Please select one or more images first.");
+      return;
+    }
+
+    const existingOrders = items.map((item) => item.order);
+
+    const startingOrder =
+      existingOrders.length > 0
+        ? Math.max(...existingOrders) + 1
+        : 1;
+
+    const newItems: GalleryItem[] = selectedImages.map(
+      (image, index) => ({
+        id: createId() + index,
+        image,
+        category: "Restaurant",
+        visible: true,
+        order: startingOrder + index,
+      })
+    );
+
+    try {
+      saveItems([...items, ...newItems]);
+
+      setSelectedImages([]);
+
+      setUploadMessage(
+        `${newItems.length} image${
+          newItems.length !== 1 ? "s" : ""
+        } uploaded successfully.`
+      );
+    } catch {
+      setUploadMessage(
+        "Unable to save all images. Browser storage may be full."
+      );
+    }
+  };
+
+  const deleteImage = (id: number) => {
     const confirmDelete = window.confirm(
       "Are you sure you want to delete this image?"
     );
 
     if (!confirmDelete) return;
 
-    saveItems(items.filter((item) => item.id !== id));
+    const updatedItems = items.filter((item) => item.id !== id);
 
-    if (editingId === id) {
-      resetForm();
-    }
+    saveItems(updatedItems);
+
+    setUploadMessage("Image deleted successfully.");
   };
 
-  const toggleVisibility = (id: number) => {
-    const updated = items.map((item) =>
-      item.id === id
-        ? {
-            ...item,
-            visible: !item.visible,
-          }
-        : item
+  const deleteAllImages = () => {
+    if (!items.length) return;
+
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete all gallery images?"
     );
 
-    saveItems(updated);
+    if (!confirmDelete) return;
+
+    saveItems([]);
+
+    setUploadMessage("All gallery images deleted.");
   };
 
-  const filteredItems = useMemo(() => {
-    return [...items]
-      .filter((item) => {
-        if (filter === "All") return true;
-        return item.category === filter;
-      })
-      .sort((a, b) => a.order - b.order);
-  }, [items, filter]);
+  const filteredItems = items.filter((item) => {
+    if (filter === "Visible") return item.visible !== false;
+    if (filter === "Hidden") return item.visible === false;
+
+    return true;
+  });
+
+  const visibleCount = items.filter(
+    (item) => item.visible !== false
+  ).length;
+
+  const hiddenCount = items.filter(
+    (item) => item.visible === false
+  ).length;
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#35130c] via-[#7b2617] to-[#35104f] text-white">
-      {/* Background Glow */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -left-24 -top-24 h-80 w-80 rounded-full bg-orange-500/25 blur-3xl" />
-        <div className="absolute right-[-100px] top-20 h-96 w-96 rounded-full bg-fuchsia-500/20 blur-3xl" />
-        <div className="absolute bottom-[-120px] left-1/3 h-96 w-96 rounded-full bg-red-500/20 blur-3xl" />
-        <div className="absolute bottom-10 right-1/4 h-72 w-72 rounded-full bg-purple-500/20 blur-3xl" />
+    <main className="relative min-h-screen overflow-hidden bg-[#050505] text-white">
+      {/* Background */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-amber-500/10 blur-3xl" />
+
+        <div className="absolute right-[-120px] top-20 h-[450px] w-[450px] rounded-full bg-yellow-600/10 blur-3xl" />
+
+        <div className="absolute bottom-[-150px] left-1/3 h-[450px] w-[450px] rounded-full bg-amber-700/10 blur-3xl" />
       </div>
 
-      {/* Center Wrapper */}
-      <div className="relative flex min-h-screen items-center justify-center px-4 py-8 sm:px-6">
-        <div className="w-full max-w-6xl">
-          {/* Header */}
-          <div className="mb-6 text-center">
-            <div className="mb-2 inline-flex rounded-full border border-white/15 bg-white/10 px-4 py-1.5 text-xs font-medium text-orange-100 backdrop-blur-xl">
-              NABABI RISTORANTE
-            </div>
+      <div className="relative mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8">
+        {/* Header */}
+        <header className="mb-6">
+          <div className="rounded-[28px] border border-amber-400/15 bg-gradient-to-r from-[#11110f] via-[#0b0b0a] to-[#12100a] p-6 shadow-2xl shadow-black/40">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-amber-400/20 bg-amber-400/5 px-3 py-1.5">
+                  <span className="h-2 w-2 rounded-full bg-amber-400 shadow-lg shadow-amber-400/60" />
 
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Gallery Management
-            </h1>
-
-            <p className="mt-2 text-sm text-orange-100/75">
-              Manage restaurant photos, food images and gallery visibility.
-            </p>
-          </div>
-
-          {/* Main Management Card */}
-          <div className="rounded-[30px] border border-white/15 bg-white/[0.10] p-4 shadow-2xl shadow-black/30 backdrop-blur-2xl sm:p-6">
-            <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
-              {/* Add / Edit */}
-              <section className="rounded-[26px] border border-white/15 bg-black/10 p-5">
-                <div className="mb-5">
-                  <h2 className="text-xl font-semibold">
-                    {editingId !== null ? "Edit Image" : "Add Gallery Image"}
-                  </h2>
-
-                  <div className="mt-1 h-1 w-14 rounded-full bg-gradient-to-r from-orange-400 via-red-400 to-fuchsia-400" />
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-300">
+                    Nababi Ristorante
+                  </span>
                 </div>
 
-                {/* Image Preview */}
-                <div className="mb-5 overflow-hidden rounded-2xl border border-white/15 bg-black/20">
-                  {image ? (
-                    <div className="relative aspect-[4/3]">
+                <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                  Gallery
+                </h1>
+
+                <p className="mt-2 max-w-2xl text-sm text-white/45">
+                  Upload and manage your restaurant photos.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3 text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-white/35">
+                    Total
+                  </p>
+
+                  <p className="mt-1 text-2xl font-bold text-amber-300">
+                    {items.length}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-green-400/10 bg-green-500/5 px-5 py-3 text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-white/35">
+                    Visible
+                  </p>
+
+                  <p className="mt-1 text-2xl font-bold text-green-300">
+                    {visibleCount}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Upload Section */}
+        <section className="mb-6 rounded-[28px] border border-amber-400/15 bg-[#0b0b0a] p-4 shadow-2xl shadow-black/30 sm:p-6">
+          <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-white sm:text-2xl">
+                Upload Images
+              </h2>
+
+              <p className="mt-1 text-sm text-white/40">
+                Select multiple photos at once.
+              </p>
+            </div>
+
+            {selectedImages.length > 0 && (
+              <div className="rounded-full border border-amber-400/20 bg-amber-400/5 px-4 py-2 text-xs font-semibold text-amber-300">
+                {selectedImages.length} selected
+              </div>
+            )}
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-[1fr_1.2fr]">
+            {/* Upload Box */}
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+              className={`relative flex min-h-[300px] cursor-pointer flex-col items-center justify-center rounded-[24px] border border-dashed p-8 text-center transition ${
+                isDragging
+                  ? "border-amber-300 bg-amber-400/10"
+                  : "border-amber-400/30 bg-white/[0.02] hover:border-amber-300/60 hover:bg-amber-400/[0.04]"
+              }`}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleFileChange}
+                className="hidden"
+              />
+
+              <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-3xl border border-amber-400/20 bg-amber-400/10 text-4xl shadow-xl shadow-amber-900/10">
+                🖼️
+              </div>
+
+              <h3 className="text-lg font-bold text-white">
+                Upload Multiple Images
+              </h3>
+
+              <p className="mt-2 max-w-md text-sm leading-6 text-white/40">
+                Drag and drop your images here, or click to select
+                multiple photos.
+              </p>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fileInputRef.current?.click();
+                }}
+                className="mt-6 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-6 py-3 text-sm font-bold text-black shadow-lg shadow-amber-900/20 transition hover:scale-[1.02]"
+              >
+                {isUploading ? "Processing..." : "Select Images"}
+              </button>
+
+              <p className="mt-4 text-[11px] text-white/25">
+                JPG, PNG, WEBP · Maximum 8MB per image
+              </p>
+            </div>
+
+            {/* Selected Preview */}
+            <div className="rounded-[24px] border border-white/10 bg-white/[0.02] p-4 sm:p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-white">
+                    Selected Images
+                  </h3>
+
+                  <p className="mt-1 text-xs text-white/35">
+                    Preview before uploading
+                  </p>
+                </div>
+
+                {selectedImages.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearSelectedImages}
+                    className="text-xs font-medium text-red-300 transition hover:text-red-200"
+                  >
+                    Clear All
+                  </button>
+                )}
+              </div>
+
+              {selectedImages.length === 0 ? (
+                <div className="flex min-h-[220px] items-center justify-center rounded-2xl border border-white/5 bg-black/20">
+                  <div className="text-center">
+                    <div className="mb-3 text-3xl opacity-40">
+                      📷
+                    </div>
+
+                    <p className="text-sm text-white/35">
+                      No images selected
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid max-h-[300px] grid-cols-3 gap-3 overflow-y-auto pr-1 sm:grid-cols-4">
+                  {selectedImages.map((image, index) => (
+                    <div
+                      key={`${image}-${index}`}
+                      className="group relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-black"
+                    >
                       <img
                         src={image}
-                        alt="Gallery preview"
+                        alt={`Selected ${index + 1}`}
                         className="h-full w-full object-cover"
                       />
 
                       <button
                         type="button"
-                        onClick={() => setImage("")}
-                        className="absolute right-3 top-3 rounded-xl bg-black/60 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-md transition hover:bg-red-500"
+                        onClick={() => removeSelectedImage(index)}
+                        className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/80 text-sm text-white opacity-100 transition hover:bg-red-500"
+                        aria-label="Remove selected image"
                       >
-                        Remove
+                        ×
                       </button>
-                    </div>
-                  ) : (
-                    <label className="flex aspect-[4/3] cursor-pointer flex-col items-center justify-center px-5 text-center transition hover:bg-white/5">
-                      <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-400/30 to-fuchsia-400/30 text-2xl">
-                        📷
+
+                      <div className="absolute bottom-1.5 left-1.5 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] text-white/70">
+                        {index + 1}
                       </div>
-
-                      <span className="text-sm font-medium text-white">
-                        Upload Gallery Image
-                      </span>
-
-                      <span className="mt-1 text-xs text-white/50">
-                        JPG, PNG, WEBP — Maximum 8MB
-                      </span>
-
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="hidden"
-                      />
-                    </label>
-                  )}
-                </div>
-
-                {/* Upload Button */}
-                {image && (
-                  <label className="mb-5 block cursor-pointer rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-white/10">
-                    Change Image
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-                  </label>
-                )}
-
-                {/* Category */}
-                <div className="mb-4">
-                  <label className="mb-2 block text-sm font-medium text-white/85">
-                    Category
-                  </label>
-
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full rounded-xl border border-white/15 bg-[#351b18]/80 px-4 py-3 text-sm text-white outline-none transition focus:border-orange-400/60"
-                  >
-                    {categories.map((item) => (
-                      <option key={item} value={item} className="bg-[#351b18]">
-                        {item}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Display Order */}
-                <div className="mb-4">
-                  <label className="mb-2 block text-sm font-medium text-white/85">
-                    Display Order
-                  </label>
-
-                  <input
-                    type="number"
-                    min="1"
-                    value={order}
-                    onChange={(e) => setOrder(Number(e.target.value))}
-                    className="w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-orange-400/60"
-                  />
-                </div>
-
-                {/* Visibility */}
-                <div className="mb-5 flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium">Visible</p>
-                    <p className="text-xs text-white/50">
-                      Show this image in gallery
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setVisible(!visible)}
-                    className={`relative h-7 w-12 rounded-full transition ${
-                      visible ? "bg-orange-500" : "bg-white/20"
-                    }`}
-                  >
-                    <span
-                      className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-md transition ${
-                        visible ? "left-6" : "left-1"
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                {/* Buttons */}
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={saveGalleryItem}
-                    className="flex-1 rounded-xl bg-gradient-to-r from-orange-500 via-red-500 to-fuchsia-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-900/30 transition hover:scale-[1.01] hover:shadow-orange-500/20"
-                  >
-                    {editingId !== null ? "Update Image" : "Save Image"}
-                  </button>
-
-                  {editingId !== null && (
-                    <button
-                      type="button"
-                      onClick={resetForm}
-                      className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-medium text-white/80 transition hover:bg-white/10"
-                    >
-                      Cancel
-                    </button>
-                  )}
-                </div>
-
-                {saved && (
-                  <div className="mt-4 rounded-xl border border-green-400/20 bg-green-500/10 px-4 py-3 text-center text-sm text-green-200">
-                    Image saved successfully.
-                  </div>
-                )}
-              </section>
-
-              {/* Gallery List */}
-              <section className="rounded-[26px] border border-white/15 bg-black/10 p-5">
-                <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h2 className="text-xl font-semibold">Gallery Images</h2>
-
-                    <div className="mt-1 h-1 w-14 rounded-full bg-gradient-to-r from-orange-400 via-red-400 to-fuchsia-400" />
-                  </div>
-
-                  <select
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value)}
-                    className="rounded-xl border border-white/15 bg-[#351b18]/80 px-4 py-2.5 text-sm text-white outline-none"
-                  >
-                    <option value="All" className="bg-[#351b18]">
-                      All Categories
-                    </option>
-
-                    {categories.map((item) => (
-                      <option
-                        key={item}
-                        value={item}
-                        className="bg-[#351b18]"
-                      >
-                        {item}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {filteredItems.length === 0 ? (
-                  <div className="flex min-h-[360px] items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/[0.03]">
-                    <div className="text-center">
-                      <div className="mb-3 text-4xl">🖼️</div>
-                      <p className="text-sm font-medium text-white/80">
-                        No gallery images yet
-                      </p>
-                      <p className="mt-1 text-xs text-white/40">
-                        Upload your first restaurant image.
-                      </p>
                     </div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    {filteredItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className="group overflow-hidden rounded-2xl border border-white/10 bg-white/[0.05] shadow-xl shadow-black/10 transition hover:-translate-y-1 hover:border-orange-300/20"
-                      >
-                        <div className="relative aspect-[4/3] overflow-hidden">
-                          <img
-                            src={item.image}
-                            alt={item.category}
-                            className={`h-full w-full object-cover transition duration-500 group-hover:scale-105 ${
-                              !item.visible ? "opacity-40 grayscale" : ""
-                            }`}
-                          />
+                  ))}
+                </div>
+              )}
 
-                          <div className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/50 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md">
-                            {item.category}
-                          </div>
-
-                          <div
-                            className={`absolute right-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-medium backdrop-blur-md ${
-                              item.visible
-                                ? "bg-green-500/80 text-white"
-                                : "bg-red-500/80 text-white"
-                            }`}
-                          >
-                            {item.visible ? "Visible" : "Hidden"}
-                          </div>
-                        </div>
-
-                        <div className="p-3">
-                          <div className="mb-3 flex items-center justify-between text-xs text-white/45">
-                            <span>Order: {item.order}</span>
-                            <span>{item.category}</span>
-                          </div>
-
-                          <div className="grid grid-cols-3 gap-2">
-                            <button
-                              type="button"
-                              onClick={() => editItem(item)}
-                              className="rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-xs font-medium text-white/80 transition hover:bg-white/10"
-                            >
-                              Edit
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => toggleVisibility(item.id)}
-                              className="rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-xs font-medium text-white/80 transition hover:bg-white/10"
-                            >
-                              {item.visible ? "Hide" : "Show"}
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => deleteItem(item.id)}
-                              className="rounded-lg border border-red-400/10 bg-red-500/10 px-2 py-2 text-xs font-medium text-red-200 transition hover:bg-red-500/20"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
+              {selectedImages.length > 0 && (
+                <button
+                  type="button"
+                  onClick={uploadAllImages}
+                  className="mt-4 w-full rounded-xl bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 px-5 py-3.5 text-sm font-bold text-black shadow-lg shadow-amber-900/20 transition hover:scale-[1.01]"
+                >
+                  Upload All {selectedImages.length} Images
+                </button>
+              )}
             </div>
           </div>
-        </div>
+
+          {uploadMessage && (
+            <div className="mt-4 rounded-xl border border-amber-400/10 bg-amber-400/5 px-4 py-3 text-center text-sm text-amber-200">
+              {uploadMessage}
+            </div>
+          )}
+        </section>
+
+        {/* Gallery Section */}
+        <section className="rounded-[28px] border border-amber-400/15 bg-[#0b0b0a] p-4 shadow-2xl shadow-black/30 sm:p-6">
+          <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-white sm:text-2xl">
+                Gallery Images
+              </h2>
+
+              <p className="mt-1 text-sm text-white/40">
+                Your uploaded restaurant photos.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setFilter("All")}
+                className={`rounded-xl px-4 py-2 text-xs font-semibold transition ${
+                  filter === "All"
+                    ? "bg-amber-400 text-black"
+                    : "border border-white/10 bg-white/[0.03] text-white/50 hover:bg-white/[0.06]"
+                }`}
+              >
+                All ({items.length})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilter("Visible")}
+                className={`rounded-xl px-4 py-2 text-xs font-semibold transition ${
+                  filter === "Visible"
+                    ? "bg-green-500 text-white"
+                    : "border border-white/10 bg-white/[0.03] text-white/50 hover:bg-white/[0.06]"
+                }`}
+              >
+                Visible ({visibleCount})
+              </button>
+
+              {hiddenCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setFilter("Hidden")}
+                  className={`rounded-xl px-4 py-2 text-xs font-semibold transition ${
+                    filter === "Hidden"
+                      ? "bg-red-500 text-white"
+                      : "border border-white/10 bg-white/[0.03] text-white/50 hover:bg-white/[0.06]"
+                  }`}
+                >
+                  Hidden ({hiddenCount})
+                </button>
+              )}
+
+              {items.length > 0 && (
+                <button
+                  type="button"
+                  onClick={deleteAllImages}
+                  className="rounded-xl border border-red-400/10 bg-red-500/5 px-4 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/10"
+                >
+                  Delete All
+                </button>
+              )}
+            </div>
+          </div>
+
+          {filteredItems.length === 0 ? (
+            <div className="flex min-h-[380px] items-center justify-center rounded-[24px] border border-dashed border-white/10 bg-white/[0.02]">
+              <div className="text-center">
+                <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-amber-400/5 text-4xl opacity-70">
+                  🖼️
+                </div>
+
+                <h3 className="text-lg font-semibold text-white/70">
+                  No Gallery Images
+                </h3>
+
+                <p className="mt-2 text-sm text-white/30">
+                  Upload multiple restaurant photos to get started.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="mt-5 rounded-xl bg-amber-400 px-5 py-3 text-sm font-bold text-black transition hover:bg-yellow-300"
+                >
+                  Upload Images
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+              {filteredItems
+                .sort((a, b) => a.order - b.order)
+                .map((item) => (
+                  <div
+                    key={item.id}
+                    className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black shadow-lg transition duration-300 hover:-translate-y-1 hover:border-amber-400/30 hover:shadow-amber-900/10"
+                  >
+                    <div className="relative aspect-square overflow-hidden">
+                      <img
+                        src={item.image}
+                        alt="Restaurant gallery"
+                        className={`h-full w-full object-cover transition duration-500 group-hover:scale-105 ${
+                          item.visible === false
+                            ? "opacity-40 grayscale"
+                            : ""
+                        }`}
+                      />
+
+                      {/* Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/10 opacity-0 transition group-hover:opacity-100" />
+
+                      {/* Delete */}
+                      <button
+                        type="button"
+                        onClick={() => deleteImage(item.id)}
+                        className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-black/75 text-lg text-white opacity-100 shadow-lg backdrop-blur-md transition hover:bg-red-500"
+                        aria-label="Delete image"
+                      >
+                        ×
+                      </button>
+
+                      {/* Status */}
+                      <div className="absolute bottom-2 left-2">
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-[10px] font-semibold backdrop-blur-md ${
+                            item.visible !== false
+                              ? "bg-green-500/80 text-white"
+                              : "bg-red-500/80 text-white"
+                          }`}
+                        >
+                          {item.visible !== false
+                            ? "Visible"
+                            : "Hidden"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </section>
+
+        {/* Bottom Note */}
+        <footer className="py-8 text-center">
+          <p className="text-xs text-white/20">
+            Nababi Ristorante · Gallery Management
+          </p>
+        </footer>
       </div>
     </main>
   );
-}
+              }
