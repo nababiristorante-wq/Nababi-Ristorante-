@@ -325,6 +325,11 @@ export default function HomePage() {
   const [reviews, setReviews] = useState<AnyData[]>([]);
   const [news, setNews] = useState<AnyData[]>([]);
 
+  const [reviewName, setReviewName] = useState("");
+  const [reviewRating, setReviewRating] = useState("5");
+  const [reviewText, setReviewText] = useState("");
+  const [reviewMessage, setReviewMessage] = useState("");
+
   const [selectedCategory, setSelectedCategory] = useState("");
 
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -494,6 +499,29 @@ export default function HomePage() {
 
     setGallery(
       rawGallery
+        .map((item: AnyData) => ({
+          ...item,
+          image:
+            item.image ||
+            item.imageUrl ||
+            item.src ||
+            item.url ||
+            "",
+          visible:
+            item.visible ??
+            item.showOnWebsite ??
+            item.isVisible ??
+            true,
+          show:
+            item.show ??
+            item.showOnWebsite ??
+            item.isVisible ??
+            true,
+          order:
+            item.order ??
+            item.displayOrder ??
+            0,
+        }))
         .filter(
           (item) =>
             item.image &&
@@ -901,6 +929,58 @@ export default function HomePage() {
 
     setLookupMessage(
       "Your booking has been cancelled.",
+    );
+  };
+
+  const submitReview = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setReviewMessage("");
+
+    const name = reviewName.trim();
+    const review = reviewText.trim();
+    const rating = Math.min(
+      5,
+      Math.max(1, Number(reviewRating) || 5),
+    );
+
+    if (!name || !review) {
+      setReviewMessage(
+        "Name and review are required.",
+      );
+      return;
+    }
+
+    const current = arrayData(
+      readStorage("nababi-reviews", []),
+    );
+
+    const newReview = {
+      id: `review-${Date.now()}`,
+      customerName: name,
+      rating,
+      review,
+      date: new Date().toISOString(),
+      visible: true,
+    };
+
+    localStorage.setItem(
+      "nababi-reviews",
+      JSON.stringify([
+        newReview,
+        ...current,
+      ]),
+    );
+
+    setReviews((previous) => [
+      newReview,
+      ...previous,
+    ]);
+
+    setReviewName("");
+    setReviewRating("5");
+    setReviewText("");
+    setReviewMessage(
+      "Thank you! Your review has been added.",
     );
   };
 
@@ -1960,24 +2040,13 @@ export default function HomePage() {
         </nav>
 
         <div className="top-actions">
-          <button
-            className="pill"
-            onClick={() => {
-              setMyBookingOpen(true);
-              setLookupStep("login");
-              setLookupMessage("");
-            }}
-          >
-            <Icon name="user" size={17} />
-            My Booking
-          </button>
-
           <a
             className="pill"
             href="/admin"
+            aria-label="Admin"
+            title="Admin"
           >
-            <Icon name="settings" size={17} />
-            Admin
+            <Icon name="settings" size={19} />
           </a>
 
           <button
@@ -3007,6 +3076,102 @@ export default function HomePage() {
                 No reviews added yet.
               </div>
             )}
+
+            <form
+              onSubmit={submitReview}
+              style={{
+                marginTop: 20,
+                paddingTop: 20,
+                borderTop:
+                  "1px solid rgba(242,189,69,0.25)",
+              }}
+            >
+              <div className="eyebrow">
+                Share Your Experience
+              </div>
+
+              <h3
+                style={{
+                  margin: "7px 0 16px",
+                  color: "var(--gold)",
+                }}
+              >
+                Write a Review
+              </h3>
+
+              <div className="form-grid">
+                <div className="field">
+                  <label>Your Name *</label>
+                  <input
+                    value={reviewName}
+                    onChange={(event) =>
+                      setReviewName(
+                        event.target.value,
+                      )
+                    }
+                    placeholder="Your name"
+                    required
+                  />
+                </div>
+
+                <div className="field">
+                  <label>Rating *</label>
+                  <select
+                    value={reviewRating}
+                    onChange={(event) =>
+                      setReviewRating(
+                        event.target.value,
+                      )
+                    }
+                  >
+                    <option value="5">
+                      ★★★★★ — 5
+                    </option>
+                    <option value="4">
+                      ★★★★☆ — 4
+                    </option>
+                    <option value="3">
+                      ★★★☆☆ — 3
+                    </option>
+                    <option value="2">
+                      ★★☆☆☆ — 2
+                    </option>
+                    <option value="1">
+                      ★☆☆☆☆ — 1
+                    </option>
+                  </select>
+                </div>
+
+                <div className="field full">
+                  <label>Your Review *</label>
+                  <textarea
+                    value={reviewText}
+                    onChange={(event) =>
+                      setReviewText(
+                        event.target.value,
+                      )
+                    }
+                    placeholder="Write your review"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="form-actions">
+                <button
+                  className="gold-btn"
+                  type="submit"
+                >
+                  ★ Submit Review
+                </button>
+              </div>
+
+              {reviewMessage && (
+                <div className="message">
+                  {reviewMessage}
+                </div>
+              )}
+            </form>
           </div>
         </div>
       </section>
