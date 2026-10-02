@@ -104,7 +104,7 @@ export default function LoginForm() {
 
               <div className="relative">
                 <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xl text-slate-400">
-                  ✉️
+                  
                 </span>
 
                 <input
@@ -133,7 +133,7 @@ export default function LoginForm() {
 
               <div className="relative">
                 <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xl text-slate-400">
-                  🔒
+                  
                 </span>
 
                 <input
