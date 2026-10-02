@@ -84,11 +84,11 @@ export default function LoginForm() {
               )}
             </div>
 
-            <h1 className="font-serif text-3xl font-bold tracking-wide text-slate-900">
+            <h1 className="font-serif text-4xl font-bold tracking-wide text-slate-900 sm:text-5xl"
               NABABI RISTORANTE
             </h1>
 
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-3 text-base font-medium text-slate-500 sm:text-lg"
               Administrator Login
             </p>
           </div>
@@ -130,7 +130,7 @@ export default function LoginForm() {
             <div className="mb-5">
               <label
                 htmlFor="password"
-                className="mb-2 block text-sm font-semibold text-slate-700"
+                className="mb-2 block text-base font-bold text-slate-700 sm:text-lg"
               >
                 Password
               </label>
@@ -190,7 +190,7 @@ export default function LoginForm() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 py-3.5 text-base font-bold text-white shadow-lg shadow-amber-500/20 transition hover:from-amber-600 hover:to-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 py-4 text-lg font-extrabold tracking-wide text-white shadow-xl shadow-orange-500/25 transition duration-200 hover:-translate-y-0.5 hover:shadow-2xl active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 sm:py-4.5 sm:text-xl"
             >
               {loading ? "Signing in..." : "Sign In"}
             </button>
