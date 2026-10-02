@@ -1,4 +1,4 @@
-
+```tsx
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
@@ -7,7 +7,7 @@ import { signIn } from "next-auth/react";
 const LOGO_STORAGE_KEY = "nababi-logo";
 
 export default function LoginForm() {
-  const [logo, setLogo] = useState<string>("");
+  const [logo, setLogo] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -28,25 +28,19 @@ export default function LoginForm() {
     setError("");
     setLoading(true);
 
-    try {
-      const result = await signIn("credentials", {
-        email: email.trim(),
-        password,
-        redirect: false,
-        callbackUrl: "/admin",
-      });
+    const result = await signIn("credentials", {
+      email: email.trim(),
+      password,
+      redirect: false,
+    });
 
-      if (result?.error) {
-        setError("Invalid email or password.");
-        setLoading(false);
-        return;
-      }
-
-      window.location.href = "/admin";
-    } catch {
-      setError("Something went wrong. Please try again.");
+    if (result?.error) {
+      setError("Invalid email or password.");
       setLoading(false);
+      return;
     }
+
+    window.location.href = "/admin";
   }
 
   return (
@@ -65,7 +59,6 @@ export default function LoginForm() {
       <div className="relative z-10 w-full max-w-md">
         <div className="rounded-3xl border border-amber-400/40 bg-black/70 p-7 shadow-2xl backdrop-blur-md sm:p-9">
 
-          {/* Logo */}
           <div className="mb-6 text-center">
             {logo ? (
               <div className="mx-auto mb-5 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-amber-400/70 bg-black/60">
@@ -90,10 +83,7 @@ export default function LoginForm() {
             </p>
           </div>
 
-          {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
-
-            {/* Email */}
             <div>
               <label
                 htmlFor="email"
@@ -109,9 +99,7 @@ export default function LoginForm() {
 
                 <input
                   id="email"
-                  name="email"
                   type="email"
-                  autoComplete="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                   placeholder="Enter admin email"
@@ -121,7 +109,6 @@ export default function LoginForm() {
               </div>
             </div>
 
-            {/* Password */}
             <div>
               <label
                 htmlFor="password"
@@ -137,9 +124,7 @@ export default function LoginForm() {
 
                 <input
                   id="password"
-                  name="password"
                   type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   placeholder="Enter password"
@@ -149,25 +134,21 @@ export default function LoginForm() {
 
                 <button
                   type="button"
-                  onClick={() => setShowPassword((value) => !value)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg px-2 py-2 text-xl text-amber-300"
-                  aria-label={
-                    showPassword ? "Hide password" : "Show password"
-                  }
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-2 text-xl text-amber-300"
+                  aria-label="Show or hide password"
                 >
                   {showPassword ? "🙈" : "👁"}
                 </button>
               </div>
             </div>
 
-            {/* Error */}
             {error && (
               <div className="rounded-xl border border-red-400/30 bg-red-500/15 px-4 py-3 text-center text-sm font-semibold text-red-200">
                 {error}
               </div>
             )}
 
-            {/* Sign In */}
             <button
               type="submit"
               disabled={loading}
@@ -177,7 +158,6 @@ export default function LoginForm() {
             </button>
           </form>
 
-          {/* Footer */}
           <div className="mt-7 border-t border-white/10 pt-5 text-center">
             <p className="text-sm text-white/60">
               Together We Serve
@@ -192,4 +172,4 @@ export default function LoginForm() {
     </main>
   );
 }
-
+```
