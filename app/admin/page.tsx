@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 
 type Module = {
@@ -311,13 +312,22 @@ export default function AdminDashboard() {
               >
                 ☼
               </Link>
-              <div className="flex items-center gap-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-xl text-white">
-                  👤
-                </div>
-                <span className="hidden text-sm font-semibold sm:block">Admin</span>
-                <span className="text-slate-500">⌄</span>
-              </div>
+              <div className="flex items-center gap-3">
+  <div className="flex items-center gap-2">
+    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-xl text-white">
+      👤
+    </div>
+    <span className="hidden text-sm font-semibold sm:block">Admin</span>
+  </div>
+
+  <button
+    type="button"
+    onClick={() => signOut({ callbackUrl: "/admin/login" })}
+    className="rounded-xl bg-red-50 px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100"
+  >
+    Logout
+  </button>
+</div>
             </div>
           </header>
 
