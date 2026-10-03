@@ -768,10 +768,10 @@ return;
 }
 
 const newReservation: Reservation = {
-id: reservation-${Date.now()},
-code: bookingCode(),
-name: booking.name,
-phone: booking.phone,
+  id: `reservation-${Date.now()}`,
+  code: bookingCode(),
+  name: booking.name,
+  phone: booking.phone,
 email: booking.email,
 date: booking.date,
 time: booking.time,
