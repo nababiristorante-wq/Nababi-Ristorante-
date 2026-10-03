@@ -3144,14 +3144,15 @@ a {
   </div>
 </section>
 
-<footer className="footer">
 <footer className="footer">    
-    <span>    
-      © 2026 {restaurantName}.    
-      All rights reserved.    
-    </span>    <span>    
-  Good Food • Good Mood    
-</span>
+  <span>    
+    © 2026 {restaurantName}.    
+    All rights reserved.    
+  </span>
+
+  <span>    
+    Good Food • Good Mood    
+  </span>
 
   </footer>      <div className="floating-book">    
     <button    
