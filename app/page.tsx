@@ -2158,15 +2158,22 @@ a {
         controls    
       />    
     ) : visibleNews.video ? (    
-      <video    
-        className="breaking-media"    
-        src={visibleNews.video}    
-        autoPlay    
-        muted    
-        loop    
-        playsInline    
-        controls    
-      />    
+      id="video_fix"
+<video
+  className="breaking-media"
+  src={newsMediaUrls[visibleNews.id]}
+  autoPlay
+  muted
+  loop
+  playsInline
+  controls
+  onLoadedData={(e) => {
+    e.currentTarget.play().catch(() => {});
+  }}
+  onPause={(e) => {
+    e.currentTarget.play().catch(() => {});
+  }}
+/>  
     ) : (    
       <div className="breaking-media" />    
     )}    
