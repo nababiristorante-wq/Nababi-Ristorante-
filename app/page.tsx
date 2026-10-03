@@ -3286,7 +3286,6 @@ a {
 
 </div>
 
-</section>
   </section>    <footer className="footer">    
     <span>    
       © 2026 {restaurantName}.    
