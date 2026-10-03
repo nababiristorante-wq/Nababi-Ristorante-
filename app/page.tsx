@@ -448,8 +448,22 @@ const request = db
 );
 
 setNewsMediaUrls((previous) => {
-Object.values(previous).forEach((url) => URL.revokeObjectURL(url));
-return nextUrls;
+  const sameUrls =
+    Object.keys(previous).length ===
+      Object.keys(nextUrls).length &&
+    Object.keys(nextUrls).every(
+      (key) => previous[key] === nextUrls[key],
+    );
+
+  if (sameUrls) {
+    return previous;
+  }
+
+  Object.values(previous).forEach((url) =>
+    URL.revokeObjectURL(url),
+  );
+
+  return nextUrls;
 });
 } catch {
 setNewsMediaUrls((previous) => {
