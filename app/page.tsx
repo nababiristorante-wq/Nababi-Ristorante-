@@ -3248,7 +3248,45 @@ a {
   </h3>
 </div> 
 </div>
+<div className="box contact-box">
+  <h3>{restaurantName}</h3>
 
+  {address && (
+    <p>
+      <strong>Address:</strong><br />
+      {address}
+    </p>
+  )}
+
+  {phone && (
+    <p>
+      <strong>Phone:</strong><br />
+      {phone}
+    </p>
+  )}
+
+  {email && (
+    <p>
+      <strong>Email:</strong><br />
+      {email}
+    </p>
+  )}
+</div>
+
+<div className="box contact-box">
+  <h3>Follow Us</h3>
+
+  {whatsapp && (
+    <p>
+      <strong>WhatsApp:</strong><br />
+      {whatsapp}
+    </p>
+  )}
+</div>
+
+</div>
+
+</section>
   </section>    <footer className="footer">    
     <span>    
       © 2026 {restaurantName}.    
