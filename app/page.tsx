@@ -3293,9 +3293,10 @@ a {
             </a>    
           ),    
         )}    
-      </div>    
-</div>
-  </section>      <footer className="footer">    
+             </div>
+    </div>
+  </div>
+  </section>    <footer className="footer">    
     <span>    
       © 2026 {restaurantName}.    
       All rights reserved.    
