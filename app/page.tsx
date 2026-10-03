@@ -3084,208 +3084,67 @@ a {
 
   </section>    {/* ================= CONTACT ================= */}
 
-  <section    
-    id="contact"    
-    className="section"    
-  >    
-    <div className="section-title">    
-      <div className="eyebrow">    
-        Contact    
-      </div>    <h2>    
-    Find & Contact Us    
-  </h2>    
+<section id="contact" className="section">
+  <div className="section-head">
+    <h2>Contact</h2>
+  </div>
 
-  
-</div>    
+  <div className="grid two">
+    <div className="box contact-box">
+      <h3>{restaurantName}</h3>
 
-<div className="contact-grid">    
-  <div className="box contact-box">    
-    <h3>    
-      Find Us on Map    
-    </h3>    
+      {address && (
+        <p>
+          <strong>Address:</strong>
+          <br />
+          {address}
+        </p>
+      )}
 
-    <div className="contact-line">    
-      <Icon    
-        name="pin"    
-        size={20}    
-      />    
+      {phone && (
+        <p>
+          <strong>Phone:</strong>
+          <br />
+          {phone}
+        </p>
+      )}
 
-      <span>    
-        {address}    
-      </span>    
-    </div>    
+      {email && (
+        <p>
+          <strong>Email:</strong>
+          <br />
+          {email}
+        </p>
+      )}
 
-    {mapUrl ? (    
-      <a    
-        className="outline-btn"    
-        href={mapUrl}    
-        target="_blank"    
-        rel="noreferrer"    
-      >    
-        <Icon    
-          name="map"    
-          size={17}    
-        />    
-        Open Google Maps    
-      </a>    
-    ) : (    
-      <span className="small-note">    
-         
-      </span>    
-    )}    
-  </div>    
+      {mapUrl && (
+        <p>
+          <a
+            href={mapUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            View on Google Maps
+          </a>
+        </p>
+      )}
+    </div>
 
-  <div className="box contact-box">    
-    <h3>    
-      Contact Us    
-    </h3>    
+    <div className="box contact-box">
+      <h3>Follow Us</h3>
 
-    {phone && (    
-      <div className="contact-line">    
-        <Icon    
-          name="phone"    
-          size={20}    
-        />    
-
-        <a    
-          href={`tel:${phone}`}    
-        >    
-          {phone}    
-        </a>    
-      </div>    
-    )}    
-
-    {email && (    
-      <div className="contact-line">    
-        <Icon    
-          name="mail"    
-          size={20}    
-        />    
-
-        <a    
-          href={`mailto:${email}`}    
-        >    
-          {email}    
-        </a>    
-      </div>    
-    )}    
-
-    {whatsapp && (    
-      <div className="contact-line">    
-        <button    
-          style={{    
-            background:    
-              "transparent",    
-            border: 0,    
-            padding: 0,    
-            color: "#fff",    
-            display: "flex",    
-            alignItems:    
-              "center",    
-            gap: 10,    
-          }}    
-          onClick={    
-            openWhatsApp    
-          }    
-        >    
-          <Icon    
-            name="phone"    
-            size={20}    
-          />    
-          WhatsApp    
-        </button>    
-      </div>    
-    )}    
-
-    <div className="contact-line">    
-      <Icon    
-        name="pin"    
-        size={20}    
-      />    
-
-      <span>    
-        {address}    
-      </span>    
-    </div>    
-  </div>    
-
- <div className="box contact-box">
-  <h3>{restaurantName}</h3>
-
-  {address && (
-    <p>
-      {address}
-    </p>
-  )}
-
-  {phone && (
-    <p>
-      Phone: {phone}
-    </p>
-  )}
-
-  {email && (
-    <p>
-      Email: {email}
-    </p>
-  )}
-
-  {mapUrl && (
-    <a
-      className="outline-btn"
-      href={mapUrl}
-      target="_blank"
-      rel="noreferrer"
-    >
-      View on Google Maps
-    </a>
-  )}
-</div>
-
-<div className="box contact-box">
-  <h3>
-    Follow Us
-  </h3>
-</div> 
-</div>
-<div className="box contact-box">
-  <h3>{restaurantName}</h3>
-
-  {address && (
-    <p>
-      <strong>Address:</strong><br />
-      {address}
-    </p>
-  )}
-
-  {phone && (
-    <p>
-      <strong>Phone:</strong><br />
-      {phone}
-    </p>
-  )}
-
-  {email && (
-    <p>
-      <strong>Email:</strong><br />
-      {email}
-    </p>
-  )}
-</div>
-
-<div className="box contact-box">
-  <h3>Follow Us</h3>
-
-  {whatsapp && (
-    <p>
-      <strong>WhatsApp:</strong><br />
-      {whatsapp}
-    </p>
-  )}
-</div>
-
-</div>
+      {whatsapp && (
+        <p>
+          <strong>WhatsApp:</strong>
+          <br />
+          {whatsapp}
+        </p>
+      )}
+    </div>
+  </div>
 </section>
+
+<footer className="footer">
 <footer className="footer">    
     <span>    
       © 2026 {restaurantName}.    
