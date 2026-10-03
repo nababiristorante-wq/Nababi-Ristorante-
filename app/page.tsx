@@ -2158,7 +2158,7 @@ a {
         controls    
       />    
     ) : visibleNews.video ? (    
-      id="video_fix"
+      
 <video
   className="breaking-media"
   src={newsMediaUrls[visibleNews.id]}
