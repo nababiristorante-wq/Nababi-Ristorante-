@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState, type CSSProperties } from "react";
-
+import { supabase } from "../lib/supabase";
 type AnyData = Record<string, any>;
 
 type MenuItem = {
