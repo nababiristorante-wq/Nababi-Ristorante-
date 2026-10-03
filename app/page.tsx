@@ -606,7 +606,22 @@ loadData,
 };
 
 }, []);
+useEffect(() => {
+  const timer = window.setInterval(() => {
+    const video = document.querySelector(
+      ".breaking-news video"
+    ) as HTMLVideoElement | null;
 
+    if (video) {
+      video.currentTime = 0;
+      video.play().catch(() => {});
+    }
+  }, 60000);
+
+  return () => {
+    window.clearInterval(timer);
+  };
+}, []);
 const restaurantName =
 settings.restaurantName ||
 contact.restaurantName ||
