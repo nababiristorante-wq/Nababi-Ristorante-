@@ -1,6 +1,12 @@
-"use client";
 
-import { FormEvent, useEffect, useState } from "react";
+
+import {
+  ChangeEvent,
+  FormEvent,
+  useEffect,
+  useState,
+} from "react";
+import { supabase } from "@/lib/supabase";
 
 type MenuItem = {
   id: number;
@@ -20,11 +26,7 @@ type MenuCategory = {
   visible: boolean;
 };
 
-type MenuData = {
-  items: MenuItem[];
-  categories: MenuCategory[];
-  backgroundImage: string;
-};
+const BUCKET = "menu-images";
 
 const emptyItem: MenuItem = {
   id: 0,
@@ -36,1014 +38,1215 @@ const emptyItem: MenuItem = {
   available: true,
 };
 
-export default function MenuPage() {
+const emptyCategory: MenuCategory = {
+  id: "",
+  name: "",
+  image: "",
+  order: 0,
+  visible: true,
+};
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function normalizeItem(row: any): MenuItem {
+  return {
+    id: Number(row.id),
+    name: row.name ?? "",
+    description: row.description ?? "",
+    price: row.price == null ? "" : String(row.price),
+    category: row.category ?? "",
+    image: row.image_url ?? row.image ?? "",
+    available: row.is_available !== false,
+  };
+}
+
+function normalizeCategory(row: any, index: number): MenuCategory {
+  return {
+    id: String(row.id),
+    name: row.name ?? "",
+    image: row.image_url ?? row.image ?? "",
+    order: Number(row.display_order ?? row.order ?? index),
+    visible: row.visible !== false,
+  };
+}
+
+export default function AdminMenuPage() {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [backgroundImage, setBackgroundImage] = useState("");
 
   const [itemForm, setItemForm] = useState<MenuItem>(emptyItem);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [categoryForm, setCategoryForm] =
+    useState<MenuCategory>(emptyCategory);
 
-  const [categoryName, setCategoryName] = useState("");
-  const [categoryImage, setCategoryImage] = useState("");
+  const [editingItemId, setEditingItemId] = useState<number | null>(null);
+  const [editingCategoryId, setEditingCategoryId] =
+    useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     loadMenu();
   }, []);
 
   async function loadMenu() {
-    try {
-      setLoading(true);
-      setMessage("");
+    setLoading(true);
+    setError("");
 
+    try {
       const response = await fetch("/api/admin/menu", {
-        method: "GET",
         cache: "no-store",
       });
 
+      if (!response.ok) {
+        throw new Error("Could not load menu data.");
+      }
+
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(
-          data?.error || "Could not load menu."
-        );
-      }
+      setItems(
+        Array.isArray(data.items)
+          ? data.items.map(normalizeItem)
+          : []
+      );
 
-      const loadedItems: MenuItem[] = (
-        data.items || []
-      ).map((item: any) => ({
-        id: Number(item.id),
-        name: item.name || "",
-        description: item.description || "",
-        price:
-          item.price === null ||
-          item.price === undefined
-            ? ""
-            : String(item.price),
-        category: item.category || "",
-        image: item.image_url || "",
-        available: item.is_available !== false,
-      }));
-
-      const loadedCategories: MenuCategory[] = (
-        data.categories || []
-      ).map((category: any, index: number) => ({
-        id: String(category.id),
-        name: category.name || "",
-        image: category.image_url || "",
-        order:
-          Number.isFinite(Number(category.display_order))
-            ? Number(category.display_order)
-            : index,
-        visible: category.visible !== false,
-      }));
-
-      setItems(loadedItems);
-      setCategories(loadedCategories);
+      setCategories(
+        Array.isArray(data.categories)
+          ? data.categories.map(normalizeCategory)
+          : []
+      );
 
       setBackgroundImage(
-        data.settings?.background_image || ""
+        data.settings?.background_image ?? ""
       );
-
-      if (loadedCategories.length > 0) {
-        setItemForm((current) => ({
-          ...current,
-          category:
-            current.category ||
-            loadedCategories[0].name,
-        }));
-      }
-    } catch (error) {
-      console.error(error);
-
-      setMessage(
-        "Menu could not be loaded. Please login again."
-      );
+    } catch (err) {
+      console.error(err);
+      setError("Menu data load করা যায়নি। আবার চেষ্টা করুন।");
     } finally {
       setLoading(false);
     }
   }
 
-  async function saveMenu(
+  async function uploadImage(
+    file: File,
+    folder: string
+  ): Promise<string> {
+    const extension =
+      file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const safeName = `${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 10)}.${extension}`;
+    const path = `${folder}/${safeName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(BUCKET)
+      .upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: file.type || undefined,
+      });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data } = supabase.storage
+      .from(BUCKET)
+      .getPublicUrl(path);
+
+    if (!data.publicUrl) {
+      throw new Error("Could not create public image URL.");
+    }
+
+    return data.publicUrl;
+  }
+
+  async function handleItemImage(
+    event: ChangeEvent<HTMLInputElement>
+  ) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setError("শুধু image file নির্বাচন করুন।");
+      return;
+    }
+
+    setUploading(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const url = await uploadImage(file, "items");
+      setItemForm((current) => ({
+        ...current,
+        image: url,
+      }));
+      setMessage("Item image uploaded হয়েছে।");
+    } catch (err) {
+      console.error(err);
+      setError(
+        "Item image upload হয়নি। Storage bucket/policy পরীক্ষা করুন।"
+      );
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleCategoryImage(
+    event: ChangeEvent<HTMLInputElement>
+  ) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setError("শুধু image file নির্বাচন করুন।");
+      return;
+    }
+
+    setUploading(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const url = await uploadImage(file, "categories");
+      setCategoryForm((current) => ({
+        ...current,
+        image: url,
+      }));
+      setMessage("Category image uploaded হয়েছে।");
+    } catch (err) {
+      console.error(err);
+      setError(
+        "Category image upload হয়নি। Storage bucket/policy পরীক্ষা করুন।"
+      );
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleBackgroundImage(
+    event: ChangeEvent<HTMLInputElement>
+  ) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setError("শুধু image file নির্বাচন করুন।");
+      return;
+    }
+
+    setUploading(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const url = await uploadImage(file, "background");
+      setBackgroundImage(url);
+      await saveMenuData(items, categories, url);
+      setMessage("Menu background save হয়েছে।");
+    } catch (err) {
+      console.error(err);
+      setError("Background image upload/save হয়নি।");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function saveMenuData(
     nextItems: MenuItem[],
     nextCategories: MenuCategory[],
     nextBackground: string
   ) {
+    const response = await fetch("/api/admin/menu", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        items: nextItems,
+        categories: nextCategories,
+        backgroundImage: nextBackground,
+      }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(data.error || "Could not save menu data.");
+    }
+  }
+
+  async function saveAll() {
+    setSaving(true);
+    setError("");
+    setMessage("");
+
     try {
-      setSaving(true);
-      setMessage("");
-
-      const response = await fetch(
-        "/api/admin/menu",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            items: nextItems,
-            categories: nextCategories,
-            backgroundImage: nextBackground,
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data?.error || "Could not save menu."
-        );
-      }
-
-      setMessage("Menu saved successfully.");
-    } catch (error) {
-      console.error(error);
-
-      setMessage(
-        "Menu could not be saved. Please try again."
-      );
+      await saveMenuData(items, categories, backgroundImage);
+      setMessage("সব Menu data Supabase-এ save হয়েছে।");
+      await loadMenu();
+    } catch (err) {
+      console.error(err);
+      setError("Save হয়নি। আবার চেষ্টা করুন।");
     } finally {
       setSaving(false);
     }
   }
 
-  function handleItemSubmit(
-    event: FormEvent<HTMLFormElement>
-  ) {
+  function submitItem(event: FormEvent) {
     event.preventDefault();
+    setError("");
+    setMessage("");
 
-    if (!itemForm.name.trim()) {
-      setMessage("Please enter a menu item name.");
+    const name = itemForm.name.trim();
+
+    if (!name) {
+      setError("Item name দিন।");
       return;
     }
 
-    if (!itemForm.category.trim()) {
-      setMessage("Please select a category.");
+    if (!itemForm.category) {
+      setError("Category নির্বাচন করুন।");
       return;
     }
 
-    let nextItems: MenuItem[];
-
-    if (editingId !== null) {
-      nextItems = items.map((item) =>
-        item.id === editingId
-          ? {
-              ...itemForm,
-              id: editingId,
-              name: itemForm.name.trim(),
-            }
-          : item
+    if (editingItemId !== null) {
+      setItems((current) =>
+        current.map((item) =>
+          item.id === editingItemId
+            ? {
+                ...itemForm,
+                id: editingItemId,
+                name,
+              }
+            : item
+        )
       );
     } else {
-      const nextId =
+      const newId =
         items.length > 0
-          ? Math.max(
-              ...items.map((item) =>
-                Number(item.id) || 0
-              )
-            ) + 1
+          ? Math.max(...items.map((item) => item.id)) + 1
           : 1;
 
-      nextItems = [
-        ...items,
+      setItems((current) => [
+        ...current,
         {
           ...itemForm,
-          id: nextId,
-          name: itemForm.name.trim(),
+          id: newId,
+          name,
         },
-      ];
+      ]);
     }
 
-    setItems(nextItems);
-    setItemForm({
-      ...emptyItem,
-      category:
-        categories[0]?.name || "",
-    });
-    setEditingId(null);
-
-    void saveMenu(
-      nextItems,
-      categories,
-      backgroundImage
+    setItemForm({ ...emptyItem });
+    setEditingItemId(null);
+    setMessage(
+      editingItemId !== null
+        ? "Item update করা হয়েছে। এখন Save All চাপুন।"
+        : "Item যোগ করা হয়েছে। এখন Save All চাপুন।"
     );
   }
 
   function editItem(item: MenuItem) {
-    setEditingId(item.id);
-    setItemForm({
-      ...item,
-    });
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+    setItemForm({ ...item });
+    setEditingItemId(item.id);
+    setMessage("");
+    setError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function deleteItem(id: number) {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this menu item?"
-    );
+    if (!window.confirm("এই item delete করবেন?")) return;
 
-    if (!confirmed) {
-      return;
-    }
-
-    const nextItems = items.filter(
-      (item) => item.id !== id
-    );
-
-    setItems(nextItems);
-
-    void saveMenu(
-      nextItems,
-      categories,
-      backgroundImage
-    );
+    setItems((current) => current.filter((item) => item.id !== id));
+    setMessage("Item delete করা হয়েছে। এখন Save All চাপুন।");
   }
 
-  function toggleAvailability(id: number) {
-    const nextItems = items.map((item) =>
-      item.id === id
-        ? {
-            ...item,
-            available: !item.available,
-          }
-        : item
-    );
-
-    setItems(nextItems);
-
-    void saveMenu(
-      nextItems,
-      categories,
-      backgroundImage
-    );
-  }
-
-  function addCategory(
-    event: FormEvent<HTMLFormElement>
-  ) {
+  function submitCategory(event: FormEvent) {
     event.preventDefault();
+    setError("");
+    setMessage("");
 
-    const name = categoryName.trim();
+    const name = categoryForm.name.trim();
 
     if (!name) {
-      setMessage("Please enter a category name.");
+      setError("Category name দিন।");
       return;
     }
 
-    const exists = categories.some(
-      (category) =>
-        category.name.toLowerCase() ===
-        name.toLowerCase()
-    );
+    if (editingCategoryId !== null) {
+      setCategories((current) =>
+        current.map((category) =>
+          category.id === editingCategoryId
+            ? {
+                ...categoryForm,
+                id: editingCategoryId,
+                name,
+              }
+            : category
+        )
+      );
+    } else {
+      const baseId = slugify(name) || `category-${Date.now()}`;
+      let newId = baseId;
+      let counter = 2;
 
-    if (exists) {
-      setMessage("This category already exists.");
-      return;
-    }
+      while (categories.some((category) => category.id === newId)) {
+        newId = `${baseId}-${counter}`;
+        counter += 1;
+      }
 
-    const newCategory: MenuCategory = {
-      id:
-        `cat-${Date.now()}-${Math.random()
-          .toString(36)
-          .slice(2, 7)}`,
-      name,
-      image: categoryImage.trim(),
-      order: categories.length,
-      visible: true,
-    };
+      const nextOrder =
+        categories.length > 0
+          ? Math.max(...categories.map((category) => category.order)) + 1
+          : 0;
 
-    const nextCategories = [
-      ...categories,
-      newCategory,
-    ];
-
-    setCategories(nextCategories);
-    setCategoryName("");
-    setCategoryImage("");
-
-    if (!itemForm.category) {
-      setItemForm((current) => ({
+      setCategories((current) => [
         ...current,
-        category: name,
-      }));
+        {
+          ...categoryForm,
+          id: newId,
+          name,
+          order: nextOrder,
+        },
+      ]);
     }
 
-    void saveMenu(
-      items,
-      nextCategories,
-      backgroundImage
+    setCategoryForm({ ...emptyCategory });
+    setEditingCategoryId(null);
+    setMessage(
+      editingCategoryId !== null
+        ? "Category update করা হয়েছে। এখন Save All চাপুন।"
+        : "Category যোগ করা হয়েছে। এখন Save All চাপুন।"
     );
+  }
+
+  function editCategory(category: MenuCategory) {
+    setCategoryForm({ ...category });
+    setEditingCategoryId(category.id);
+    setMessage("");
+    setError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function deleteCategory(id: string) {
-    const category = categories.find(
-      (item) => item.id === id
-    );
+    const hasItems = items.some((item) => item.category === id);
 
-    if (!category) {
-      return;
-    }
-
-    const categoryUsed = items.some(
-      (item) => item.category === category.name
-    );
-
-    if (categoryUsed) {
-      setMessage(
-        "This category is being used by a menu item. Change the item's category first."
+    if (hasItems) {
+      setError(
+        "এই Category-এর মধ্যে item আছে। আগে item-গুলোর Category পরিবর্তন করুন।"
       );
       return;
     }
 
-    const confirmed = window.confirm(
-      `Delete category "${category.name}"?`
+    if (!window.confirm("এই category delete করবেন?")) return;
+
+    setCategories((current) =>
+      current.filter((category) => category.id !== id)
     );
 
-    if (!confirmed) {
-      return;
-    }
-
-    const nextCategories = categories.filter(
-      (item) => item.id !== id
-    );
-
-    setCategories(nextCategories);
-
-    void saveMenu(
-      items,
-      nextCategories,
-      backgroundImage
-    );
-  }
-
-  function updateBackground() {
-    void saveMenu(
-      items,
-      categories,
-      backgroundImage
-    );
-  }
-
-  function resetItemForm() {
-    setEditingId(null);
-
-    setItemForm({
-      ...emptyItem,
-      category:
-        categories[0]?.name || "",
-    });
+    setMessage("Category delete করা হয়েছে। এখন Save All চাপুন।");
   }
 
   if (loading) {
     return (
-      <main
-        style={{
-          padding: 24,
-          maxWidth: 1200,
-          margin: "0 auto",
-        }}
-      >
-        <h1>Menu Management</h1>
-        <p>Loading menu...</p>
+      <main style={styles.page}>
+        <div style={styles.loading}>Loading Menu...</div>
       </main>
     );
   }
 
   return (
-    <main
-      style={{
-        maxWidth: 1200,
-        margin: "0 auto",
-        padding: "24px 16px 60px",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 12,
-          flexWrap: "wrap",
-          marginBottom: 24,
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: 30,
-            }}
-          >
-            Menu Management
-          </h1>
+    <main style={styles.page}>
+      <div style={styles.container}>
+        <header style={styles.header}>
+          <div>
+            <h1 style={styles.title}>Menu Management</h1>
+            <p style={styles.subtitle}>
+              Supabase + Gallery image upload
+            </p>
+          </div>
 
-          <p
-            style={{
-              marginTop: 8,
-              color: "#666",
-            }}
+          <button
+            type="button"
+            onClick={saveAll}
+            disabled={saving || uploading}
+            style={styles.primaryButton}
           >
-            Manage your restaurant menu.
+            {saving ? "Saving..." : "Save All"}
+          </button>
+        </header>
+
+        {message && <div style={styles.success}>{message}</div>}
+        {error && <div style={styles.error}>{error}</div>}
+
+        <section style={styles.card}>
+          <h2 style={styles.sectionTitle}>Menu Background</h2>
+          <p style={styles.helper}>
+            Mobile Gallery থেকে background image নির্বাচন করুন।
           </p>
-        </div>
 
-        <button
-          type="button"
-          onClick={() => void loadMenu()}
-          disabled={saving}
-          style={buttonStyle}
-        >
-          Refresh
-        </button>
-      </div>
+          <label style={styles.uploadButton}>
+            {uploading ? "Uploading..." : "📷 Choose from Gallery"}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleBackgroundImage}
+              disabled={uploading}
+              style={styles.hiddenInput}
+            />
+          </label>
 
-      {message && (
-        <div
-          style={{
-            marginBottom: 20,
-            padding: 14,
-            borderRadius: 10,
-            background: "#f4f4f4",
-            border: "1px solid #ddd",
-          }}
-        >
-          {message}
-        </div>
-      )}
+          {backgroundImage && (
+            <div style={styles.previewBox}>
+              <img
+                src={backgroundImage}
+                alt="Menu background preview"
+                style={styles.backgroundPreview}
+              />
+              <button
+                type="button"
+                onClick={() => setBackgroundImage("")}
+                style={styles.dangerSmall}
+              >
+                Remove Background
+              </button>
+            </div>
+          )}
+        </section>
 
-      {/* MENU ITEM FORM */}
+        <div style={styles.grid}>
+          <section style={styles.card}>
+            <h2 style={styles.sectionTitle}>
+              {editingCategoryId ? "Edit Category" : "Add Category"}
+            </h2>
 
-      <section style={cardStyle}>
-        <h2 style={headingStyle}>
-          {editingId !== null
-            ? "Edit Menu Item"
-            : "Add Menu Item"}
-        </h2>
+            <form onSubmit={submitCategory}>
+              <label style={styles.label}>Category Name</label>
+              <input
+                value={categoryForm.name}
+                onChange={(event) =>
+                  setCategoryForm((current) => ({
+                    ...current,
+                    name: event.target.value,
+                  }))
+                }
+                placeholder="Example: Starters"
+                style={styles.input}
+              />
 
-        <form onSubmit={handleItemSubmit}>
-          <div style={gridStyle}>
-            <label style={labelStyle}>
-              Item Name
+              <label style={styles.label}>Category Image</label>
+              <label style={styles.uploadButton}>
+                {uploading ? "Uploading..." : "📷 Choose from Gallery"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCategoryImage}
+                  disabled={uploading}
+                  style={styles.hiddenInput}
+                />
+              </label>
+
+              {categoryForm.image && (
+                <div style={styles.imagePreviewWrap}>
+                  <img
+                    src={categoryForm.image}
+                    alt="Category preview"
+                    style={styles.imagePreview}
+                  />
+                </div>
+              )}
+
+              <div style={styles.buttonRow}>
+                <button
+                  type="submit"
+                  disabled={uploading}
+                  style={styles.primaryButton}
+                >
+                  {editingCategoryId ? "Update Category" : "Add Category"}
+                </button>
+
+                {editingCategoryId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCategoryForm({ ...emptyCategory });
+                      setEditingCategoryId(null);
+                    }}
+                    style={styles.secondaryButton}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </form>
+
+            <div style={styles.listTitle}>Categories</div>
+
+            {categories.length === 0 ? (
+              <p style={styles.empty}>No categories yet.</p>
+            ) : (
+              <div style={styles.list}>
+                {[...categories]
+                  .sort((a, b) => a.order - b.order)
+                  .map((category) => (
+                    <div key={category.id} style={styles.listItem}>
+                      {category.image ? (
+                        <img
+                          src={category.image}
+                          alt={category.name}
+                          style={styles.thumb}
+                        />
+                      ) : (
+                        <div style={styles.thumbPlaceholder}>No Image</div>
+                      )}
+
+                      <div style={styles.listContent}>
+                        <strong>{category.name}</strong>
+                        <span style={styles.smallText}>
+                          ID: {category.id}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => editCategory(category)}
+                        style={styles.editButton}
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => deleteCategory(category.id)}
+                        style={styles.dangerSmall}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </section>
+
+          <section style={styles.card}>
+            <h2 style={styles.sectionTitle}>
+              {editingItemId !== null ? "Edit Menu Item" : "Add Menu Item"}
+            </h2>
+
+            <form onSubmit={submitItem}>
+              <label style={styles.label}>Item Name</label>
               <input
                 value={itemForm.name}
                 onChange={(event) =>
-                  setItemForm({
-                    ...itemForm,
+                  setItemForm((current) => ({
+                    ...current,
                     name: event.target.value,
-                  })
+                  }))
                 }
-                placeholder="Chicken Biryani"
-                style={inputStyle}
+                placeholder="Example: Chicken Tikka"
+                style={styles.input}
               />
-            </label>
 
-            <label style={labelStyle}>
-              Price
+              <label style={styles.label}>Price</label>
               <input
                 type="number"
-                step="0.01"
                 min="0"
+                step="0.01"
                 value={itemForm.price}
                 onChange={(event) =>
-                  setItemForm({
-                    ...itemForm,
+                  setItemForm((current) => ({
+                    ...current,
                     price: event.target.value,
-                  })
+                  }))
                 }
                 placeholder="12.50"
-                style={inputStyle}
+                style={styles.input}
               />
-            </label>
 
-            <label style={labelStyle}>
-              Category
+              <label style={styles.label}>Category</label>
               <select
                 value={itemForm.category}
                 onChange={(event) =>
-                  setItemForm({
-                    ...itemForm,
+                  setItemForm((current) => ({
+                    ...current,
                     category: event.target.value,
-                  })
+                  }))
                 }
-                style={inputStyle}
+                style={styles.input}
               >
-                <option value="">
-                  Select category
-                </option>
-
-                {categories.map((category) => (
-                  <option
-                    key={category.id}
-                    value={category.name}
-                  >
-                    {category.name}
-                  </option>
-                ))}
+                <option value="">Select Category</option>
+                {categories
+                  .filter((category) => category.visible)
+                  .sort((a, b) => a.order - b.order)
+                  .map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
               </select>
-            </label>
 
-            <label style={labelStyle}>
-              Image URL
-              <input
-                value={itemForm.image}
+              <label style={styles.label}>Description</label>
+              <textarea
+                value={itemForm.description}
                 onChange={(event) =>
-                  setItemForm({
-                    ...itemForm,
-                    image: event.target.value,
-                  })
+                  setItemForm((current) => ({
+                    ...current,
+                    description: event.target.value,
+                  }))
                 }
-                placeholder="https://..."
-                style={inputStyle}
+                placeholder="Short description"
+                rows={4}
+                style={{ ...styles.input, resize: "vertical" }}
               />
-            </label>
-          </div>
 
-          <label style={labelStyle}>
-            Description
-            <textarea
-              value={itemForm.description}
-              onChange={(event) =>
-                setItemForm({
-                  ...itemForm,
-                  description:
-                    event.target.value,
-                })
-              }
-              placeholder="Describe the dish..."
-              rows={4}
-              style={{
-                ...inputStyle,
-                resize: "vertical",
-              }}
-            />
-          </label>
+              <label style={styles.label}>Item Image</label>
+              <label style={styles.uploadButton}>
+                {uploading ? "Uploading..." : "📷 Choose from Gallery"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleItemImage}
+                  disabled={uploading}
+                  style={styles.hiddenInput}
+                />
+              </label>
 
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              marginBottom: 18,
-              fontWeight: 600,
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={itemForm.available}
-              onChange={(event) =>
-                setItemForm({
-                  ...itemForm,
-                  available:
-                    event.target.checked,
-                })
-              }
-            />
-
-            Available
-          </label>
-
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              flexWrap: "wrap",
-            }}
-          >
-            <button
-              type="submit"
-              disabled={saving}
-              style={primaryButtonStyle}
-            >
-              {editingId !== null
-                ? "Update Item"
-                : "Add Item"}
-            </button>
-
-            {editingId !== null && (
-              <button
-                type="button"
-                onClick={resetItemForm}
-                style={buttonStyle}
-              >
-                Cancel Edit
-              </button>
-            )}
-          </div>
-        </form>
-      </section>
-
-      {/* CATEGORIES */}
-
-      <section style={cardStyle}>
-        <h2 style={headingStyle}>
-          Categories
-        </h2>
-
-        <form
-          onSubmit={addCategory}
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: 12,
-            marginBottom: 20,
-          }}
-        >
-          <input
-            value={categoryName}
-            onChange={(event) =>
-              setCategoryName(event.target.value)
-            }
-            placeholder="Category name"
-            style={inputStyle}
-          />
-
-          <input
-            value={categoryImage}
-            onChange={(event) =>
-              setCategoryImage(event.target.value)
-            }
-            placeholder="Category image URL"
-            style={inputStyle}
-          />
-
-          <button
-            type="submit"
-            disabled={saving}
-            style={primaryButtonStyle}
-          >
-            Add Category
-          </button>
-        </form>
-
-        {categories.length === 0 ? (
-          <p>No categories yet.</p>
-        ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns:
-                "repeat(auto-fit, minmax(220px, 1fr))",
-              gap: 12,
-            }}
-          >
-            {categories.map((category) => (
-              <div
-                key={category.id}
-                style={{
-                  border: "1px solid #ddd",
-                  borderRadius: 10,
-                  padding: 14,
-                }}
-              >
-                {category.image && (
+              {itemForm.image && (
+                <div style={styles.imagePreviewWrap}>
                   <img
-                    src={category.image}
-                    alt={category.name}
-                    style={{
-                      width: "100%",
-                      height: 120,
-                      objectFit: "cover",
-                      borderRadius: 8,
-                      marginBottom: 10,
-                    }}
+                    src={itemForm.image}
+                    alt="Item preview"
+                    style={styles.imagePreview}
                   />
-                )}
+                </div>
+              )}
 
-                <strong>
-                  {category.name}
-                </strong>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    deleteCategory(category.id)
+              <label style={styles.checkboxRow}>
+                <input
+                  type="checkbox"
+                  checked={itemForm.available}
+                  onChange={(event) =>
+                    setItemForm((current) => ({
+                      ...current,
+                      available: event.target.checked,
+                    }))
                   }
-                  style={{
-                    ...dangerButtonStyle,
-                    marginTop: 10,
-                    width: "100%",
-                  }}
+                />
+                Available
+              </label>
+
+              <div style={styles.buttonRow}>
+                <button
+                  type="submit"
+                  disabled={uploading}
+                  style={styles.primaryButton}
                 >
-                  Delete
+                  {editingItemId !== null ? "Update Item" : "Add Item"}
                 </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
 
-      {/* BACKGROUND */}
-
-      <section style={cardStyle}>
-        <h2 style={headingStyle}>
-          Menu Background
-        </h2>
-
-        <input
-          value={backgroundImage}
-          onChange={(event) =>
-            setBackgroundImage(
-              event.target.value
-            )
-          }
-          placeholder="Background image URL"
-          style={inputStyle}
-        />
-
-        {backgroundImage && (
-          <img
-            src={backgroundImage}
-            alt="Menu background"
-            style={{
-              width: "100%",
-              maxHeight: 250,
-              objectFit: "cover",
-              borderRadius: 10,
-              marginTop: 14,
-            }}
-          />
-        )}
-
-        <button
-          type="button"
-          onClick={updateBackground}
-          disabled={saving}
-          style={{
-            ...primaryButtonStyle,
-            marginTop: 14,
-          }}
-        >
-          Save Background
-        </button>
-      </section>
-
-      {/* MENU LIST */}
-
-      <section style={cardStyle}>
-        <h2 style={headingStyle}>
-          Menu Items ({items.length})
-        </h2>
-
-        {items.length === 0 ? (
-          <p>
-            No menu items yet. Add your first item
-            above.
-          </p>
-        ) : (
-          <div
-            style={{
-              display: "grid",
-              gap: 14,
-            }}
-          >
-            {items.map((item) => (
-              <div
-                key={item.id}
-                style={{
-                  display: "flex",
-                  gap: 16,
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  border: "1px solid #ddd",
-                  borderRadius: 12,
-                  padding: 14,
-                }}
-              >
-                {item.image ? (
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    style={{
-                      width: 100,
-                      height: 100,
-                      objectFit: "cover",
-                      borderRadius: 10,
+                {editingItemId !== null && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setItemForm({ ...emptyItem });
+                      setEditingItemId(null);
                     }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: 100,
-                      height: 100,
-                      borderRadius: 10,
-                      background: "#eee",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "#777",
-                      fontSize: 13,
-                    }}
+                    style={styles.secondaryButton}
                   >
-                    No image
-                  </div>
+                    Cancel
+                  </button>
                 )}
-
-                <div
-                  style={{
-                    flex: 1,
-                    minWidth: 220,
-                  }}
-                >
-                  <h3
-                    style={{
-                      margin: "0 0 6px",
-                    }}
-                  >
-                    {item.name}
-                  </h3>
-
-                  <div
-                    style={{
-                      fontWeight: 700,
-                      marginBottom: 5,
-                    }}
-                  >
-                    {item.price
-                      ? `€${item.price}`
-                      : "Price not set"}
-                  </div>
-
-                  <div
-                    style={{
-                      fontSize: 14,
-                      color: "#666",
-                      marginBottom: 5,
-                    }}
-                  >
-                    {item.category}
-                  </div>
-
-                  {item.description && (
-                    <p
-                      style={{
-                        margin: 0,
-                        color: "#666",
-                      }}
-                    >
-                      {item.description}
-                    </p>
-                  )}
-
-                  <div
-                    style={{
-                      marginTop: 8,
-                      fontWeight: 600,
-                      fontSize: 13,
-                    }}
-                  >
-                    {item.available
-                      ? "Available"
-                      : "Unavailable"}
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 8,
-                    minWidth: 130,
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() =>
-                      toggleAvailability(
-                        item.id
-                      )
-                    }
-                    style={buttonStyle}
-                  >
-                    {item.available
-                      ? "Disable"
-                      : "Enable"}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      editItem(item)
-                    }
-                    style={primaryButtonStyle}
-                  >
-                    Edit
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      deleteItem(item.id)
-                    }
-                    style={dangerButtonStyle}
-                  >
-                    Delete
-                  </button>
-                </div>
               </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {saving && (
-        <div
-          style={{
-            position: "fixed",
-            right: 16,
-            bottom: 16,
-            padding: "10px 16px",
-            borderRadius: 10,
-            background: "#111",
-            color: "#fff",
-            boxShadow:
-              "0 4px 20px rgba(0,0,0,0.2)",
-            zIndex: 9999,
-          }}
-        >
-          Saving...
+            </form>
+          </section>
         </div>
-      )}
+
+        <section style={styles.card}>
+          <div style={styles.listHeader}>
+            <div>
+              <h2 style={styles.sectionTitle}>Menu Items</h2>
+              <p style={styles.helper}>
+                {items.length} item{items.length === 1 ? "" : "s"}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={saveAll}
+              disabled={saving || uploading}
+              style={styles.primaryButton}
+            >
+              {saving ? "Saving..." : "Save All"}
+            </button>
+          </div>
+
+          {items.length === 0 ? (
+            <p style={styles.empty}>No menu items yet.</p>
+          ) : (
+            <div style={styles.itemGrid}>
+              {items.map((item) => {
+                const category = categories.find(
+                  (entry) => entry.id === item.category
+                );
+
+                return (
+                  <article key={item.id} style={styles.itemCard}>
+                    {item.image ? (
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        style={styles.itemImage}
+                      />
+                    ) : (
+                      <div style={styles.itemImagePlaceholder}>
+                        No Image
+                      </div>
+                    )}
+
+                    <div style={styles.itemBody}>
+                      <div style={styles.itemTopLine}>
+                        <h3 style={styles.itemName}>{item.name}</h3>
+                        <strong style={styles.price}>
+                          {item.price ? item.price : "—"}
+                        </strong>
+                      </div>
+
+                      <span style={styles.categoryBadge}>
+                        {category?.name || item.category || "No Category"}
+                      </span>
+
+                      {item.description && (
+                        <p style={styles.description}>
+                          {item.description}
+                        </p>
+                      )}
+
+                      <div style={styles.itemFooter}>
+                        <span
+                          style={
+                            item.available
+                              ? styles.available
+                              : styles.unavailable
+                          }
+                        >
+                          {item.available ? "Available" : "Unavailable"}
+                        </span>
+
+                        <div style={styles.buttonRow}>
+                          <button
+                            type="button"
+                            onClick={() => editItem(item)}
+                            style={styles.editButton}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteItem(item.id)}
+                            style={styles.dangerSmall}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <div style={styles.bottomSaveWrap}>
+          <button
+            type="button"
+            onClick={saveAll}
+            disabled={saving || uploading}
+            style={styles.saveBigButton}
+          >
+            {saving ? "Saving to Supabase..." : "💾 Save All Menu Changes"}
+          </button>
+        </div>
+      </div>
     </main>
   );
 }
 
-const cardStyle: React.CSSProperties = {
-  background: "#fff",
-  border: "1px solid #e5e5e5",
-  borderRadius: 14,
-  padding: 20,
-  marginBottom: 20,
-  boxShadow:
-    "0 2px 10px rgba(0,0,0,0.04)",
-};
-
-const headingStyle: React.CSSProperties = {
-  marginTop: 0,
-  marginBottom: 18,
-};
-
-const gridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns:
-    "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: 14,
-  marginBottom: 14,
-};
-
-const labelStyle: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 7,
-  fontWeight: 600,
-  marginBottom: 14,
-};
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  boxSizing: "border-box",
-  padding: "11px 12px",
-  border: "1px solid #ccc",
-  borderRadius: 8,
-  fontSize: 15,
-  background: "#fff",
-};
-
-const buttonStyle: React.CSSProperties = {
-  border: "1px solid #ccc",
-  background: "#fff",
-  color: "#222",
-  padding: "10px 16px",
-  borderRadius: 8,
-  cursor: "pointer",
-  fontWeight: 600,
-};
-
-const primaryButtonStyle: React.CSSProperties = {
-  border: "none",
-  background: "#111",
-  color: "#fff",
-  padding: "10px 16px",
-  borderRadius: 8,
-  cursor: "pointer",
-  fontWeight: 600,
-};
-
-const dangerButtonStyle: React.CSSProperties = {
-  border: "none",
-  background: "#b42318",
-  color: "#fff",
-  padding: "10px 16px",
-  borderRadius: 8,
-  cursor: "pointer",
-  fontWeight: 600,
+const styles: Record<string, React.CSSProperties> = {
+  page: {
+    minHeight: "100vh",
+    background: "#f5f1ea",
+    color: "#24170f",
+    padding: "18px 12px 50px",
+  },
+  container: {
+    width: "100%",
+    maxWidth: 1180,
+    margin: "0 auto",
+  },
+  loading: {
+    minHeight: "80vh",
+    display: "grid",
+    placeItems: "center",
+    fontSize: 18,
+    fontWeight: 700,
+  },
+  header: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 16,
+    flexWrap: "wrap",
+  },
+  title: {
+    margin: 0,
+    fontSize: "clamp(26px, 6vw, 40px)",
+    lineHeight: 1.1,
+  },
+  subtitle: {
+    margin: "7px 0 0",
+    color: "#735f50",
+    fontSize: 14,
+  },
+  card: {
+    background: "#fff",
+    border: "1px solid #eadfd3",
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 16,
+    boxShadow: "0 8px 25px rgba(50, 30, 15, 0.06)",
+  },
+  sectionTitle: {
+    margin: "0 0 8px",
+    fontSize: 21,
+  },
+  helper: {
+    margin: "0 0 13px",
+    color: "#76665b",
+    fontSize: 13,
+  },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))",
+    gap: 16,
+  },
+  label: {
+    display: "block",
+    fontSize: 14,
+    fontWeight: 700,
+    margin: "14px 0 7px",
+  },
+  input: {
+    width: "100%",
+    boxSizing: "border-box",
+    border: "1px solid #d9cabc",
+    borderRadius: 11,
+    padding: "12px 13px",
+    background: "#fffdf9",
+    color: "#24170f",
+    fontSize: 15,
+    outline: "none",
+  },
+  hiddenInput: {
+    display: "none",
+  },
+  uploadButton: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 44,
+    padding: "0 15px",
+    borderRadius: 11,
+    border: "1px solid #cdb49d",
+    background: "#fbf5ed",
+    color: "#4d2f1d",
+    fontWeight: 700,
+    cursor: "pointer",
+    boxSizing: "border-box",
+  },
+  primaryButton: {
+    border: 0,
+    borderRadius: 11,
+    padding: "11px 15px",
+    background: "#7b1e18",
+    color: "#fff",
+    fontWeight: 800,
+    cursor: "pointer",
+    minHeight: 44,
+  },
+  secondaryButton: {
+    border: "1px solid #cdbdae",
+    borderRadius: 11,
+    padding: "10px 14px",
+    background: "#fff",
+    color: "#4b392c",
+    fontWeight: 700,
+    cursor: "pointer",
+    minHeight: 44,
+  },
+  editButton: {
+    border: "1px solid #bca28f",
+    borderRadius: 9,
+    padding: "8px 11px",
+    background: "#fffaf5",
+    color: "#4e321f",
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  dangerSmall: {
+    border: "1px solid #d5aaa5",
+    borderRadius: 9,
+    padding: "8px 11px",
+    background: "#fff5f4",
+    color: "#8a1e18",
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  buttonRow: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+    marginTop: 15,
+  },
+  checkboxRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 15,
+    fontWeight: 700,
+    fontSize: 14,
+  },
+  previewBox: {
+    marginTop: 14,
+    borderRadius: 14,
+    overflow: "hidden",
+    border: "1px solid #eadfd3",
+    background: "#faf7f2",
+    padding: 10,
+  },
+  backgroundPreview: {
+    display: "block",
+    width: "100%",
+    maxHeight: 280,
+    objectFit: "cover",
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  imagePreviewWrap: {
+    marginTop: 12,
+  },
+  imagePreview: {
+    display: "block",
+    width: "100%",
+    maxWidth: 300,
+    aspectRatio: "4 / 3",
+    objectFit: "cover",
+    borderRadius: 12,
+    border: "1px solid #eadfd3",
+  },
+  success: {
+    background: "#eaf8ee",
+    border: "1px solid #b7dfc1",
+    color: "#1e6b35",
+    borderRadius: 12,
+    padding: "11px 13px",
+    marginBottom: 14,
+    fontSize: 14,
+    fontWeight: 700,
+  },
+  error: {
+    background: "#fff0ef",
+    border: "1px solid #e8b8b3",
+    color: "#8a1e18",
+    borderRadius: 12,
+    padding: "11px 13px",
+    marginBottom: 14,
+    fontSize: 14,
+    fontWeight: 700,
+  },
+  listTitle: {
+    marginTop: 22,
+    marginBottom: 10,
+    fontSize: 16,
+    fontWeight: 800,
+  },
+  list: {
+    display: "grid",
+    gap: 9,
+  },
+  listItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: 9,
+    border: "1px solid #eadfd3",
+    borderRadius: 12,
+    padding: 9,
+    flexWrap: "wrap",
+  },
+  listContent: {
+    flex: 1,
+    minWidth: 120,
+    display: "grid",
+    gap: 3,
+  },
+  smallText: {
+    color: "#8a7769",
+    fontSize: 11,
+    wordBreak: "break-all",
+  },
+  thumb: {
+    width: 55,
+    height: 55,
+    objectFit: "cover",
+    borderRadius: 9,
+  },
+  thumbPlaceholder: {
+    width: 55,
+    height: 55,
+    borderRadius: 9,
+    background: "#f0e8df",
+    display: "grid",
+    placeItems: "center",
+    fontSize: 9,
+    color: "#7e6c5f",
+    textAlign: "center",
+  },
+  empty: {
+    margin: 0,
+    color: "#89786c",
+    padding: "14px 0",
+  },
+  listHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    flexWrap: "wrap",
+  },
+  itemGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+    gap: 14,
+    marginTop: 14,
+  },
+  itemCard: {
+    border: "1px solid #eadfd3",
+    borderRadius: 15,
+    overflow: "hidden",
+    background: "#fffdf9",
+  },
+  itemImage: {
+    display: "block",
+    width: "100%",
+    height: 190,
+    objectFit: "cover",
+  },
+  itemImagePlaceholder: {
+    width: "100%",
+    height: 190,
+    display: "grid",
+    placeItems: "center",
+    background: "#efe6dc",
+    color: "#7e6c5f",
+    fontWeight: 700,
+  },
+  itemBody: {
+    padding: 13,
+  },
+  itemTopLine: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  itemName: {
+    margin: 0,
+    fontSize: 18,
+    lineHeight: 1.25,
+  },
+  price: {
+    whiteSpace: "nowrap",
+    color: "#7b1e18",
+  },
+  categoryBadge: {
+    display: "inline-block",
+    marginTop: 8,
+    padding: "5px 8px",
+    borderRadius: 999,
+    background: "#f0e5da",
+    color: "#5b402c",
+    fontSize: 11,
+    fontWeight: 800,
+  },
+  description: {
+    margin: "9px 0 0",
+    color: "#746357",
+    fontSize: 13,
+    lineHeight: 1.5,
+  },
+  itemFooter: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 13,
+    flexWrap: "wrap",
+  },
+  available: {
+    color: "#26733d",
+    background: "#e9f6ed",
+    borderRadius: 999,
+    padding: "5px 8px",
+    fontSize: 11,
+    fontWeight: 800,
+  },
+  unavailable: {
+    color: "#8a1e18",
+    background: "#fff0ef",
+    borderRadius: 999,
+    padding: "5px 8px",
+    fontSize: 11,
+    fontWeight: 800,
+  },
+  bottomSaveWrap: {
+    position: "sticky",
+    bottom: 10,
+    zIndex: 10,
+    display: "flex",
+    justifyContent: "center",
+    marginTop: 4,
+    pointerEvents: "none",
+  },
+  saveBigButton: {
+    pointerEvents: "auto",
+    width: "min(100%, 520px)",
+    minHeight: 50,
+    border: 0,
+    borderRadius: 14,
+    background: "#7b1e18",
+    color: "#fff",
+    fontWeight: 900,
+    fontSize: 16,
+    cursor: "pointer",
+    boxShadow: "0 10px 25px rgba(60, 20, 10, 0.2)",
+  },
 };
