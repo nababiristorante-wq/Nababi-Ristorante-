@@ -1009,8 +1009,8 @@ const number =
 whatsapp.replace(/[^\d+]/g, "");
 
 window.open(
-https://wa.me/${number.replace(     "+",     "",     )},
-"_blank",
+  "https://wa.me/" + number.replace("+", ""),
+  "_blank",
 );
 
 };
