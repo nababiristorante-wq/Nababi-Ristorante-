@@ -3267,7 +3267,7 @@ a {
       Follow Us    
     </h3>    
 
-    {socialLinks.length >    
+
     
   </section>    <footer className="footer">    
     <span>    
