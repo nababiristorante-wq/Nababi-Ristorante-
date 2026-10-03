@@ -3209,12 +3209,44 @@ a {
     </div>    
   </div>    
 
-  <div className="box contact-box">    
-    <h3>    
-      Follow Us    
-    </h3>    
-          
+ <div className="box contact-box">
+  <h3>{restaurantName}</h3>
+
+  {address && (
+    <p>
+      {address}
+    </p>
+  )}
+
+  {phone && (
+    <p>
+      Phone: {phone}
+    </p>
+  )}
+
+  {email && (
+    <p>
+      Email: {email}
+    </p>
+  )}
+
+  {mapUrl && (
+    <a
+      className="outline-btn"
+      href={mapUrl}
+      target="_blank"
+      rel="noreferrer"
+    >
+      View on Google Maps
+    </a>
+  )}
 </div>
+
+<div className="box contact-box">
+  <h3>
+    Follow Us
+  </h3>
+</div> 
 </div>
 
   </section>    <footer className="footer">    
