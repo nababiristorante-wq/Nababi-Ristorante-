@@ -2209,8 +2209,7 @@ a {
   {!heroImage &&    
     !heroVideo && (    
       <div className="hero-empty">    
-        Home image/video has not    
-        been added from Admin → Home.    
+        
       </div>    
     )}    
 </div>    
@@ -2381,10 +2380,7 @@ a {
       Category    
     </h2>    
 
-    <p>    
-      Click on a category image    
-      or icon to view its items.    
-    </p>    
+    
   </div>    
 
   <div className="category-grid">    
@@ -2891,11 +2887,7 @@ a {
         marginTop: 20,    
       }}    
     >    
-      Phone অথবা Email →    
-      Booking Code →    
-      Booking Details →    
-      Edit / Cancel    
-    </p>    
+      
   </div>    
 </div>
 
@@ -3196,8 +3188,7 @@ a {
       </a>    
     ) : (    
       <span className="small-note">    
-        Google Maps link has    
-        not been added yet.    
+         
       </span>    
     )}    
   </div>    
@@ -3309,13 +3300,7 @@ a {
         )}    
       </div>    
     ) : (    
-      <p className="small-note">    
-        Facebook, Instagram,    
-        TikTok এবং YouTube    
-        link Admin → Social    
-        Media থেকে যোগ করলে    
-        icon এখানে দেখাবে।    
-      </p>    
+      
     )}    
   </div>    
 </div>
