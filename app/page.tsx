@@ -503,7 +503,7 @@ export default function HomePage() {
     window.open("https://wa.me/" + number.replace("+", ""), "_blank");
   };
 
-  const submitBooking = (event: FormEvent<HTMLFormElement>) => {
+  const submitBooking = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setBookingMessage("");
     if (!booking.name || !booking.date || !booking.time) {
