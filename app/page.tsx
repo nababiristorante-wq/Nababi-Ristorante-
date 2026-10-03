@@ -3294,10 +3294,8 @@ a {
           ),    
         )}    
       </div>    
-    ) : (    
-      
-    )}    
-  </div>    
+
+ </div>    
 </div>
 
   </section>      <footer className="footer">    
