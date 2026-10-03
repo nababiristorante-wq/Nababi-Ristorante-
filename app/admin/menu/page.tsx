@@ -1,22 +1,13 @@
 "use client";
 
-import {
-  ChangeEvent,
-  FormEvent,
-  useEffect,
-  useState,
-} from "react";
-import { supabase } from "@/lib/supabase";
-
-type MenuItem = {
-  id: number;
-  name: string;
-  description: string;
-  price: string;
-  category: string;
-  image: string;
-  available: boolean;
-};
+export default function MenuPage() {
+  return (
+    <main style={{ padding: 20 }}>
+      <h1>Menu Admin</h1>
+      <p>Page is working.</p>
+    </main>
+  );
+}
 
 type MenuCategory = {
   id: string;
