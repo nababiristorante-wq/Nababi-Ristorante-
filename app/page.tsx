@@ -171,6 +171,132 @@ function CategoryIcon({ name }: { name: string }) {
   return <span className="category-icon">{icons[name.toLowerCase()] || "🍽️"}</span>;
 }
 
+
+async function findBreakingNewsMedia(mediaId: string): Promise<string> {
+  if (typeof window === "undefined" || !mediaId || !("indexedDB" in window)) {
+    return "";
+  }
+
+  try {
+    const databases =
+      typeof indexedDB.databases === "function"
+        ? await indexedDB.databases()
+        : [];
+
+    for (const dbInfo of databases) {
+      if (!dbInfo.name) continue;
+
+      const db = await new Promise<IDBDatabase | null>((resolve) => {
+        const request = indexedDB.open(dbInfo.name!);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => resolve(null);
+        request.onupgradeneeded = () => {
+          try {
+            request.transaction?.abort();
+          } catch {}
+          resolve(null);
+        };
+      });
+
+      if (!db) continue;
+
+      const storeNames = Array.from(db.objectStoreNames);
+
+      for (const storeName of storeNames) {
+        const value = await new Promise<any>((resolve) => {
+          try {
+            const tx = db.transaction(storeName, "readonly");
+            const store = tx.objectStore(storeName);
+            const req = store.get(mediaId);
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => resolve(null);
+          } catch {
+            resolve(null);
+          }
+        });
+
+        if (value) {
+          const candidate =
+            value?.blob ||
+            value?.file ||
+            value?.data ||
+            value?.value ||
+            value;
+
+          if (candidate instanceof Blob) {
+            db.close();
+            return URL.createObjectURL(candidate);
+          }
+
+          if (
+            typeof candidate === "string" &&
+            (candidate.startsWith("blob:") ||
+              candidate.startsWith("data:") ||
+              candidate.startsWith("http://") ||
+              candidate.startsWith("https://"))
+          ) {
+            db.close();
+            return candidate;
+          }
+        }
+
+        // Some versions of the admin panel may use a generated key
+        // inside a record rather than the IndexedDB primary key.
+        const all = await new Promise<any[]>((resolve) => {
+          try {
+            const tx = db.transaction(storeName, "readonly");
+            const store = tx.objectStore(storeName);
+            const req = store.getAll();
+            req.onsuccess = () => resolve(Array.isArray(req.result) ? req.result : []);
+            req.onerror = () => resolve([]);
+          } catch {
+            resolve([]);
+          }
+        });
+
+        for (const item of all) {
+          if (
+            item &&
+            typeof item === "object" &&
+            String(
+              item.mediaId ??
+                item.id ??
+                item.key ??
+                item.name ??
+                ""
+            ) === String(mediaId)
+          ) {
+            const candidate =
+              item.blob || item.file || item.data || item.value || item;
+
+            if (candidate instanceof Blob) {
+              db.close();
+              return URL.createObjectURL(candidate);
+            }
+
+            if (
+              typeof candidate === "string" &&
+              (candidate.startsWith("blob:") ||
+                candidate.startsWith("data:") ||
+                candidate.startsWith("http://") ||
+                candidate.startsWith("https://"))
+            ) {
+              db.close();
+              return candidate;
+            }
+          }
+        }
+      }
+
+      db.close();
+    }
+  } catch {
+    // IndexedDB is optional; normal URL-based video still works.
+  }
+
+  return "";
+}
+
 export default function HomePage() {
   const [home, setHome] = useState<AnyData>({});
   const [about, setAbout] = useState<AnyData>({});
@@ -259,14 +385,25 @@ export default function HomePage() {
         if (item.visible === false) return false;
         if (item.startDate && new Date(item.startDate) > now) return false;
         if (item.endDate && new Date(item.endDate) < now) return false;
-        return Boolean(item.text || item.title || item.image || item.video || item.mediaId);
+        return Boolean(
+          item.text ||
+          item.title ||
+          item.image ||
+          item.video ||
+          item.videoUrl ||
+          item.mediaUrl ||
+          item.mediaURL ||
+          item.url ||
+          item.src ||
+          item.mediaId
+        );
       }),
     );
   };
 
   useEffect(() => {
     loadData();
-    const interval = window.setInterval(loadData, 100000);
+    const interval = window.setInterval(loadData, 2000000);
     window.addEventListener("storage", loadData);
     return () => {
       window.clearInterval(interval);
@@ -275,8 +412,54 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const loadMedia = async () => {
+      const next: Record<string, string> = {};
+
+      for (const item of news) {
+        const id = String(item.id ?? item.mediaId ?? item.title ?? "");
+        const direct =
+          item.video ||
+          item.videoUrl ||
+          item.mediaUrl ||
+          item.mediaURL ||
+          item.url ||
+          item.src ||
+          "";
+
+        if (direct) {
+          next[id] = String(direct);
+          continue;
+        }
+
+        if (item.mediaId) {
+          const resolved = await findBreakingNewsMedia(String(item.mediaId));
+          if (resolved) next[id] = resolved;
+        }
+      }
+
+      if (!cancelled) {
+        setNewsMediaUrls(next);
+      } else {
+        Object.values(next).forEach((url) => {
+          if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+        });
+      }
+    };
+
+    loadMedia();
+
     return () => {
-      Object.values(newsMediaUrls).forEach((url) => URL.revokeObjectURL(url));
+      cancelled = true;
+    };
+  }, [news]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(newsMediaUrls).forEach((url) => {
+        if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+      });
     };
   }, [newsMediaUrls]);
 
@@ -577,13 +760,48 @@ export default function HomePage() {
               <span>Breaking News</span>
               <button className="breaking-close" onClick={() => setNewsClosed(true)}><Icon name="close" size={18} /></button>
             </div>
-            {visibleNews.image ? (
-              <img className="breaking-media" src={visibleNews.image} alt={visibleNews.title || "Breaking News"} />
-            ) : visibleNews.video ? (
-              <video className="breaking-media" src={visibleNews.video} autoPlay muted loop playsInline controls />
-            ) : (
-              <div className="breaking-media" />
-            )}
+            {(() => {
+              const newsId = String(
+                visibleNews.id ??
+                  visibleNews.mediaId ??
+                  visibleNews.title ??
+                  ""
+              );
+              const videoSrc =
+                visibleNews.video ||
+                visibleNews.videoUrl ||
+                visibleNews.mediaUrl ||
+                visibleNews.mediaURL ||
+                newsMediaUrls[newsId] ||
+                "";
+
+              if (videoSrc) {
+                return (
+                  <video
+                    className="breaking-media"
+                    src={videoSrc}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    controls
+                    preload="auto"
+                  />
+                );
+              }
+
+              if (visibleNews.image) {
+                return (
+                  <img
+                    className="breaking-media"
+                    src={visibleNews.image}
+                    alt={visibleNews.title || "Breaking News"}
+                  />
+                );
+              }
+
+              return <div className="breaking-media" />;
+            })()}
             <div className="breaking-body">
               <strong>{visibleNews.title || visibleNews.text || "Restaurant News"}</strong>
               <small>{visibleNews.description || "Latest restaurant update"}</small>
