@@ -2116,145 +2116,64 @@ a {
         playsInline    
       />    
     )}    {/* ONLY ONE BREAKING NEWS BOX */}    
+{visibleNews && (
+  <aside className="breaking-news">
+    <div className="breaking-head">
+      <span>Breaking News</span>
 
-{visibleNews && (    
-  <aside className="breaking-news">    
-    <div className="breaking-head">    
-      <span>    
-        Breaking News    
-      </span>    
+      <button
+        className="breaking-close"
+        onClick={() => setNewsClosed(true)}
+      >
+        <Icon name="close" size={18} />
+      </button>
+    </div>
 
-      <button    
-        className="breaking-close"    
-        onClick={() =>    
-          setNewsClosed(true)    
-        }    
-      >    
-        <Icon    
-          name="close"    
-          size={18}    
-        />    
-      </button>    
-    </div>    
+    {visibleNews.image ? (
+      <img
+        className="breaking-media"
+        src={visibleNews.image}
+        alt={visibleNews.title || "Breaking News"}
+      />
+    ) : visibleNews.mediaType === "video" &&
+      newsMediaUrls[visibleNews.id] ? (
+      <video
+        className="breaking-media"
+        src={newsMediaUrls[visibleNews.id]}
+        autoPlay
+        muted
+        loop
+        playsInline
+        controls
+      />
+    ) : visibleNews.video ? (
+      <video
+        className="breaking-media"
+        src={visibleNews.video}
+        autoPlay
+        muted
+        loop
+        playsInline
+        controls
+      />
+    ) : (
+      <div className="breaking-media" />
+    )}
 
-    {visibleNews.image ? (    
-      <img    
-        className="breaking-media"    
-        src={visibleNews.image}    
-        alt={    
-          visibleNews.title ||    
-          "Breaking News"    
-        }    
-      />    
-    ) : visibleNews.mediaType === "video" &&    
-      newsMediaUrls[visibleNews.id] ? (    
-      <video    
-        className="breaking-media"    
-        src={newsMediaUrls[visibleNews.id]}    
-        autoPlay    
-        muted    
-        loop    
-        playsInline    
-        controls    
-      />    
-    ) : visibleNews.video ? (    
-      
-<video
-  className="breaking-media"
-  src={newsMediaUrls[visibleNews.id]}
-  autoPlay
-  muted
-  loop
-  playsInline
-  controls
-  onLoadedData={(e) => {
-    e.currentTarget.play().catch(() => {});
-  }}
-  onPause={(e) => {
-    e.currentTarget.play().catch(() => {});
-  }}
-/>  
-    ) : (    
-      <div className="breaking-media" />    
-    )}    
+    <div className="breaking-body">
+      <strong>
+        {visibleNews.title ||
+          visibleNews.text ||
+          "Restaurant News"}
+      </strong>
 
-    <div className="breaking-body">    
-      <strong>    
-        {visibleNews.title ||    
-          visibleNews.text ||    
-          "Restaurant News"}    
-      </strong>    
-
-      <small>    
-        {visibleNews.description ||    
-          "Latest restaurant update"}    
-      </small>    
-    </div>    
-  </aside>    
-)}    
-
-<div className="hero-content">    
-  <div className="eyebrow">    
-    Welcome to Nababi Ristorante    
-  </div>    
-
-  <h1>{heroTitle}</h1>    
-
-  <p className="hero-description">    
-    {heroSubtitle}    
-  </p>    
-
-  <div className="hero-buttons">    
-    <button    
-      className="gold-btn"    
-      onClick={() =>    
-        scrollTo("menu")    
-      }    
-    >    
-      Explore Menu    
-      <Icon    
-        name="arrow"    
-        size={17}    
-      />    
-    </button>    
-
-    <button    
-      className="outline-btn"    
-      onClick={() =>    
-        scrollTo("booking")    
-      }    
-    >    
-      Book a Table    
-    </button>    
-  </div>    
-
-  {!heroImage &&    
-    !heroVideo && (    
-      <div className="hero-empty">    
-        
-      </div>    
-    )}    
-</div>    
-
-<div className="hero-contact">    
-  {phone && (    
-    <span>    
-      <Icon    
-        name="phone"    
-        size={16}    
-      />    
-      {phone}    
-    </span>    
-  )}    
-
-  <span>    
-    <Icon    
-      name="pin"    
-      size={16}    
-    />    
-    {address}    
-  </span>    
-</div>
+      <small>
+        {visibleNews.description ||
+          "Latest restaurant update"}
+      </small>
+    </div>
+  </aside>
+)}
 
   </section>    {/* ================= FEATURES ================= */}
 
