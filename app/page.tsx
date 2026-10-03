@@ -603,7 +603,7 @@ loadData();
 
 const interval = window.setInterval(
 loadData,
-20000,
+100000,
 );
 
 window.addEventListener(
