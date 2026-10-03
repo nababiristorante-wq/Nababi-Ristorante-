@@ -266,7 +266,7 @@ export default function HomePage() {
 
   useEffect(() => {
     loadData();
-    const interval = window.setInterval(loadData, 2000000);
+    const interval = window.setInterval(loadData, 100000);
     window.addEventListener("storage", loadData);
     return () => {
       window.clearInterval(interval);
