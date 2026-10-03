@@ -3286,7 +3286,7 @@ a {
 
 </div>
 </section>
-  </section>    <footer className="footer">    
+   <footer className="footer">    
     <span>    
       © 2026 {restaurantName}.    
       All rights reserved.    
