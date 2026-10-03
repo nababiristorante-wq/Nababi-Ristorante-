@@ -3295,7 +3295,7 @@ a {
         )}    
       </div>    
 
- </div>    
+ 
 </div>
 
   </section>      <footer className="footer">    
