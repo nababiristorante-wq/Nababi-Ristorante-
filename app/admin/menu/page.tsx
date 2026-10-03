@@ -2,7 +2,7 @@
 
 export default function MenuPage() {
   return (
-    <main style={{ padding: 20 }}>
+    <main style={{ padding: "20px" }}>
       <h1>Menu Admin</h1>
       <p>Page is working.</p>
     </main>
