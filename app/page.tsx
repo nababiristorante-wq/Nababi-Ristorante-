@@ -2543,12 +2543,7 @@ a {
     Book a Table    
   </h2>    
 
-  <p>    
-    New booking করুন। আগে    
-    booking থাকলে My Booking    
-    দিয়ে দেখতে, edit করতে বা    
-    cancel করতে পারবেন।    
-  </p>    
+
 </div>    
 
 <div className="booking-grid">    
@@ -2562,11 +2557,7 @@ a {
       Book Your Table    
     </h3>    
 
-    <p>    
-      Booking confirm হলে    
-      একটি unique booking code    
-      তৈরি হবে।    
-    </p>    
+    
 
     <div className="form-grid">    
       <div className="field">    
@@ -2871,12 +2862,7 @@ a {
       My Booking    
     </h3>    
 
-    <p>    
-      আগে booking করেছেন?    
-      একই phone/email দিয়ে    
-      আপনার booking খুঁজে    
-      বের করুন।    
-    </p>    
+    
 
     <button    
       className="gold-btn"    
@@ -2930,11 +2916,7 @@ a {
         Our Gallery    
       </h2>    
 
-      <p>    
-        Admin → Gallery থেকে    
-        image যোগ করলেই এখানে    
-        দেখাবে।    
-      </p>    
+      
     </div>    
 
     {gallery.length >    
@@ -3011,11 +2993,7 @@ a {
         What Customers Say    
       </h2>    
 
-      <p>    
-        Admin থেকে যোগ করা    
-        reviews এখানে    
-        দেখাবে।    
-      </p>    
+      
     </div>    
 
     {reviews.length >    
@@ -3183,11 +3161,7 @@ a {
     Find & Contact Us    
   </h2>    
 
-  <p>    
-    Admin থেকে যে data দেওয়া    
-    আছে শুধু সেটাই এখানে    
-    দেখাবে।    
-  </p>    
+  
 </div>    
 
 <div className="contact-grid">    
@@ -3399,12 +3373,7 @@ My Booking
       {lookupStep ===    
         "login" && (    
         <>    
-          <p className="small-note">    
-            যে phone number    
-            অথবা email দিয়ে    
-            booking করেছিলেন    
-            সেটি দিন।    
-          </p>    
+          
 
           <div className="field">    
             <label>    
@@ -3446,12 +3415,7 @@ My Booking
         "code" &&    
         foundBooking && (    
           <>    
-            <p className="small-note">    
-              আপনার booking    
-              পাওয়া গেছে। এখন    
-              আপনার booking    
-              code দিন।    
-            </p>    
+            
 
             <div className="code-display">    
               {foundBooking.code}    
