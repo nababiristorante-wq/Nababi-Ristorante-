@@ -690,15 +690,7 @@ social.whatsapp ||
 "";
 
 useEffect(() => {
-loadBreakingNewsMedia(news);
-
-return () => {
-setNewsMediaUrls((previous) => {
-Object.values(previous).forEach((url) => URL.revokeObjectURL(url));
-return {};
-});
-};
-
+  loadBreakingNewsMedia(news);
 }, [news]);
 
 const visibleNews =
