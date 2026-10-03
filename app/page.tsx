@@ -972,7 +972,7 @@ readStorage("nababi-reviews", []),
 );
 
 const newReview = {
-id: review-${Date.now()},
+id: "review-" + Date.now(),
 customerName: name,
 rating,
 review,
