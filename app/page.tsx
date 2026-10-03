@@ -3268,34 +3268,7 @@ a {
     </h3>    
 
     {socialLinks.length >    
-    0 ? (    
-      <div className="social-row">    
-        {socialLinks.map(    
-          (item) => (    
-            <a    
-              key={item.name}    
-              className="social-icon"    
-              href={    
-                item.url    
-              }    
-              target="_blank"    
-              rel="noreferrer"    
-              title={    
-                item.name    
-              }    
-            >    
-              <Icon    
-                name={    
-                  item.name    
-                }    
-                size={22}    
-              />    
-            </a>    
-          ),    
-        )}    
-             </div>
-    </div>
-  </div>
+    
   </section>    <footer className="footer">    
     <span>    
       © 2026 {restaurantName}.    
