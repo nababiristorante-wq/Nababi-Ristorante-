@@ -2195,13 +2195,7 @@ export default function HomePage() {
               Book a Table
             </button>
           </div>
-
-          {!heroImage &&
-            !heroVideo && (
-              <div className="hero-empty">
-                Home image/video has not
-                been added from Admin → Home.
-              </div>
+          
             )}
         </div>
 
