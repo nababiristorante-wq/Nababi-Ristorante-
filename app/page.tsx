@@ -2881,12 +2881,7 @@ a {
       My Booking    
     </button>    
 
-    <p    
-      className="small-note"    
-      style={{    
-        marginTop: 20,    
-      }}    
-    >    
+    
       
   </div>    
 </div>
