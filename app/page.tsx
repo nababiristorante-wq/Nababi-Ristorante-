@@ -962,106 +962,86 @@ export default function HomePage() {
    * =====================================================
    */
 
-  const submitBooking = async (
-    event: FormEvent<HTMLFormElement>
-  ) => {
-    event.preventDefault();
+ const submitBooking = async (
+  event: FormEvent<HTMLFormElement>
+) => {
+  event.preventDefault();
+  setBookingMessage("");
 
-    setBookingMessage("");
+  if (!booking.name || !booking.date || !booking.time) {
+    setBookingMessage("Name, date and time are required.");
+    return;
+  }
 
-    if (
-      !booking.name ||
-      !booking.date ||
-      !booking.time
-    ) {
-      setBookingMessage(
-        "Name, date and time are required."
-      );
-      return;
-    }
+  if (!booking.phone.trim() && !booking.email.trim()) {
+    setBookingMessage("Please enter a phone number or email.");
+    return;
+  }
 
-    if (
-      !booking.phone.trim() &&
-      !booking.email.trim()
-    ) {
-      setBookingMessage(
-        "Please enter a phone number or email."
-      );
-      return;
-    }
+  const code = bookingCode();
 
-    const code = bookingCode();
+  const bookingData = {
+    name: booking.name.trim(),
+    phone: booking.phone.trim(),
+    email: booking.email.trim() || null,
+    booking_date: booking.date,
+    booking_time: booking.time,
+    guests: Number(booking.guests) || 2,
+    category: booking.category || null,
+    item: booking.item || null,
+    note: booking.note.trim() || null,
+    status: "Confirmed",
+    code,
+  };
 
-    const { data, error } =
-      await supabase
-        .from("reservations")
-        .insert({
-          name: booking.name.trim(),
+  const { error } = await supabase
+    .from("reservations")
+    .insert(bookingData);
 
-          phone: booking.phone.trim(),
-
-          email:
-            booking.email.trim() || null,
-
-          booking_date: booking.date,
-
-          booking_time: booking.time,
-
-          guests:
-            Number(booking.guests) || 2,
-
-          category:
-            booking.category || null,
-
-          item:
-            booking.item || null,
-
-          note:
-            booking.note.trim() || null,
-
-          status: "Confirmed",
-
-          code,
-        })
-        .select("*")
-        .single();
-
-    if (error) {
-      console.error(
-        "Booking insert error:",
-        error
-      );
-
-      setBookingMessage(
-        "Booking could not be completed. Please try again."
-      );
-
-      return;
-    }
-
-    const newReservation =
-      reservationFromRow(data);
-
-    saveReservationBackup(
-      newReservation
-    );
+  if (error) {
+    console.error("Booking insert error:", error);
 
     setBookingMessage(
-      `Booking confirmed. Your booking code is ${newReservation.code}`
+      "Booking could not be completed. Please try again."
     );
 
-    setBooking({
-      name: "",
-      phone: "",
-      email: "",
-      date: "",
-      time: "",
-      guests: "2",
-      category: "",
-      item: "",
-      note: "",
-    });
+    return;
+  }
+
+  const newReservation: Reservation = {
+    id: String(Date.now()),
+    code: bookingData.code,
+    name: bookingData.name,
+    phone: bookingData.phone,
+    email: bookingData.email || "",
+    date: bookingData.booking_date,
+    time: bookingData.booking_time,
+    guests: bookingData.guests,
+    category: bookingData.category || "",
+    item: bookingData.item || "",
+    note: bookingData.note || "",
+    status: bookingData.status,
+    createdAt: new Date().toISOString(),
   };
+
+  saveReservationBackup(newReservation);
+
+  setBookingMessage(
+    `Booking confirmed. Your booking code is ${newReservation.code}`
+  );
+
+  setBooking({
+    name: "",
+    phone: "",
+    email: "",
+    date: "",
+    time: "",
+    guests: "2",
+    category: "",
+    item: "",
+    note: "",
+  });
+};
 
   const findMyBooking = async () => {
     const value = lookupValue.trim();
@@ -3781,9 +3761,6 @@ export default function HomePage() {
                 "code" &&
                 foundBooking && (
                   <>
-                    <div className="code-display">
-                      {foundBooking.code}
-                    </div>
 
                     <div className="field">
                       <label>
