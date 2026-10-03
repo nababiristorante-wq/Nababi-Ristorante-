@@ -802,7 +802,7 @@ newReservation,
 );
 
 setBookingMessage(
-Booking confirmed. Your booking code is ${newReservation.code},
+`Booking confirmed. Your booking code is ${newReservation.code}`,
 );
 
 setBooking({
