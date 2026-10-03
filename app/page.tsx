@@ -448,22 +448,8 @@ const request = db
 );
 
 setNewsMediaUrls((previous) => {
-  const sameUrls =
-    Object.keys(previous).length ===
-      Object.keys(nextUrls).length &&
-    Object.keys(nextUrls).every(
-      (key) => previous[key] === nextUrls[key],
-    );
-
-  if (sameUrls) {
-    return previous;
-  }
-
-  Object.values(previous).forEach((url) =>
-    URL.revokeObjectURL(url),
-  );
-
-  return nextUrls;
+Object.values(previous).forEach((url) => URL.revokeObjectURL(url));
+return nextUrls;
 });
 } catch {
 setNewsMediaUrls((previous) => {
@@ -603,7 +589,7 @@ loadData();
 
 const interval = window.setInterval(
 loadData,
-2000000,
+1500,
 );
 
 window.addEventListener(
@@ -690,7 +676,15 @@ social.whatsapp ||
 "";
 
 useEffect(() => {
-  loadBreakingNewsMedia(news);
+loadBreakingNewsMedia(news);
+
+return () => {
+setNewsMediaUrls((previous) => {
+Object.values(previous).forEach((url) => URL.revokeObjectURL(url));
+return {};
+});
+};
+
 }, [news]);
 
 const visibleNews =
@@ -2122,64 +2116,138 @@ a {
         playsInline    
       />    
     )}    {/* ONLY ONE BREAKING NEWS BOX */}    
-{visibleNews && (
-  <aside className="breaking-news">
-    <div className="breaking-head">
-      <span>Breaking News</span>
 
-      <button
-        className="breaking-close"
-        onClick={() => setNewsClosed(true)}
-      >
-        <Icon name="close" size={18} />
-      </button>
-    </div>
+{visibleNews && (    
+  <aside className="breaking-news">    
+    <div className="breaking-head">    
+      <span>    
+        Breaking News    
+      </span>    
 
-    {visibleNews.image ? (
-      <img
-        className="breaking-media"
-        src={visibleNews.image}
-        alt={visibleNews.title || "Breaking News"}
-      />
-    ) : visibleNews.mediaType === "video" &&
-      newsMediaUrls[visibleNews.id] ? (
-      <video
-        className="breaking-media"
-        src={newsMediaUrls[visibleNews.id]}
-        autoPlay
-        muted
-        loop
-        playsInline
-        controls
-      />
-    ) : visibleNews.video ? (
-      <video
-        className="breaking-media"
-        src={visibleNews.video}
-        autoPlay
-        muted
-        loop
-        playsInline
-        controls
-      />
-    ) : (
-      <div className="breaking-media" />
-    )}
+      <button    
+        className="breaking-close"    
+        onClick={() =>    
+          setNewsClosed(true)    
+        }    
+      >    
+        <Icon    
+          name="close"    
+          size={18}    
+        />    
+      </button>    
+    </div>    
 
-    <div className="breaking-body">
-      <strong>
-        {visibleNews.title ||
-          visibleNews.text ||
-          "Restaurant News"}
-      </strong>
+    {visibleNews.image ? (    
+      <img    
+        className="breaking-media"    
+        src={visibleNews.image}    
+        alt={    
+          visibleNews.title ||    
+          "Breaking News"    
+        }    
+      />    
+    ) : visibleNews.mediaType === "video" &&    
+      newsMediaUrls[visibleNews.id] ? (    
+      <video    
+        className="breaking-media"    
+        src={newsMediaUrls[visibleNews.id]}    
+        autoPlay    
+        muted    
+        loop    
+        playsInline    
+        controls    
+      />    
+    ) : visibleNews.video ? (    
+      <video    
+        className="breaking-media"    
+        src={visibleNews.video}    
+        autoPlay    
+        muted    
+        loop    
+        playsInline    
+        controls    
+      />    
+    ) : (    
+      <div className="breaking-media" />    
+    )}    
 
-      <small>
-        {visibleNews.description ||
-          "Latest restaurant update"}
-      </small>
-    </div>
-  </aside>
-)}
+    <div className="breaking-body">    
+      <strong>    
+        {visibleNews.title ||    
+          visibleNews.text ||    
+          "Restaurant News"}    
+      </strong>    
+
+      <small>    
+        {visibleNews.description ||    
+          "Latest restaurant update"}    
+      </small>    
+    </div>    
+  </aside>    
+)}    
+
+<div className="hero-content">    
+  <div className="eyebrow">    
+    Welcome to Nababi Ristorante    
+  </div>    
+
+  <h1>{heroTitle}</h1>    
+
+  <p className="hero-description">    
+    {heroSubtitle}    
+  </p>    
+
+  <div className="hero-buttons">    
+    <button    
+      className="gold-btn"    
+      onClick={() =>    
+        scrollTo("menu")    
+      }    
+    >    
+      Explore Menu    
+      <Icon    
+        name="arrow"    
+        size={17}    
+      />    
+    </button>    
+
+    <button    
+      className="outline-btn"    
+      onClick={() =>    
+        scrollTo("booking")    
+      }    
+    >    
+      Book a Table    
+    </button>    
+  </div>    
+
+  {!heroImage &&    
+    !heroVideo && (    
+      <div className="hero-empty">    
+        
+      </div>    
+    )}    
+</div>    
+
+<div className="hero-contact">    
+  {phone && (    
+    <span>    
+      <Icon    
+        name="phone"    
+        size={16}    
+      />    
+      {phone}    
+    </span>    
+  )}    
+
+  <span>    
+    <Icon    
+      name="pin"    
+      size={16}    
+    />    
+    {address}    
+  </span>    
+</div>
 
   </section>    {/* ================= FEATURES ================= */}
 
@@ -3084,75 +3152,146 @@ a {
 
   </section>    {/* ================= CONTACT ================= */}
 
-<section id="contact" className="section">
-  <div className="section-head">
-    <h2>Contact</h2>
-  </div>
+  <section    
+    id="contact"    
+    className="section"    
+  >    
+    <div className="section-title">    
+      <div className="eyebrow">    
+        Contact    
+      </div>    <h2>    
+    Find & Contact Us    
+  </h2>    
 
-  <div className="grid two">
-    <div className="box contact-box">
-      <h3>{restaurantName}</h3>
+  
+</div>    
 
-      {address && (
-        <p>
-          <strong>Address:</strong>
-          <br />
-          {address}
-        </p>
-      )}
+<div className="contact-grid">    
+  <div className="box contact-box">    
+    <h3>    
+      Find Us on Map    
+    </h3>    
 
-      {phone && (
-        <p>
-          <strong>Phone:</strong>
-          <br />
-          {phone}
-        </p>
-      )}
+    <div className="contact-line">    
+      <Icon    
+        name="pin"    
+        size={20}    
+      />    
 
-      {email && (
-        <p>
-          <strong>Email:</strong>
-          <br />
-          {email}
-        </p>
-      )}
+      <span>    
+        {address}    
+      </span>    
+    </div>    
 
-      {mapUrl && (
-        <p>
-          <a
-            href={mapUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
-            View on Google Maps
-          </a>
-        </p>
-      )}
-    </div>
+    {mapUrl ? (    
+      <a    
+        className="outline-btn"    
+        href={mapUrl}    
+        target="_blank"    
+        rel="noreferrer"    
+      >    
+        <Icon    
+          name="map"    
+          size={17}    
+        />    
+        Open Google Maps    
+      </a>    
+    ) : (    
+      <span className="small-note">    
+         
+      </span>    
+    )}    
+  </div>    
 
-    <div className="box contact-box">
-      <h3>Follow Us</h3>
+  <div className="box contact-box">    
+    <h3>    
+      Contact Us    
+    </h3>    
 
-      {whatsapp && (
-        <p>
-          <strong>WhatsApp:</strong>
-          <br />
-          {whatsapp}
-        </p>
-      )}
-    </div>
-  </div>
-</section>
+    {phone && (    
+      <div className="contact-line">    
+        <Icon    
+          name="phone"    
+          size={20}    
+        />    
 
-<footer className="footer">    
-  <span>    
-    © 2026 {restaurantName}.    
-    All rights reserved.    
-  </span>
+        <a    
+          href={`tel:${phone}`}    
+        >    
+          {phone}    
+        </a>    
+      </div>    
+    )}    
 
-  <span>    
-    Good Food • Good Mood    
-  </span>
+    {email && (    
+      <div className="contact-line">    
+        <Icon    
+          name="mail"    
+          size={20}    
+        />    
+
+        <a    
+          href={`mailto:${email}`}    
+        >    
+          {email}    
+        </a>    
+      </div>    
+    )}    
+
+    {whatsapp && (    
+      <div className="contact-line">    
+        <button    
+          style={{    
+            background:    
+              "transparent",    
+            border: 0,    
+            padding: 0,    
+            color: "#fff",    
+            display: "flex",    
+            alignItems:    
+              "center",    
+            gap: 10,    
+          }}    
+          onClick={    
+            openWhatsApp    
+          }    
+        >    
+          <Icon    
+            name="phone"    
+            size={20}    
+          />    
+          WhatsApp    
+        </button>    
+      </div>    
+    )}    
+
+    <div className="contact-line">    
+      <Icon    
+        name="pin"    
+        size={20}    
+      />    
+
+      <span>    
+        {address}    
+      </span>    
+    </div>    
+  </div>    
+
+  <div className="box contact-box">    
+    <h3>    
+      Follow Us    
+    </h3>    
+          
+</div>
+</div>
+
+  </section>    <footer className="footer">    
+    <span>    
+      © 2026 {restaurantName}.    
+      All rights reserved.    
+    </span>    <span>    
+  Good Food • Good Mood    
+</span>
 
   </footer>      <div className="floating-book">    
     <button    
@@ -3710,5 +3849,4 @@ Gallery
 )}
 
 </main>  );
-
-}
+                    }
