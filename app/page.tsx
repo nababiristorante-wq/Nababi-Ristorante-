@@ -3266,9 +3266,10 @@ a {
     <h3>    
       Follow Us    
     </h3>    
+          
+</div>
+</div>
 
-
-    
   </section>    <footer className="footer">    
     <span>    
       © 2026 {restaurantName}.    
