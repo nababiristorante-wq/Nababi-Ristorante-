@@ -3646,7 +3646,7 @@ My Booking
     </div>    
   </div>    
 </div>
-
+</main>
 )}
 
 {/* ================= GALLERY MODAL ================= */}
