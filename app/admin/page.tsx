@@ -1,7 +1,12 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import {
+  ChangeEvent,
+  FormEvent,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 type MenuItem = {
   id: number;
@@ -13,354 +18,806 @@ type MenuItem = {
   available: boolean;
 };
 
-type MenuCategory = {
-  id: string;
-  name: string;
-  image: string;
-  order: number;
-  visible: boolean;
+const MENU_KEY = "nababi-menu";
+const CATEGORY_KEY = "nababi-categories";
+const BACKGROUND_KEY = "nababi-menu-background";
+
+const defaultCategories = [
+  "Biryani",
+  "Starters",
+  "Main Course",
+  "Chicken",
+  "Mutton",
+  "Vegetarian",
+  "Rice",
+  "Drinks",
+  "Desserts",
+];
+
+const emptyForm = {
+  name: "",
+  description: "",
+  price: "",
+  category: "Biryani",
+  image: "",
+  available: true,
 };
 
-const BUCKET = "menu-images";
-
-export default function MenuPage() {
+export default function MenuManagementPage() {
   const [items, setItems] = useState<MenuItem[]>([]);
-  const [categories, setCategories] = useState<MenuCategory[]>([]);
-  const [backgroundImage, setBackgroundImage] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [categories, setCategories] = useState<string[]>(defaultCategories);
+  const [form, setForm] = useState(emptyForm);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [search, setSearch] = useState("");
+  const [newCategory, setNewCategory] = useState("");
+  const [showCategoryInput, setShowCategoryInput] = useState(false);
+  const [background, setBackground] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const [itemName, setItemName] = useState("");
-  const [itemPrice, setItemPrice] = useState("");
-  const [itemDescription, setItemDescription] = useState("");
-  const [itemCategory, setItemCategory] = useState("");
-  const [itemImage, setItemImage] = useState("");
-  const [itemAvailable, setItemAvailable] = useState(true);
-  const [editingItemId, setEditingItemId] = useState<number | null>(null);
-
-  const [categoryName, setCategoryName] = useState("");
-  const [categoryImage, setCategoryImage] = useState("");
-  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
-
   useEffect(() => {
-    loadMenu();
+    try {
+      const savedItems = localStorage.getItem(MENU_KEY);
+      const savedCategories = localStorage.getItem(CATEGORY_KEY);
+      const savedBackground = localStorage.getItem(BACKGROUND_KEY);
+
+      if (savedItems) {
+        const parsed = JSON.parse(savedItems);
+        if (Array.isArray(parsed)) setItems(parsed);
+      }
+
+      if (savedCategories) {
+        const parsed = JSON.parse(savedCategories);
+
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const names = parsed
+            .map((item: unknown) => {
+              if (typeof item === "string") return item;
+
+              if (
+                item &&
+                typeof item === "object" &&
+                "nameEnglish" in item
+              ) {
+                return String(
+                  (item as { nameEnglish?: string }).nameEnglish || ""
+                );
+              }
+
+              return "";
+            })
+            .filter(Boolean);
+
+          if (names.length > 0) {
+            setCategories(Array.from(new Set(names)));
+          }
+        }
+      }
+
+      if (savedBackground) {
+        setBackground(savedBackground);
+      }
+    } catch {
+      setError("Saved data load করা যায়নি।");
+    }
   }, []);
 
-  async function loadMenu() {
-    try {
-      setLoading(true);
-      setError("");
-      const response = await fetch("/api/admin/menu", { cache: "no-store" });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data?.error || "Menu load failed.");
+  const saveItems = (next: MenuItem[]) => {
+    setItems(next);
+    localStorage.setItem(MENU_KEY, JSON.stringify(next));
+  };
 
-      setItems(
-        (data.items || []).map((x: any) => ({
-          id: Number(x.id),
-          name: x.name || "",
-          description: x.description || "",
-          price: x.price == null ? "" : String(x.price),
-          category: x.category || "",
-          image: x.image_url || "",
-          available: x.is_available !== false,
-        }))
-      );
-      setCategories(
-        (data.categories || []).map((x: any) => ({
-          id: String(x.id),
-          name: x.name || "",
-          image: x.image_url || "",
-          order: Number(x.display_order || 0),
-          visible: x.visible !== false,
-        }))
-      );
-      setBackgroundImage(data.settings?.background_image || "");
-    } catch (e: any) {
-      setError(e?.message || "Could not load menu.");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const saveCategories = (next: string[]) => {
+    setCategories(next);
+    localStorage.setItem(CATEGORY_KEY, JSON.stringify(next));
+  };
 
-  async function uploadImage(file: File, folder: string) {
+  const success = (text: string) => {
+    setMessage(text);
     setError("");
-    const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const safeName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
-    const path = `${folder}/${safeName}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from(BUCKET)
-      .upload(path, file, { upsert: false, contentType: file.type || undefined });
+    window.setTimeout(() => setMessage(""), 2500);
+  };
 
-    if (uploadError) throw uploadError;
+  const fail = (text: string) => {
+    setError(text);
+    setMessage("");
 
-    const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
-    return data.publicUrl;
-  }
+    window.setTimeout(() => setError(""), 3000);
+  };
 
-  async function handleItemImage(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      setMessage("Uploading image...");
-      const url = await uploadImage(file, "items");
-      setItemImage(url);
-      setMessage("Image selected.");
-    } catch (e: any) {
-      setError(e?.message || "Image upload failed.");
-      setMessage("");
-    } finally {
-      e.target.value = "";
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const readImage = (file: File, callback: (image: string) => void) => {
+    if (!file.type.startsWith("image/")) {
+      fail("শুধু Image file upload করুন।");
+      return;
     }
-  }
 
-  async function handleCategoryImage(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      setMessage("Uploading image...");
-      const url = await uploadImage(file, "categories");
-      setCategoryImage(url);
-      setMessage("Image selected.");
-    } catch (e: any) {
-      setError(e?.message || "Image upload failed.");
-      setMessage("");
-    } finally {
-      e.target.value = "";
+    if (file.size > 8 * 1024 * 1024) {
+      fail("Image সর্বোচ্চ 8MB হতে পারবে।");
+      return;
     }
-  }
 
-  async function handleBackgroundImage(e: ChangeEvent<HTMLInputElement>) {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      callback(String(reader.result));
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const handleProductImage = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+
     if (!file) return;
-    try {
-      setMessage("Uploading background...");
-      const url = await uploadImage(file, "background");
-      setBackgroundImage(url);
-      setMessage("Background selected. Tap Save All to save it.");
-    } catch (e: any) {
-      setError(e?.message || "Background upload failed.");
-      setMessage("");
-    } finally {
-      e.target.value = "";
-    }
-  }
 
-  function resetItemForm() {
-    setItemName("");
-    setItemPrice("");
-    setItemDescription("");
-    setItemCategory(categories[0]?.name || "");
-    setItemImage("");
-    setItemAvailable(true);
-    setEditingItemId(null);
-  }
+    readImage(file, (image) => {
+      setForm((prev) => ({
+        ...prev,
+        image,
+      }));
+    });
+  };
 
-  function addOrUpdateItem(e: FormEvent) {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError("");
-    if (!itemName.trim()) return setError("Item name is required.");
 
-    if (editingItemId !== null) {
-      setItems((current) =>
-        current.map((item) =>
-          item.id === editingItemId
-            ? { ...item, name: itemName.trim(), price: itemPrice, description: itemDescription, category: itemCategory, image: itemImage, available: itemAvailable }
-            : item
-        )
+    if (!form.name.trim()) {
+      fail("Product Name লিখুন।");
+      return;
+    }
+
+    if (!form.description.trim()) {
+      fail("Description লিখুন।");
+      return;
+    }
+
+    if (!form.price.trim()) {
+      fail("Price লিখুন।");
+      return;
+    }
+
+    if (!form.category) {
+      fail("Category নির্বাচন করুন।");
+      return;
+    }
+
+    if (editingId !== null) {
+      const updated = items.map((item) =>
+        item.id === editingId
+          ? {
+              ...item,
+              name: form.name.trim(),
+              description: form.description.trim(),
+              price: form.price.trim(),
+              category: form.category,
+              image: form.image,
+              available: form.available,
+            }
+          : item
       );
+
+      saveItems(updated);
+      success("Product সফলভাবে Update হয়েছে।");
     } else {
-      const nextId = items.length ? Math.max(...items.map((x) => x.id)) + 1 : 1;
-      setItems((current) => [
-        ...current,
-        { id: nextId, name: itemName.trim(), price: itemPrice, description: itemDescription, category: itemCategory, image: itemImage, available: itemAvailable },
-      ]);
+      const newItem: MenuItem = {
+        id: Date.now(),
+        name: form.name.trim(),
+        description: form.description.trim(),
+        price: form.price.trim(),
+        category: form.category,
+        image: form.image,
+        available: form.available,
+      };
+
+      saveItems([...items, newItem]);
+      success("Product সফলভাবে Save হয়েছে।");
     }
-    resetItemForm();
-    setMessage("Item added. Tap Save All to save to Supabase.");
-  }
 
-  function editItem(item: MenuItem) {
-    setEditingItemId(item.id);
-    setItemName(item.name);
-    setItemPrice(item.price);
-    setItemDescription(item.description);
-    setItemCategory(item.category);
-    setItemImage(item.image);
-    setItemAvailable(item.available);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
+    setForm({
+      ...emptyForm,
+      category: form.category,
+    });
 
-  function deleteItem(id: number) {
-    setItems((current) => current.filter((x) => x.id !== id));
-    setMessage("Item removed. Tap Save All to save the change.");
-  }
+    setEditingId(null);
+  };
 
-  function addOrUpdateCategory(e: FormEvent) {
-    e.preventDefault();
-    setError("");
-    if (!categoryName.trim()) return setError("Category name is required.");
+  const editProduct = (item: MenuItem) => {
+    setEditingId(item.id);
 
-    if (editingCategoryId) {
-      setCategories((current) => current.map((x) => x.id === editingCategoryId ? { ...x, name: categoryName.trim(), image: categoryImage } : x));
-    } else {
-      const id = `cat-${Date.now()}`;
-      setCategories((current) => [...current, { id, name: categoryName.trim(), image: categoryImage, order: current.length, visible: true }]);
+    setForm({
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      category: item.category,
+      image: item.image,
+      available: item.available,
+    });
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  const deleteProduct = (id: number) => {
+    if (!window.confirm("এই Product-টি Delete করতে চান?")) return;
+
+    saveItems(items.filter((item) => item.id !== id));
+
+    if (editingId === id) {
+      cancelEdit();
     }
-    setCategoryName("");
-    setCategoryImage("");
-    setEditingCategoryId(null);
-    setMessage("Category added. Tap Save All to save to Supabase.");
-  }
 
-  function editCategory(category: MenuCategory) {
-    setEditingCategoryId(category.id);
-    setCategoryName(category.name);
-    setCategoryImage(category.image);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
+    success("Product Delete হয়েছে।");
+  };
 
-  function deleteCategory(id: string) {
-    const category = categories.find((x) => x.id === id);
-    setCategories((current) => current.filter((x) => x.id !== id));
-    if (category) {
-      setItems((current) => current.map((x) => x.category === category.name ? { ...x, category: "" } : x));
+  const toggleAvailability = (id: number) => {
+    saveItems(
+      items.map((item) =>
+        item.id === id
+          ? { ...item, available: !item.available }
+          : item
+      )
+    );
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+
+    setForm({
+      ...emptyForm,
+      category: categories[0] || "Biryani",
+    });
+  };
+
+  const addCategory = () => {
+    const value = newCategory.trim();
+
+    if (!value) {
+      fail("Category Name লিখুন।");
+      return;
     }
-    setMessage("Category removed. Tap Save All to save the change.");
-  }
 
-  async function saveAll() {
-    try {
-      setSaving(true);
-      setError("");
-      setMessage("Saving menu...");
+    const exists = categories.some(
+      (category) => category.toLowerCase() === value.toLowerCase()
+    );
 
-      const response = await fetch("/api/admin/menu", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items, categories, backgroundImage }),
-      });
+    if (exists) {
+      setForm((prev) => ({
+        ...prev,
+        category:
+          categories.find(
+            (category) =>
+              category.toLowerCase() === value.toLowerCase()
+          ) || value,
+      }));
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data?.error || "Menu save failed.");
-
-      setMessage("✓ Menu saved successfully to Supabase.");
-    } catch (e: any) {
-      setError(e?.message || "Menu save failed.");
-      setMessage("");
-    } finally {
-      setSaving(false);
+      setNewCategory("");
+      setShowCategoryInput(false);
+      return;
     }
-  }
 
-  if (loading) return <main style={styles.page}><h1>Menu Admin</h1><p>Loading...</p></main>;
+    const next = [...categories, value];
+
+    saveCategories(next);
+
+    setForm((prev) => ({
+      ...prev,
+      category: value,
+    }));
+
+    setNewCategory("");
+    setShowCategoryInput(false);
+
+    success("নতুন Category যোগ হয়েছে।");
+  };
+
+  const handleBackgroundUpload = (
+    e: ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    readImage(file, (image) => {
+      setBackground(image);
+      localStorage.setItem(BACKGROUND_KEY, image);
+      success("Background পরিবর্তন হয়েছে।");
+    });
+  };
+
+  const removeBackground = () => {
+    setBackground("");
+    localStorage.removeItem(BACKGROUND_KEY);
+    success("Background remove হয়েছে।");
+  };
+
+  const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+
+    if (!q) return items;
+
+    return items.filter(
+      (item) =>
+        item.name.toLowerCase().includes(q) ||
+        item.description.toLowerCase().includes(q) ||
+        item.category.toLowerCase().includes(q)
+    );
+  }, [items, search]);
+
+  const groupedItems = useMemo(() => {
+    const groups: Record<string, MenuItem[]> = {};
+
+    filteredItems.forEach((item) => {
+      if (!groups[item.category]) {
+        groups[item.category] = [];
+      }
+
+      groups[item.category].push(item);
+    });
+
+    return groups;
+  }, [filteredItems]);
 
   return (
-    <main style={styles.page}>
-      <div style={styles.headerRow}>
-        <div>
-          <h1 style={styles.title}>Menu Admin</h1>
-          <p style={styles.muted}>Manage categories, dishes, images and menu background.</p>
+    <main
+      className="min-h-screen w-full overflow-x-hidden p-4 md:p-6"
+      style={{
+        background: background
+          ? `linear-gradient(135deg, rgba(72,20,8,.70), rgba(93,20,70,.60)), url(${background}) center/cover fixed`
+          : "radial-gradient(circle at top left, #fed7aa 0%, #fff1f2 32%, #fce7f3 58%, #ede9fe 100%)",
+      }}
+    >
+      {/* TOP BAR */}
+      <div className="mx-auto mb-5 w-full max-w-[1800px] rounded-[28px] border border-white/60 bg-gradient-to-r from-orange-500/95 via-red-500/95 to-purple-600/95 p-5 shadow-2xl">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.3em] text-orange-100">
+              Nababi Ristorante
+            </p>
+
+            <h1 className="mt-1 text-3xl font-black text-white md:text-4xl">
+              Menu Management
+            </h1>
+
+            <p className="mt-1 text-sm text-white/80">
+              Add, Edit এবং Manage আপনার Restaurant Products
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <label className="cursor-pointer rounded-2xl bg-white/20 px-5 py-3 font-bold text-white backdrop-blur transition hover:bg-white/30">
+              🖼️ Change Background
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleBackgroundUpload}
+              />
+            </label>
+
+            {background && (
+              <button
+                type="button"
+                onClick={removeBackground}
+                className="rounded-2xl bg-black/20 px-5 py-3 font-bold text-white backdrop-blur"
+              >
+                Remove
+              </button>
+            )}
+          </div>
         </div>
-        <button style={styles.saveButton} onClick={saveAll} disabled={saving}>{saving ? "Saving..." : "Save All"}</button>
       </div>
 
-      {message && <div style={styles.success}>{message}</div>}
-      {error && <div style={styles.error}>{error}</div>}
+      {message && (
+        <div className="mx-auto mb-5 w-full max-w-[1800px] rounded-2xl border border-green-200 bg-green-50 px-5 py-4 font-bold text-green-700 shadow-lg">
+          ✓ {message}
+        </div>
+      )}
 
-      <section style={styles.card}>
-        <h2>Menu Background</h2>
-        <label style={styles.galleryButton}>Choose from Gallery<input hidden type="file" accept="image/*" onChange={handleBackgroundImage} /></label>
-        {backgroundImage && <img src={backgroundImage} alt="Menu background" style={styles.backgroundPreview} />}
-      </section>
+      {error && (
+        <div className="mx-auto mb-5 w-full max-w-[1800px] rounded-2xl border border-red-200 bg-red-50 px-5 py-4 font-bold text-red-700 shadow-lg">
+          ⚠ {error}
+        </div>
+      )}
 
-      <section style={styles.card}>
-        <h2>{editingCategoryId ? "Edit Category" : "Add Category"}</h2>
-        <form onSubmit={addOrUpdateCategory}>
-          <input style={styles.input} placeholder="Category name" value={categoryName} onChange={(e) => setCategoryName(e.target.value)} />
-          <label style={styles.galleryButton}>Choose Category Image<input hidden type="file" accept="image/*" onChange={handleCategoryImage} /></label>
-          {categoryImage && <img src={categoryImage} alt="Category" style={styles.preview} />}
-          <div style={styles.row}>
-            <button style={styles.primaryButton} type="submit">{editingCategoryId ? "Update Category" : "Add Category"}</button>
-            {editingCategoryId && <button style={styles.secondaryButton} type="button" onClick={() => { setEditingCategoryId(null); setCategoryName(""); setCategoryImage(""); }}>Cancel</button>}
+      {/* CATEGORY BAR */}
+      <div className="mx-auto mb-5 w-full max-w-[1800px] rounded-[28px] border border-white/70 bg-white/75 p-5 shadow-xl backdrop-blur-xl">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-wrap gap-2">
+            {categories.map((category) => (
+              <button
+                key={category}
+                type="button"
+                onClick={() =>
+                  setForm((prev) => ({
+                    ...prev,
+                    category,
+                  }))
+                }
+                className={`rounded-full px-5 py-2.5 text-sm font-black transition ${
+                  form.category === category
+                    ? "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg"
+                    : "bg-white text-orange-700 shadow hover:bg-orange-50"
+                }`}
+              >
+                {category}
+              </button>
+            ))}
           </div>
-        </form>
-      </section>
 
-      <section style={styles.card}>
-        <h2>Categories</h2>
-        {categories.length === 0 ? <p style={styles.muted}>No categories yet.</p> : categories.map((category) => (
-          <div key={category.id} style={styles.listRow}>
-            {category.image ? <img src={category.image} alt="" style={styles.thumb} /> : <div style={styles.thumbEmpty}>No image</div>}
-            <div style={{ flex: 1 }}><strong>{category.name}</strong></div>
-            <button style={styles.smallButton} onClick={() => editCategory(category)}>Edit</button>
-            <button style={styles.deleteButton} onClick={() => deleteCategory(category.id)}>Delete</button>
+          <div className="flex gap-2">
+            {showCategoryInput && (
+              <input
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                placeholder="New Category"
+                className="w-44 rounded-xl border border-purple-200 bg-white px-4 py-2.5 outline-none"
+              />
+            )}
+
+            {showCategoryInput && (
+              <button
+                type="button"
+                onClick={addCategory}
+                className="rounded-xl bg-purple-600 px-4 py-2.5 font-bold text-white"
+              >
+                Add
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() =>
+                setShowCategoryInput((value) => !value)
+              }
+              className="rounded-xl bg-gradient-to-r from-purple-600 to-pink-500 px-5 py-2.5 font-bold text-white shadow"
+            >
+              ＋ Category
+            </button>
           </div>
-        ))}
-      </section>
+        </div>
+      </div>
 
-      <section style={styles.card}>
-        <h2>{editingItemId !== null ? "Edit Menu Item" : "Add Menu Item"}</h2>
-        <form onSubmit={addOrUpdateItem}>
-          <input style={styles.input} placeholder="Item name" value={itemName} onChange={(e) => setItemName(e.target.value)} />
-          <input style={styles.input} placeholder="Price" inputMode="decimal" value={itemPrice} onChange={(e) => setItemPrice(e.target.value)} />
-          <select style={styles.input} value={itemCategory} onChange={(e) => setItemCategory(e.target.value)}>
-            <option value="">Select Category</option>
-            {categories.map((category) => <option key={category.id} value={category.name}>{category.name}</option>)}
-          </select>
-          <textarea style={{ ...styles.input, minHeight: 90 }} placeholder="Description" value={itemDescription} onChange={(e) => setItemDescription(e.target.value)} />
-          <label style={styles.galleryButton}>Choose Item Image<input hidden type="file" accept="image/*" onChange={handleItemImage} /></label>
-          {itemImage && <img src={itemImage} alt="Item" style={styles.preview} />}
-          <label style={styles.check}><input type="checkbox" checked={itemAvailable} onChange={(e) => setItemAvailable(e.target.checked)} /> Available</label>
-          <div style={styles.row}>
-            <button style={styles.primaryButton} type="submit">{editingItemId !== null ? "Update Item" : "Add Item"}</button>
-            {editingItemId !== null && <button style={styles.secondaryButton} type="button" onClick={resetItemForm}>Cancel</button>}
-          </div>
-        </form>
-      </section>
+      {/* EXACT TWO EQUAL BOXES */}
+      <div className="mx-auto grid min-h-[calc(100vh-250px)] w-full max-w-[1800px] grid-cols-1 gap-5 lg:grid-cols-2">
+        {/* LEFT BOX */}
+        <section className="rounded-[30px] border border-white/70 bg-gradient-to-br from-white/95 via-orange-50/95 to-pink-50/95 p-6 shadow-2xl backdrop-blur-xl">
+          <div className="mb-6 rounded-2xl bg-gradient-to-r from-orange-500 to-red-500 p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-black">
+                  {editingId !== null ? "EDIT PRODUCT" : "ADD PRODUCT"}
+                </span>
 
-      <section style={styles.card}>
-        <h2>Menu Items</h2>
-        {items.length === 0 ? <p style={styles.muted}>No menu items yet.</p> : items.map((item) => (
-          <div key={item.id} style={styles.listRow}>
-            {item.image ? <img src={item.image} alt={item.name} style={styles.thumb} /> : <div style={styles.thumbEmpty}>No image</div>}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <strong>{item.name}</strong>
-              <div style={styles.muted}>{item.category || "No category"} · {item.price || "No price"}</div>
-              {!item.available && <div style={styles.unavailable}>Unavailable</div>}
+                <h2 className="mt-2 text-2xl font-black">
+                  {editingId !== null
+                    ? "Edit Your Product"
+                    : "Add New Product"}
+                </h2>
+              </div>
+
+              {editingId !== null && (
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  className="rounded-xl bg-white/20 px-4 py-2 font-bold"
+                >
+                  Cancel
+                </button>
+              )}
             </div>
-            <button style={styles.smallButton} onClick={() => editItem(item)}>Edit</button>
-            <button style={styles.deleteButton} onClick={() => deleteItem(item.id)}>Delete</button>
           </div>
-        ))}
-      </section>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* IMAGE */}
+            <label className="block cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed border-orange-300 bg-gradient-to-br from-orange-50 to-pink-50">
+              {form.image ? (
+                <img
+                  src={form.image}
+                  alt="Product Preview"
+                  className="h-48 w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-48 flex-col items-center justify-center">
+                  <span className="text-6xl">📷</span>
+                  <span className="mt-2 font-black text-orange-700">
+                    Upload Product Image
+                  </span>
+                </div>
+              )}
+
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleProductImage}
+              />
+            </label>
+
+            {/* NAME */}
+            <div>
+              <label className="mb-2 block font-black text-gray-800">
+                Product Name *
+              </label>
+
+              <input
+                name="name"
+                value={form.name}
+                onChange={handleChange}
+                placeholder="Product Name"
+                className="w-full rounded-2xl border border-orange-100 bg-white px-4 py-3.5 shadow-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+              />
+            </div>
+
+            {/* DESCRIPTION */}
+            <div>
+              <label className="mb-2 block font-black text-gray-800">
+                Description *
+              </label>
+
+              <textarea
+                name="description"
+                value={form.description}
+                onChange={handleChange}
+                rows={4}
+                placeholder="Italian / English / Bengali Description"
+                className="w-full resize-none rounded-2xl border border-orange-100 bg-white px-4 py-3.5 shadow-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {/* PRICE */}
+              <div>
+                <label className="mb-2 block font-black text-gray-800">
+                  Price *
+                </label>
+
+                <input
+                  name="price"
+                  value={form.price}
+                  onChange={handleChange}
+                  placeholder="€15.90"
+                  className="w-full rounded-2xl border border-orange-100 bg-white px-4 py-3.5 shadow-sm outline-none focus:border-orange-500"
+                />
+              </div>
+
+              {/* CATEGORY */}
+              <div>
+                <label className="mb-2 block font-black text-gray-800">
+                  Category *
+                </label>
+
+                <select
+                  name="category"
+                  value={form.category}
+                  onChange={handleChange}
+                  className="w-full rounded-2xl border border-orange-100 bg-white px-4 py-3.5 shadow-sm outline-none focus:border-orange-500"
+                >
+                  {categories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* AVAILABLE */}
+            <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-green-100 bg-gradient-to-r from-green-50 to-emerald-50 p-4">
+              <div>
+                <p className="font-black text-gray-900">
+                  Product Available
+                </p>
+
+                <p className="text-xs text-gray-500">
+                  Customer-এর জন্য Show করবেন?
+                </p>
+              </div>
+
+              <input
+                type="checkbox"
+                checked={form.available}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    available: e.target.checked,
+                  }))
+                }
+                className="h-6 w-6 accent-green-600"
+              />
+            </label>
+
+            {/* SAVE */}
+            <button
+              type="submit"
+              className="w-full rounded-2xl bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 py-4 text-lg font-black text-white shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl"
+            >
+              {editingId !== null
+                ? "✓ UPDATE PRODUCT"
+                : "＋ SAVE PRODUCT"}
+            </button>
+          </form>
+        </section>
+
+        {/* RIGHT BOX */}
+        <section className="rounded-[30px] border border-white/70 bg-gradient-to-br from-white/95 via-purple-50/95 to-pink-50/95 p-6 shadow-2xl backdrop-blur-xl">
+          <div className="mb-6 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-500 p-5 text-white shadow-lg">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-black">
+                  {items.length} PRODUCTS
+                </span>
+
+                <h2 className="mt-2 text-2xl font-black">
+                  My Added Products
+                </h2>
+
+                <p className="mt-1 text-sm text-white/80">
+                  আপনার Save করা সব Product এখানে থাকবে।
+                </p>
+              </div>
+
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="🔎 Search..."
+                className="rounded-xl bg-white px-4 py-3 text-gray-800 outline-none md:w-56"
+              />
+            </div>
+          </div>
+
+          {filteredItems.length === 0 ? (
+            <div className="flex min-h-[500px] flex-col items-center justify-center rounded-3xl border-2 border-dashed border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 text-center">
+              <div className="text-7xl">🍽️</div>
+
+              <h3 className="mt-5 text-2xl font-black text-gray-900">
+                No Products Yet
+              </h3>
+
+              <p className="mt-2 max-w-md px-5 text-sm text-gray-500">
+                বাম পাশের Add Product form থেকে Product Save করলে
+                এখানে Image সহ দেখা যাবে।
+              </p>
+            </div>
+          ) : (
+            <div className="max-h-[calc(100vh-390px)] space-y-7 overflow-y-auto pr-2">
+              {categories
+                .filter((category) => groupedItems[category]?.length)
+                .map((category) => (
+                  <div key={category}>
+                    <div className="mb-4 flex items-center justify-between border-b-2 border-purple-100 pb-3">
+                      <div>
+                        <h3 className="text-xl font-black text-gray-900">
+                          {category}
+                        </h3>
+
+                        <p className="text-xs font-bold text-gray-500">
+                          {groupedItems[category].length} Products
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingId(null);
+
+                          setForm({
+                            ...emptyForm,
+                            category,
+                          });
+
+                          window.scrollTo({
+                            top: 0,
+                            behavior: "smooth",
+                          });
+                        }}
+                        className="rounded-xl bg-purple-100 px-4 py-2 text-sm font-black text-purple-700 hover:bg-purple-200"
+                      >
+                        ＋ Add
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                      {groupedItems[category].map((item) => (
+                        <article
+                          key={item.id}
+                          className="overflow-hidden rounded-3xl border border-white bg-white shadow-lg transition hover:-translate-y-1 hover:shadow-2xl"
+                        >
+                          <div className="relative h-44 overflow-hidden bg-gradient-to-br from-orange-100 via-pink-100 to-purple-100">
+                            {item.image ? (
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full items-center justify-center text-6xl">
+                                🍽️
+                              </div>
+                            )}
+
+                            <span
+                              className={`absolute right-3 top-3 rounded-full px-3 py-1 text-xs font-black text-white shadow ${
+                                item.available
+                                  ? "bg-green-500"
+                                  : "bg-gray-700"
+                              }`}
+                            >
+                              {item.available
+                                ? "Available"
+                                : "Hidden"}
+                            </span>
+                          </div>
+
+                          <div className="p-4">
+                            <div className="flex items-start justify-between gap-2">
+                              <h4 className="font-black text-gray-900">
+                                {item.name}
+                              </h4>
+
+                              <span className="shrink-0 rounded-xl bg-orange-100 px-3 py-1 text-sm font-black text-orange-700">
+                                {item.price}
+                              </span>
+                            </div>
+
+                            <p className="mt-2 line-clamp-2 text-sm text-gray-500">
+                              {item.description}
+                            </p>
+
+                            <div className="mt-4 grid grid-cols-3 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => editProduct(item)}
+                                className="rounded-xl bg-blue-50 px-2 py-2.5 text-xs font-black text-blue-700 hover:bg-blue-100"
+                              >
+                                ✏️ Edit
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  toggleAvailability(item.id)
+                                }
+                                className="rounded-xl bg-green-50 px-2 py-2.5 text-xs font-black text-green-700 hover:bg-green-100"
+                              >
+                                {item.available
+                                  ? "Hide"
+                                  : "Show"}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  deleteProduct(item.id)
+                                }
+                                className="rounded-xl bg-red-50 px-2 py-2.5 text-xs font-black text-red-700 hover:bg-red-100"
+                              >
+                                🗑️ Delete
+                              </button>
+                            </div>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </section>
+      </div>
     </main>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  page: { maxWidth: 900, margin: "0 auto", padding: 16, fontFamily: "Arial, sans-serif" },
-  headerRow: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 16 },
-  title: { margin: 0 },
-  card: { border: "1px solid #ddd", borderRadius: 14, padding: 16, marginBottom: 16, background: "#fff" },
-  input: { width: "100%", boxSizing: "border-box", padding: 12, border: "1px solid #ccc", borderRadius: 9, marginBottom: 10, fontSize: 16 },
-  row: { display: "flex", gap: 8, flexWrap: "wrap" },
-  primaryButton: { padding: "11px 16px", border: 0, borderRadius: 9, cursor: "pointer", fontWeight: 700 },
-  secondaryButton: { padding: "11px 16px", border: "1px solid #ccc", borderRadius: 9, background: "#fff", cursor: "pointer" },
-  saveButton: { padding: "12px 18px", border: 0, borderRadius: 10, cursor: "pointer", fontWeight: 800 },
-  galleryButton: { display: "inline-block", padding: "11px 14px", border: "1px solid #ccc", borderRadius: 9, cursor: "pointer", marginBottom: 10 },
-  success: { padding: 12, borderRadius: 9, marginBottom: 12, background: "#e9f8ee" },
-  error: { padding: 12, borderRadius: 9, marginBottom: 12, background: "#ffe9e9", color: "#a00", whiteSpace: "pre-wrap" },
-  muted: { color: "#666", marginTop: 4 },
-  preview: { width: 140, height: 100, objectFit: "cover", borderRadius: 10, display: "block", marginBottom: 12 },
-  backgroundPreview: { width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 10, display: "block" },
-  listRow: { display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #eee" },
-  thumb: { width: 58, height: 58, objectFit: "cover", borderRadius: 8, flexShrink: 0 },
-  thumbEmpty: { width: 58, height: 58, borderRadius: 8, background: "#eee", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#777", flexShrink: 0 },
-  smallButton: { padding: "7px 9px", border: "1px solid #ccc", borderRadius: 7, background: "#fff", cursor: "pointer" },
-  deleteButton: { padding: "7px 9px", border: 0, borderRadius: 7, cursor: "pointer" },
-  check: { display: "flex", gap: 8, alignItems: "center", marginBottom: 12 },
-  unavailable: { fontSize: 12, marginTop: 4 },
-};
